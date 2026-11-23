@@ -1,4 +1,5 @@
 import { PresentacionesAdmisionComponent } from './shared/presentaciones-admision.component';
+import { CumplimientoDocumentalComponent } from './shared/cumplimiento-documental.component';
 import { ActosNotificacionComponent } from './shared/actos-notificacion.component';
 import { InformacionComplementariaComponent } from './shared/informacion-complementaria.component';
 import { Observable, Subscription } from 'rxjs';
@@ -39,7 +40,7 @@ type SuspensionSolicitante = 'CIUDADANO' | 'ENTIDAD_PUBLICA' | 'TTAIP';
 type TipoCumplimiento = 'TOTAL' | 'PARCIAL' | 'NO_CUMPLE';
 
 interface TimelineItem {
-  id: number;
+  id: number | string;
   fecha: string;
   titulo: string;
   descripcion: string;
@@ -56,7 +57,7 @@ import { RegistrarSuspensionTtaipPayload } from '../../models/resolucion.model';
 
 @Component({
   selector: 'app-ttaip-resolucion-detalle',
-  imports: [PresentacionesAdmisionComponent, ActosNotificacionComponent, InformacionComplementariaComponent,
+  imports: [PresentacionesAdmisionComponent, ActosNotificacionComponent, InformacionComplementariaComponent, CumplimientoDocumentalComponent,
     CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent, StatusBadgeComponent,
     DocumentPreviewModalComponent, RecepcionInstitucionalComponent,
     LucideEye, LucideDownload, LucideScale,
@@ -134,7 +135,8 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   readonly suspensionesExpediente = computed(() => this.detalle().suspensionesPlazo.data ?? []);
   readonly cumplimientosExpediente = computed(() => this.detalle().cumplimientosResolucion.data ?? []);
   readonly descargoActivo = computed(() => single(this.descargosExpediente(), d => d.estadoDescargo === 'REQUERIDO'));
-  readonly cumplimientoActivo = computed(() => single(this.cumplimientosExpediente(), c => ['PENDIENTE', 'OBSERVADO'].includes(c.estadoCumplimiento || '')));
+  readonly cumplimientosHistoricos = computed(() => this.cumplimientosExpediente().filter(c => !c.documental));
+  readonly cumplimientoActivo = computed(() => single(this.cumplimientosHistoricos(), c => ['PENDIENTE', 'OBSERVADO'].includes(c.estadoCumplimiento || '')));
   readonly resolucionFinalFundada = computed(() => { const id = this.apelacion()?.resolucion?.id; return this.resolucionesExpediente().find(r => r.id === id && r.tipoResolucion === 'RESOLUCION_FINAL' && ['FUNDADO', 'FUNDADO_EN_PARTE'].includes(r.decision || '')) ?? null; });
   readonly selectedAct = computed(() => this.resolucionesExpediente().find(r => r.id === this.selectedActId()) ?? null);
   readonly relojTexto = computed(() => relojConsultado(this.apelacion()));
@@ -174,6 +176,11 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   readonly navegacionFinal = computed(() => !this.motivoResolucionFinal());
   readonly coleccionesIncompletas = computed(() => Object.values(this.detalle()).map(c => c.error).filter(Boolean));
   readonly estadoLabel = computed(() => this.formatEstado(this.apelacion()?.estado || ''));
+  readonly listoParaArchivo = computed(() => {
+    const apelacion = this.apelacion();
+    return !!apelacion?.expedienteTtaip?.cumplimientoDocumental?.fechaRemision
+      && ['RESUELTO_FUNDADO', 'RESUELTO_FUNDADO_EN_PARTE'].includes(apelacion.estado);
+  });
 
   readonly puedeAdjuntarDocumentos = computed(() => {
     const estado = this.normalizeKey(this.apelacion()?.estado);
@@ -677,6 +684,25 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
         icon: this.iconForDecision(decision),
       });
     }
+    const cumplimiento = apelacion.expedienteTtaip?.cumplimientoDocumental;
+    if (cumplimiento?.fechaRemision) {
+      eventos.push({
+        id: 'cumplimiento',
+        fecha: this.formatDateLabel(cumplimiento.fechaRemision),
+        titulo: 'Cumplimiento',
+        descripcion: 'La entidad remitió el cumplimiento al Tribunal.',
+        icon: 'check',
+      });
+      if (this.listoParaArchivo()) {
+        eventos.push({
+          id: 'cierre-cumplimiento',
+          fecha: cumplimiento.fechaCierre ? this.formatDateLabel(cumplimiento.fechaCierre) : '',
+          titulo: 'Listo para archivo y publicación',
+          descripcion: 'El expediente quedó resuelto y se completó el cumplimiento.',
+          icon: 'check',
+        });
+      }
+    }
     return eventos;
   }
   private normalizeKey(value?: string | null): string {
@@ -708,6 +734,10 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
         return 'Notificacion de segunda calificacion';
       case 'EN_RESOLUCION':
         return 'En resolucion final';
+      case 'NOTIFICACION_RESOLUCION_FINAL':
+        return 'Notificación de la resolución final pendiente';
+      case 'EN_CUMPLIMIENTO':
+        return 'En cumplimiento';
       case 'RESUELTO':
         return 'Resuelto';
       case 'RESUELTO_FUNDADO':

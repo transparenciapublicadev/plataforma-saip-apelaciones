@@ -134,8 +134,6 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
   iniciarProcesoDisciplinario = false;
   readonly etapasRetroaccion = ETAPAS_RETROACCION;
   retrotraeA: EtapaRetroaccionId = '';
-  plazoDias = 7;
-  ordenarEntrega = true;
   constructor() { effect(() => { const revision = this.authService.cambiosSesion(); if (this.initialized && revision !== this.revision) untracked(() => this.cargarApelacion(this.requested)); }); }
   private sessionKey(): string { try { const s = this.authService.obtenerSesion(); return JSON.stringify([s?.token, s?.usuarioId, s?.tipoUsuario, s?.miembroId]); } catch { return ''; } }
   contextoVigente(): boolean { return !this.destroyed && this.session === this.sessionKey(); }
@@ -151,8 +149,6 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
     this.momentoVicio = '';
     this.actuacionOrdenada = '';
     this.retrotraeA = '';
-    this.ordenarEntrega = true;
-    this.plazoDias = 7;
     this.iniciarProcesoDisciplinario = false;
     this.documentosSeleccionados.set([]);
     this.archivos.set([]);
@@ -204,12 +200,6 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
         `Momento del vicio: ${this.momentoVicio.trim()}; Actuación ordenada: ${this.actuacionOrdenada.trim()}; ${retroStr}`
       ].filter(Boolean).join('\n');
     }
-    if (this.showOrden() && this.ordenarEntrega) {
-      return [
-        this.observacionesResolucion.trim(),
-        `Mandato: Entrega de información ordenada a la entidad en un plazo de ${this.plazoDias} días hábiles contados desde la notificación eficaz.`
-      ].filter(Boolean).join('\n');
-    }
     return this.selectedDecision() === 'estese_a_lo_resuelto' ? this.observacionesResolucion.trim() || undefined : undefined;
   }
   validacionTexto(): string {
@@ -235,19 +225,20 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
     if (this.loading() || this.operation || this.destroyed) return;
     if (!this.canSubmit()) { this.error.set(this.motivoNoDisponible() || this.validacionTexto()); return; }
     const ap = this.apelacion()!, option = finalOpciones.find(o => o.id === this.selectedDecision())!, generation = this.generation;
+    const observaciones = this.observacionesTexto();
     const op: FinalOperacion = {
       apelacionId: ap.id,
       expediente: ap.expediente,
       decision: option.id,
       fundamentos: this.fundamentos.trim(),
       miembroId: this.authService.obtenerSesion()!.miembroId!,
-      ...(this.observacionesTexto() ? { observaciones: this.observacionesTexto() } : {}),
-      ...(this.showOrden() ? { iniciarProcesoDisciplinario: this.iniciarProcesoDisciplinario, ordenarEntrega: this.ordenarEntrega, plazoDias: this.plazoDias } : {}),
+      ...(observaciones ? { observaciones } : {}),
+      ...(this.showOrden() ? { iniciarProcesoDisciplinario: this.iniciarProcesoDisciplinario } : {}),
       ...(this.showNulidad() && this.retrotraeA ? { retrotraeA: this.retrotraeA } : {})
     };
     this.operation = op; this.loading.set(true); this.error.set(''); this.archivos.set(this.documentosSeleccionados().map(file => ({ file, estado: 'seleccionado' })));
-    const { fundamentos, observaciones, miembroId, iniciarProcesoDisciplinario } = op;
-    this.writes.add(this.ttaipService[option.command](ap.id, { fundamentos, observaciones, miembroId, iniciarProcesoDisciplinario }).subscribe({ next: updated => {
+    const { fundamentos, miembroId, iniciarProcesoDisciplinario } = op;
+    this.writes.add(this.ttaipService[option.command](ap.id, { fundamentos, observaciones: op.observaciones, miembroId, iniciarProcesoDisciplinario }).subscribe({ next: updated => {
       if (!this.current(generation) || this.operation !== op || this.selectedDecision() !== op.decision) return;
       this.confirmModalAbierto.set(false);
       const id = finalConsultada(updated)?.id;
@@ -367,7 +358,7 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
   resolucionPlazoDias(): number | null { return null; }
   resolucionPlazoDescripcion(): string { return ''; }
   resolucionSuccessMetadata(): ReferenceSuccessMeta[] { const r = this.resolucionRegistrada(); return [{ label: 'Resolución · ID', value: r?.id?.toString() || 'No informado', mono: true }, { label: 'Decisión registrada', value: r?.decision || 'No informada' }, { label: 'Fecha registrada', value: r?.fechaResolucion || 'No informada' }, { label: 'Archivos comprobados por separado', value: this.archivos().filter(f => f.estado === 'registrado').length + ' de ' + this.archivos().length }]; }
-  resolucionNextSteps(): ReferenceSuccessNextStep[] { return [{ label: 'Consulte los documentos y la evidencia de notificación de esta resolución en el expediente.' }, { label: 'Registro no equivale a entrega, firma ni cumplimiento. La base acreditada del plazo de cumplimiento continúa pendiente; no se calcula aquí.' }]; }
+  resolucionNextSteps(): ReferenceSuccessNextStep[] { return [{ label: 'Acredite las notificaciones de la resolución a las dos partes en el expediente.' }, { label: 'Para las resoluciones fundadas, la entidad podrá remitir el cumplimiento desde Requerimientos del Tribunal.' }]; }
   verResolucionRegistrada(): void { if (this.contextoVigente() && this.resolucionRegistrada() && !this.loadError()) this.successModalAbierto.set(true); }
   cerrarResultado(): void { const generation = this.generation; this.successModalAbierto.set(false); queueMicrotask(() => { if (this.current(generation)) this.host.nativeElement.querySelector<HTMLElement>('#final-view-record')?.focus(); }); }
   irNotificaciones(): void {

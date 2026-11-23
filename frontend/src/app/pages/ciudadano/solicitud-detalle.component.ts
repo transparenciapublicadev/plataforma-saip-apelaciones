@@ -1,4 +1,5 @@
 import { PresentacionesAdmisionComponent } from '../ttaip/shared/presentaciones-admision.component';
+import { CumplimientoDocumentalComponent } from '../ttaip/shared/cumplimiento-documental.component';
 import { admisionFinal } from '../ttaip/ttaip-resolver.model';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, DestroyRef, ElementRef, computed, effect, untracked, signal, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -78,6 +79,7 @@ export interface NotifStageItem {
   selector: 'app-solicitud-detalle',
   imports: [
     CommonModule,
+    CumplimientoDocumentalComponent,
     RouterLink,
     StatusBadgeComponent,
     TimelineComponent,
@@ -306,6 +308,11 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   readonly puedeReintentarConsulta = signal(false);
   readonly documentoError = signal('');
   readonly apelacionDetalle = signal<Apelacion | null>(null);
+  readonly expedienteParaCumplimiento = computed(() => {
+    const apelacion = this.apelacionDetalle();
+    return apelacion?.estado === 'EN_CUMPLIMIENTO' || apelacion?.estado === 'RESUELTO_FUNDADO'
+      || apelacion?.estado === 'RESUELTO_FUNDADO_EN_PARTE' ? apelacion.expedienteTtaip?.id : null;
+  });
   readonly expedienteParaSolicitudes = computed(() => {
     const apelacion = this.apelacionDetalle();
     const expediente = apelacion?.expedienteTtaip;
@@ -870,6 +877,12 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
           if (!res || !this.idValido(res.id) || vistos.has(res.id)) continue;
           vistos.add(res.id);
           add(this.getEstadoDisplay(res.tipoResolucion), res.decision ? this.getEstadoDisplay(res.decision) : 'Decisión no registrada.', res.fechaResolucion, 'scale', 110, 2);
+        }
+        const cumplimiento = detalle.expedienteTtaip?.cumplimientoDocumental;
+        if (cumplimiento?.fechaEntrega) {
+          const entidad = detalle.entidadNombre || detalle.entidadExternaNombre || 'La entidad';
+          add('Cumplimiento', cumplimiento.fechaRemision ? `${entidad} cumplió con lo dispuesto por el Tribunal.`
+            : `${entidad} puso su respuesta a disposición del administrado.`, cumplimiento.fechaEntrega, 'filecheck', 120, 2);
         }
       }
     }

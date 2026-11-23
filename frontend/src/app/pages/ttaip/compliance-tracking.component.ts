@@ -279,6 +279,7 @@ export class ComplianceTrackingComponent implements OnInit {
     if (this.requiereVerificacion()) return 'Recargue los seguimientos para comprobar el resultado anterior antes de operar.';
     if (this.enviando()) return 'Hay una operación en curso.';
     if (actual.estado === 'cerrado') return 'El seguimiento ya está cerrado.';
+    if (actual.registro.documental) return 'Consulte la remisión y sus documentos en el detalle del expediente.';
     if (actual.incompleto) return 'Faltan datos del seguimiento para realizar esta operación.';
     if (estado !== 'observado' && estado !== 'cerrado') return 'No hay un comando disponible para este estado.';
     return null;

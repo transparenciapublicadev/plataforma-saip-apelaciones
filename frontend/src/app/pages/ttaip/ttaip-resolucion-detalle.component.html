@@ -11,7 +11,11 @@
         @if (resultadoMeta(); as meta) {
           <span class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium tracking-wider" [style.background]="'var(--card)'" [style.border]="'1px solid ' + meta.accent" [style.color]="meta.accent">{{ meta.label }}</span>
         }
-        <app-status-badge [status]="estadoLabel()"></app-status-badge>
+        @if (listoParaArchivo()) {
+          <app-status-badge status="Listo para archivo y publicación" toneOverride="success" />
+        } @else {
+          <app-status-badge [status]="estadoLabel()" />
+        }
       </div>
 
       <span class="eyebrow">Tribunal · Detalle de apelación</span>
@@ -187,11 +191,16 @@
             } @else if (activeTab() === 'subprocesos') {
               <div role="tabpanel" id="detail-panel-subprocesos" aria-labelledby="detail-tab-subprocesos" class="p-6 space-y-8 animate-fade-in">
                 @if (expedienteTtaip(); as exp) {
-                  <app-presentaciones-admision [expedienteId]="exp.id" [numeroExpediente]="expedienteDisplay()"
+                  <app-presentaciones-admision class="block" [expedienteId]="exp.id" [numeroExpediente]="expedienteDisplay()"
                     [contexto]="rolInstitucional() ? 'tribunal' : 'entidad'" [vista]="rolInstitucional() ? 'descargos' : 'todo'"
                     [actualizacion]="descargoMessage()" />
                   @if (!rolInstitucional()) {
-                    <app-informacion-complementaria [expedienteId]="exp.id" />
+                    <app-informacion-complementaria class="block" [expedienteId]="exp.id" />
+                  }
+                  @if (resolucionFinalFundada() || apelacion()?.estado === 'EN_CUMPLIMIENTO') {
+                    <app-cumplimiento-documental class="block" [expedienteId]="exp.id"
+                      [esperaNotificaciones]="apelacion()?.estado === 'NOTIFICACION_RESOLUCION_FINAL'"
+                      (cerrado)="cargarApelacion(expedienteDisplay())" />
                   }
                 }
                 @if (rolInstitucional() && apelacion()?.estado === 'EN_RESOLUCION' && !descargosExpediente().length) {
@@ -201,14 +210,12 @@
                   @if (descargoError()) { <p role="alert" class="text-sm text-destructive">{{ descargoError() }}</p> }
                 }
 
-                <div class="rule-ornament"></div>
-
-                <!-- SECCIÓN B: Seguimiento de cumplimiento de resoluciones fundadas -->
-                <section class="space-y-4">
+                @if (cumplimientosHistoricos().length || detalle().cumplimientosResolucion.error) {
+                <section class="rounded-lg border border-border bg-card p-4 sm:p-5 space-y-4">
                   <div>
                     <h3 class="font-display text-base font-semibold flex items-center gap-2 tracking-wide">
                       <svg aria-hidden="true" lucideShieldCheck class="w-4 h-4" style="color: var(--brand-700)"></svg>
-                      Cumplimiento de la resolución
+                      Seguimientos de cumplimiento anteriores
                     </h3>
                     <p class="text-xs text-muted-foreground mt-1">Aplica cuando la resolución final es fundada o fundada en parte.</p>
                   </div>
@@ -292,7 +299,7 @@
 
                   <div class="space-y-3">
                     <span class="eyebrow">Historial de cumplimiento</span>
-                    @for (cumplimiento of cumplimientosExpediente(); track cumplimiento.id) {
+                    @for (cumplimiento of cumplimientosHistoricos(); track cumplimiento.id) {
                       <div class="rounded-md p-3 text-sm" style="background: var(--background); border: 1px solid var(--border)">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                           <div>
@@ -323,6 +330,7 @@
                     }
                   </div>
                 </section>
+                }
               </div>
             } @else if (activeTab() === 'requerimientos' && rolInstitucional()) {
               <div role="tabpanel" id="detail-panel-requerimientos" aria-labelledby="detail-tab-requerimientos"
@@ -556,7 +564,9 @@
                   </span>
 
                   <div class="font-display text-sm font-semibold tracking-wide leading-tight">{{ evento.titulo }}</div>
-                  <div class="font-mono text-[11px] text-muted-foreground mt-0.5">{{ evento.fecha }}</div>
+                  @if (evento.fecha) {
+                    <div class="font-mono text-[11px] text-muted-foreground mt-0.5">{{ evento.fecha }}</div>
+                  }
                   <p class="text-xs text-foreground/75 mt-1.5 leading-relaxed">{{ evento.descripcion }}</p>
                 </li>
               }

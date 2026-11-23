@@ -1,7 +1,7 @@
 import { PanelApelacion as Apelacion } from '../../models/panel-query.model';
 import { CalendarioConfig, PLAZO_META_POR_CLAVE, PlazoClave, habilesEntre, recepcionEfectiva, sumarHabiles } from '../../models/calendario.model';
 
-export type StageKey = 'todos' | 'elevacion' | 'calificacion1' | 'subsanacion' | 'calificacion2' | 'resolucion' | 'notificaciones' | 'resueltos' | 'otras';
+export type StageKey = 'todos' | 'elevacion' | 'calificacion1' | 'subsanacion' | 'calificacion2' | 'resolucion' | 'notificaciones' | 'cumplimiento' | 'resueltos' | 'otras';
 
 export interface StageMeta {
   key: StageKey;
@@ -26,7 +26,8 @@ export const stages: StageMeta[] = [
   { key: 'calificacion2', num: '04', label: '2da Calificación',      shortLabel: '2da Calif.', plazoDias: 0, plazoLabel: 'plazo no informado', norma: 'Plazo operativo',         color: 'var(--brand-600)', bg: 'var(--brand-subtle)',                          icon: 'layers' },
   { key: 'resolucion',    num: '05', label: 'Resolución Final',      shortLabel: 'Res. Final', plazoDias: 0, plazoLabel: 'plazo no informado', norma: 'Reglamento TTAIP',        color: 'var(--brand-700)', bg: 'var(--brand-subtle)',                          icon: 'gavel' },
   { key: 'notificaciones', num: '06', label: 'Notificaciones pendientes', shortLabel: 'Notificaciones', plazoDias: 0, plazoLabel: 'Validación pendiente', norma: 'Actos de notificación', color: 'var(--gold-dark)', bg: 'var(--muted)', icon: 'inbox' },
-  { key: 'resueltos',     num: '07', label: 'Resueltos',             shortLabel: 'Resueltos',  plazoDias: 0,  plazoLabel: 'Cerrados',         norma: 'Archivo',                 color: 'var(--success)',  bg: 'color-mix(in srgb, var(--success) 10%, transparent)', icon: 'check', isResolved: true },
+  { key: 'cumplimiento', num: '07', label: 'En cumplimiento', shortLabel: 'Cumplimiento', plazoDias: 0, plazoLabel: 'Espera de la entidad', norma: 'Resolución fundada', color: 'var(--gold-dark)', bg: 'var(--muted)', icon: 'hourglass', esperaExterna: true },
+  { key: 'resueltos',     num: '08', label: 'Resueltos',             shortLabel: 'Resueltos',  plazoDias: 0,  plazoLabel: 'Cerrados',         norma: 'Archivo',                 color: 'var(--success)',  bg: 'color-mix(in srgb, var(--success) 10%, transparent)', icon: 'check', isResolved: true },
 ];
 
 export const positiveId = (id: unknown): id is number => Number.isSafeInteger(id) && (id as number) > 0;
@@ -44,6 +45,8 @@ export function stageOf(state: string): StageKey {
   if (state === 'EN_SUBSANACION') return 'subsanacion';
   if (state === 'EN_CALIFICACION_2' || state === 'NOTIFICACION_SEGUNDA_CALIFICACION') return 'calificacion2';
   if (state === 'EN_RESOLUCION') return 'resolucion';
+  if (state === 'NOTIFICACION_RESOLUCION_FINAL') return 'notificaciones';
+  if (state === 'EN_CUMPLIMIENTO') return 'cumplimiento';
   return finalStates.has(state) ? 'resueltos' : 'otras';
 }
 
@@ -96,17 +99,22 @@ export interface PlazoStatusResult {
 /**
  * Saldo de la etapa para la cola del Tribunal.
  * La subsanación conserva el reloj persistido: su inicio es la notificación, no el ingreso.
- * Las demás etapas abiertas cuentan desde la recepción efectiva del ingreso, con el plazo
- * y los feriados del calendario oficial. Sin calendario o sin fecha, el saldo queda sin informar.
+ * Cada etapa usa su actuación de inicio y el calendario aplicable.
  */
 export function computePlazoStatus(ap: Apelacion, s: StageMeta, hoyISO: string, cfg: CalendarioConfig | null = null): PlazoStatusResult {
-  if (ap.plazoResolucion) {
+  if (ap.plazoResolucion?.fechaLimite) {
     const { diasRestantes, vencido, diasAdicionales, fechaLimite } = ap.plazoResolucion;
-    const total = 17 + diasAdicionales;
+    const total = (ap.diasBaseResolucion ?? diasBaseResolucion(ap)) + diasAdicionales;
     const efectivos = Math.max(0, total - diasRestantes);
     return { restantes: diasRestantes, pct: Math.min(100, efectivos / total * 100),
       tone: vencido ? 'critical' : diasRestantes <= 2 ? 'warn' : 'ok',
       suspendido: diasAdicionales, efectivos, informado: true, vencido, limite: fechaLimite };
+  }
+  if (ap.plazoCumplimiento) {
+    const { diasRestantes, vencido, fechaLimite } = ap.plazoCumplimiento;
+    return { restantes: diasRestantes, pct: vencido ? 100 : 0,
+      tone: vencido ? 'critical' : diasRestantes <= 2 ? 'warn' : 'ok',
+      suspendido: 0, efectivos: 0, informado: true, vencido, limite: fechaLimite };
   }
   if (s.key === 'calificacion1' && ap.plazoPrimeraCalificacion?.fechaLimite) {
     const { diasRestantes, vencido, diasSuspendidos, fechaLimite } = ap.plazoPrimeraCalificacion;
@@ -129,14 +137,34 @@ export function computePlazoStatus(ap: Apelacion, s: StageMeta, hoyISO: string, 
     return { restantes, pct, tone: vencido ? 'critical' : tone, suspendido: 0, efectivos, informado: true, vencido, limite: recordedDate(ap.plazoSubsanacion?.fechaLimite) };
   }
 
-  if (s.key === 'resolucion' || ap.estado === 'NOTIFICACION_SEGUNDA_CALIFICACION') {
-    return { restantes: 0, pct: 0, tone: 'ok', suspendido: 0, efectivos: 0, informado: false, vencido: false, limite: null };
-  }
-  const saldo = saldoDesdeIngreso(recordedDate(ap.fechaApelacion), s.plazoDias, cfg, hoyISO);
+  const recepcion = s.key === 'calificacion2' && ap.estado === 'EN_CALIFICACION_2'
+    ? ap.recepcionSubsanacion : s.key === 'elevacion' ? ap.fechaApelacion : null;
+  const saldo = saldoDesdeIngreso(recordedDate(recepcion), s.plazoDias, cfg, hoyISO);
   if (!saldo) return { restantes: 0, pct: 0, tone: 'ok', suspendido: 0, efectivos: 0, informado: false, vencido: false, limite: null };
   const tone = saldo.vencido || saldo.restantes <= 1 ? 'critical' : saldo.restantes <= 2 ? 'warn' : 'ok';
   const pct = Math.min(100, (saldo.transcurridos / s.plazoDias) * 100);
   return { restantes: saldo.restantes, pct, tone, suspendido: 0, efectivos: saldo.transcurridos, informado: true, vencido: saldo.vencido, limite: saldo.limite };
+}
+
+export function diasBaseResolucion(ap: Apelacion): number {
+  const decision = ap.resolucionSegundaCalificacion?.decision ?? ap.calificacionSegunda
+    ?? ap.resolucionPrimeraCalificacion?.decision ?? ap.calificacionPrimera;
+  return ap.diasBaseResolucion ?? (decision === 'ADMISIBLE' || decision === 'ADMITIDO' ? 17 : 10);
+}
+
+export function plazoPendiente(ap: Apelacion, stage: StageMeta): { dias: number; motivo: string } {
+  if (ap.estado === 'NOTIFICACION_SEGUNDA_CALIFICACION' || stage.key === 'resolucion') {
+    const dias = diasBaseResolucion(ap);
+    return { dias, motivo: dias === 17 ? 'Desde la notificación eficaz a la entidad' : 'Desde el ingreso al Tribunal' };
+  }
+  if (stage.key === 'notificaciones') return { dias: 0, motivo: 'Validación de notificaciones' };
+  if (stage.key === 'subsanacion') {
+    return { dias: ap.plazoSubsanacion?.diasHabiles ?? stage.plazoDias, motivo: 'Desde la notificación eficaz del requerimiento' };
+  }
+  if (stage.key === 'calificacion2') return { dias: stage.plazoDias, motivo: 'Desde la recepción de la subsanación' };
+  if (stage.key === 'calificacion1') return { dias: stage.plazoDias, motivo: 'Desde el ingreso al Tribunal' };
+  if (stage.key === 'cumplimiento') return { dias: stage.plazoDias || 7, motivo: 'Desde la notificación eficaz de la resolución' };
+  return { dias: stage.plazoDias, motivo: 'Pendiente de fecha de inicio' };
 }
 
 function saldoDesdeIngreso(fecha: string | null, dias: number, cfg: CalendarioConfig | null, hoy: string) {
@@ -207,12 +235,13 @@ const plazoClave: Partial<Record<StageKey, PlazoClave>> = {
   calificacion1: 'TTAIP_CALIFICACION_1',
   subsanacion: 'TTAIP_SUBSANACION',
   calificacion2: 'TTAIP_CALIFICACION_2',
+  cumplimiento: 'TTAIP_CUMPLIMIENTO',
 };
 
 /** Days come only from the official calendar response. Missing or out-of-range values stay uninformed. */
 export function stagesConPlazos(plazos: Record<string, unknown> | null): StageMeta[] {
   return stages.map(stage => {
-    if (stage.key === 'resolucion') return { ...stage, plazoDias: 17, plazoLabel: '17 días háb. de base' };
+    if (stage.key === 'resolucion') return { ...stage, plazoLabel: '10 o 17 días háb.' };
     const clave = plazoClave[stage.key];
     if (!clave) return stage;
     const meta = PLAZO_META_POR_CLAVE[clave];
@@ -233,7 +262,11 @@ export function plazoEtapaCaption(key: StageKey): string {
 }
 
 export function actionFor(ap: Apelacion): { route: string[]; label: string; reason: string; primary: boolean; tab?: string } {
-  if (ap.actosNotificacionPendientes) {
+  if (ap.estado === 'EN_CUMPLIMIENTO' && ap.etapa !== 'notificaciones') {
+    return { route: ['/ttaip/apelacion', ap.expediente], label: 'Ver cumplimiento',
+      reason: 'El Tribunal espera la comunicación de la entidad.', primary: true, tab: 'subprocesos' };
+  }
+  if (ap.etapa === 'notificaciones' || ap.estado === 'NOTIFICACION_RESOLUCION_FINAL' || ap.actosNotificacionPendientes) {
     return { route: ['/ttaip/apelacion', ap.expediente], label: 'Validar notificaciones',
       reason: 'El expediente requiere validar los actos de notificación antes de continuar.',
       primary: true, tab: 'notificaciones' };

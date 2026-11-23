@@ -101,9 +101,10 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
     f.componentInstance.hoyISO.set('2026-11-11');
     calendario({ TTAIP_ELEVACION: 2, TTAIP_CALIFICACION_1: 8, TTAIP_SUBSANACION: 2, TTAIP_CALIFICACION_2: 10, TTAIP_RESOLUCION: 10 });
     reply([
-      row({ estado: 'EN_CALIFICACION_2', fechaApelacion: '2026-11-07' }),
+      row({ estado: 'EN_CALIFICACION_2', fechaApelacion: '2026-11-04', recepcionSubsanacion: '2026-11-07' }),
       row({ id: 22, expediente: 'EXP-22', estado: 'PENDIENTE_ELEVACION', fechaApelacion: '2026-11-07' }),
-      row({ id: 23, expediente: 'EXP-23', estado: 'EN_CALIFICACION_1', fechaApelacion: '2026-11-07' }),
+      row({ id: 23, expediente: 'EXP-23', estado: 'EN_CALIFICACION_1', fechaApelacion: '2026-11-07',
+        plazoPrimeraCalificacion: { diasRestantes: 6, vencido: false, diasSuspendidos: 0, fechaLimite: '2026-11-19' } }),
       row({ id: 24, expediente: 'EXP-24', estado: 'EN_RESOLUCION', fechaApelacion: '2026-11-07', calificacionPrimera: 'ADMISIBLE',
         plazoResolucion: { diasRestantes: 15, vencido: false, diasAdicionales: 0, fechaLimite: '2026-12-02' } }),
     ]);
@@ -129,20 +130,23 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
     expect(rows[3]).not.toContain('10 días háb.');
     expect(card('1ra Calif.')?.textContent).toContain('8 días háb.');
     expect(card('1ra Calif.')?.textContent).not.toContain('7 días háb.');
-    expect(card('Res. Final')?.textContent).toContain('17 días háb. de base');
+    expect(card('Res. Final')?.textContent).toContain('10 o 17 días háb.');
     expect(card('Subsanación')?.disabled).toBe(true);
     expect(card('Resueltos')?.disabled).toBe(true);
     expect(cards).toHaveLength(7);
+    expect(card('Cumplimiento')).toBeDefined();
     expect(card('Elevación')).toBeUndefined();
+    expect(card('Notificaciones')).toBeUndefined();
     f.componentInstance.selectStage('subsanacion');
     http.expectNone(panelRequest);
     expect(f.componentInstance.stageKey()).toBe('todos');
   });
-  it('un ingreso antiguo con calendario oficial figura vencido', () => {
+  it('muestra una primera calificación vencida según el reloj del servidor', () => {
     const f = page();
     f.componentInstance.hoyISO.set('2026-11-11');
     calendario({ TTAIP_CALIFICACION_1: 8 });
-    reply([row({ fechaApelacion: '2000-01-01', estado: 'EN_CALIFICACION_1' })]);
+    reply([row({ fechaApelacion: '2000-01-01', estado: 'EN_CALIFICACION_1',
+      plazoPrimeraCalificacion: { diasRestantes: 0, vencido: true, diasSuspendidos: 0, fechaLimite: '2000-01-12' } })]);
     f.detectChanges();
     const text = f.nativeElement.querySelector('.tribunal-row').textContent;
     expect(text).toContain('Vencido');
@@ -164,8 +168,18 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
   it('sin calendario oficial no muestra un plazo inventado', () => {
     const f = page(); reply([row({ estado: 'EN_CALIFICACION_1' })]); f.detectChanges();
     const text = f.nativeElement.querySelector('.tribunal-row').textContent;
-    expect(text).toContain('plazo no informado');
+    expect(text).toContain('Desde el ingreso al Tribunal');
     expect(text).not.toContain('días háb.');
+  });
+  it('muestra el plazo con admisión pendiente de notificación y conserva la acción', () => {
+    const f = page();
+    reply([row({ estado: 'NOTIFICACION_SEGUNDA_CALIFICACION', diasBaseResolucion: 17, calificacionSegunda: 'ADMITIDO' })]);
+    f.detectChanges();
+    const text = f.nativeElement.querySelector('.tribunal-row').textContent;
+    expect(text).toContain('17 días háb.');
+    expect(text).toContain('Desde la notificación eficaz a la entidad');
+    expect(text).toContain('Validar notificaciones');
+    expect(text).not.toContain('límite');
   });
   it('durante la carga no muestra ceros institucionales ni ausencia de críticos como datos confirmados', () => {
     const f = page(); expect(f.nativeElement.textContent).not.toContain('0%'); expect(f.nativeElement.textContent).not.toContain('sin críticos'); reply([]);

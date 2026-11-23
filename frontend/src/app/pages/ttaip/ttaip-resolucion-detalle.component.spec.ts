@@ -120,6 +120,7 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
         actos: () => of([]),
         informacion: () => of({ solicitudes: [], puedeSolicitar: false, diasSuspendidos: 0 }),
         presentacionesAdmision: () => of({ descargo: null, presentaciones: [] }),
+        cumplimientoDocumental: () => of({ cumplimiento: null }),
       } },
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: params.value }, paramMap: params.asObservable() } }] });
     http = TestBed.inject(HttpTestingController); TestBed.inject(AuthService).guardarSesion(session);

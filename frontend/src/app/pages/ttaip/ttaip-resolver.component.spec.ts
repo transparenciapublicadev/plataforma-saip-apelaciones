@@ -63,7 +63,30 @@ describe('FinalResolutionForm — contexto, registro y documentos', () => {
   it('una admisión pendiente de notificación eficaz no habilita el registro', () => {
     const f = page(appeal({ expedienteTtaip: { ...appeal().expedienteTtaip, notificaciones: notifications.map(n => ({ ...n, estado: 'PENDIENTE' })) } })); prepare(f); expect(f.componentInstance.canSubmit()).toBe(false);
   });
-  it('no inventa un plazo de cumplimiento a partir del selector local', () => { const c = page().componentInstance; c.selectedDecision.set('fundado'); c.ordenarEntrega = true; expect(c.resolucionPlazoDias()).toBeNull(); });
+  it.each([
+    ['fundado', 'fundado', 'FUNDADO'],
+    ['fundado_en_parte', 'fundado-en-parte', 'FUNDADO_EN_PARTE'],
+  ] as const)('confirma %s con la respuesta real del servidor sin observaciones de mandato', (opcion, ruta, decision) => {
+    const f = page();
+    const c = f.componentInstance;
+    c.seleccionarDecision(opcion);
+    c.fundamentos = 'Sustento final';
+    c.enviarResolucion();
+    const envio = http.expectOne(api + '/ttaip/resolucion/31/' + ruta);
+    const cuerpo = JSON.parse(JSON.stringify(envio.request.body));
+    const emitida = resolved({ estado: 'NOTIFICACION_RESOLUCION_FINAL', resuelta: false, resultado: decision,
+      resolucion: { ...finalRecord, decision, observaciones: null, iniciarProcesoDisciplinario: false } });
+    envio.flush(emitida);
+    const lectura = http.match(api + '/apelaciones/expediente/' + expediente);
+    expect(c.resultadoConfirmado()).toBe(false);
+    lectura.forEach(r => r.flush(emitida));
+
+    expect(cuerpo).toEqual({ fundamentos: 'Sustento final', miembroId: 7, iniciarProcesoDisciplinario: false });
+    expect(lectura).toHaveLength(1);
+    expect(c.resultadoConfirmado()).toBe(true);
+    expect(c.resultadoIncierto()).toBe(false);
+    expect(c.canSubmit()).toBe(false);
+  });
   it('un doble clic no repite el comando mientras está pendiente', () => {
     const f = page(); prepare(f); f.componentInstance.enviarResolucion(); f.componentInstance.enviarResolucion(); const writes = http.match(req => req.method === 'POST'); writes.forEach(req => req.flush(null, { status: 409, statusText: 'Conflict' })); expect(writes).toHaveLength(1);
   });
@@ -172,17 +195,18 @@ describe('FinalResolutionForm — contexto, registro y documentos', () => {
     TestBed.inject(AuthService).guardarSesion({ ...session, miembroId: undefined }); const f = page(); prepare(f); expect(f.componentInstance.canSubmit()).toBe(false); f.componentInstance.enviarResolucion(); expect(http.match(req => req.method !== 'GET')).toHaveLength(0);
   });
   const commands = [
-    ['fundado', 'fundado', 'FUNDADO', 'RESUELTO_FUNDADO'], ['fundado_en_parte', 'fundado-en-parte', 'FUNDADO_EN_PARTE', 'RESUELTO_FUNDADO_EN_PARTE'],
-    ['infundado', 'infundado', 'INFUNDADO', 'RESUELTO_INFUNDADO'], ['infundado_en_parte', 'infundado-en-parte', 'INFUNDADO_EN_PARTE', 'RESUELTO_INFUNDADO_EN_PARTE'],
-    ['improcedente', 'improcedente', 'IMPROCEDENTE', 'RESUELTO_IMPROCEDENTE'], ['sustraccion_materia', 'sustraccion-materia', 'CONCLUSION_SUSTRACCION_MATERIA', 'CONCLUSION_SUSTRACCION_MATERIA'],
-    ['desistimiento', 'desistimiento', 'CONCLUSION_DESISTIMIENTO', 'CONCLUSION_DESISTIMIENTO'], ['estese_a_lo_resuelto', 'estese-a-lo-resuelto', 'ESTESE_A_LO_RESUELTO', 'RESUELTO_ESTESE_A_LO_RESUELTO'],
-    ['nulidad_del_acto', 'nulidad-acto', 'NULIDAD_DEL_ACTO', 'RESUELTO_NULIDAD_ACTO']
+    ['fundado', 'fundado', 'FUNDADO'], ['fundado_en_parte', 'fundado-en-parte', 'FUNDADO_EN_PARTE'],
+    ['infundado', 'infundado', 'INFUNDADO'], ['infundado_en_parte', 'infundado-en-parte', 'INFUNDADO_EN_PARTE'],
+    ['improcedente', 'improcedente', 'IMPROCEDENTE'], ['sustraccion_materia', 'sustraccion-materia', 'CONCLUSION_SUSTRACCION_MATERIA'],
+    ['desistimiento', 'desistimiento', 'CONCLUSION_DESISTIMIENTO'], ['estese_a_lo_resuelto', 'estese-a-lo-resuelto', 'ESTESE_A_LO_RESUELTO'],
+    ['nulidad_del_acto', 'nulidad-acto', 'NULIDAD_DEL_ACTO']
   ] as const;
-  it.each(commands)('decisión %s utiliza su comando específico y confirma el mismo ID por GET', (selection, path, decision, estado) => {
+  it.each(commands)('decisión %s utiliza su comando específico y confirma el fallo pendiente de notificación por GET', (selection, path, decision) => {
     const f = page(); const c = f.componentInstance; c.seleccionarDecision(selection); c.fundamentos = 'Sustento final'; c.momentoVicio = 'Actuación viciada'; c.actuacionOrdenada = 'Retroacción sustentada';
     c.enviarResolucion(); const req = http.expectOne(api + '/ttaip/resolucion/31/' + path); expect(req.request.body.miembroId).toBe(7); expect(req.request.body.fundamentos).toBe('Sustento final');
     expect(req.request.body).not.toHaveProperty('plazoDias'); expect(req.request.body).not.toHaveProperty('causal');
-    const data = resolved({ estado, resultado: decision, resolucion: { ...finalRecord, decision, observaciones: req.request.body.observaciones, iniciarProcesoDisciplinario: req.request.body.iniciarProcesoDisciplinario } });
+    const data = resolved({ estado: 'NOTIFICACION_RESOLUCION_FINAL', resuelta: false, resultado: decision,
+      resolucion: { ...finalRecord, decision, observaciones: req.request.body.observaciones, iniciarProcesoDisciplinario: req.request.body.iniciarProcesoDisciplinario } });
     req.flush(data); expect(c.successModalAbierto()).toBe(false); http.expectOne(api + '/apelaciones/expediente/' + expediente).flush(data);
     expect(c.resultadoConfirmado()).toBe(true); expect(c.successModalAbierto()).toBe(true); expect(c.resolucionRegistrada()?.id).toBe(101); expect(c.canSubmit()).toBe(false);
   });
@@ -430,13 +454,12 @@ describe('FinalResolutionForm — contexto, registro y documentos', () => {
     expect(obs).toContain('Actuación ordenada: Emitir nueva respuesta');
     expect(obs).toContain('Retroacción ordenada: Entidad · nueva respuesta de fondo');
   });
-  it('permite configurar orden de entrega y plazo de 7 días hábiles por defecto para resoluciones fundadas', () => {
+  it('muestra el plazo vinculado a la notificación eficaz sin permitir editarlo al emitir', () => {
     const f = page(); const c = f.componentInstance;
-    c.selectedDecision.set('fundado');
-    expect(c.showOrden()).toBe(true);
-    expect(c.ordenarEntrega).toBe(true);
-    expect(c.plazoDias).toBe(7);
-    const obs = (c as any).observacionesTexto();
-    expect(obs).toContain('Mandato: Entrega de información ordenada a la entidad en un plazo de 7 días hábiles');
+    c.seleccionarDecision('fundado');
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('siete días hábiles desde que se acredita su notificación');
+    expect(f.nativeElement.querySelector('input[type="number"]')).toBeNull();
+    expect(c.resolucionPlazoDias()).toBeNull();
   });
 });

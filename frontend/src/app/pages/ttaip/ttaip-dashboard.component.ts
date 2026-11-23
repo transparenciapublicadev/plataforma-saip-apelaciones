@@ -15,7 +15,7 @@ import { PaginationComponent } from '../../shared/pagination.component';
 import {
   StageKey, StageMeta, stages, positiveId, stageOf, readAppeals, recordedDate,
   computePlazoStatus, PlazoStatusResult, actionFor, finalDecision, clockText,
-  decisionLista, decisionLabels, stagesConPlazos,
+  decisionLista, decisionLabels, plazoPendiente, stagesConPlazos,
   habilesEntreFechas, finalStates
 } from './ttaip-dashboard.model';
 import { CalendarioConfig, hoyLima, normalizarCalendario } from '../../models/calendario.model';
@@ -58,7 +58,7 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
   private focusStageFromState: StageKey | null = null;
 
   readonly stageCatalog = signal<StageMeta[]>(stagesConPlazos(null));
-  readonly filtrosEtapa = computed(() => this.stageCatalog().filter(stage => stage.key !== 'elevacion'));
+  readonly filtrosEtapa = computed(() => this.stageCatalog().filter(stage => stage.key !== 'elevacion' && stage.key !== 'notificaciones'));
   private readonly calendario = signal<CalendarioConfig | null>(null);
   readonly apelaciones = signal<Apelacion[]>([]);
   readonly loading = signal(true);
@@ -137,6 +137,7 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
     calificacion2: this.resumen()?.porEtapa['calificacion2'] ?? 0,
     resolucion: this.resumen()?.porEtapa['resolucion'] ?? 0,
     notificaciones: this.resumen()?.porEtapa['notificaciones'] ?? 0,
+    cumplimiento: this.resumen()?.porEtapa['cumplimiento'] ?? 0,
     resueltos: this.resumen()?.porEtapa['resueltos'] ?? 0,
     otras: this.resumen()?.porEtapa['otras'] ?? 0
   }));
@@ -350,12 +351,15 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
 
   getDiasValor(item: { apelacion: Apelacion }): string { return clockText(item.apelacion); }
   plazoLista(item: { status: PlazoStatusResult; apelacion: Apelacion; stage: StageMeta }): string {
-    if (!item.status.informado) return '—';
+    if (!item.status.informado) {
+      const { dias } = plazoPendiente(item.apelacion, item.stage);
+      return dias ? `${dias} días háb.` : 'Pendiente';
+    }
     if (item.status.vencido) return 'Vencido';
     return item.status.restantes === 0 ? 'Hoy' : `${item.status.restantes}d`;
   }
   plazoListaCaption(item: { status: PlazoStatusResult; apelacion: Apelacion; stage: StageMeta }): string {
-    if (!item.status.informado) return 'plazo no informado';
+    if (!item.status.informado) return plazoPendiente(item.apelacion, item.stage).motivo;
     if (item.status.vencido) return 'plazo vencido';
     if (item.status.restantes === 0) return 'vence hoy';
     return item.status.suspendido > 0 ? 'efectivos' : 'restantes';
