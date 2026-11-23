@@ -58,15 +58,7 @@
           <a routerLink="/ciudadano" class="btn-ghost-brand">Revisar mis solicitudes</a>
         </section>
       }
-      @if (apelacionCreada(); as r) {
-        <section id="apelacion-resultado" tabindex="-1" class="form-shell" aria-label="Resultado del registro de apelación"><div class="form-section-header"><span class="eyebrow">Expediente de apelación</span><h2 class="form-section-title">Apelación registrada · {{ r.expediente }}</h2></div><div class="p-6 md:p-8 space-y-4"><p role="status" class="text-sm">{{ estadoPresentacion() }} · {{ fechaPresentacion() }}</p>
-          @if (r.estado === 'PENDIENTE_ELEVACION') { <p class="text-sm">La entidad aún debe remitir su apelación al Tribunal.</p> }
-          <button type="button" class="btn-ghost-brand" [disabled]="loading()" (click)="comprobarRegistro()">Comprobar apelación y documentos</button>
-          @if (errorRecuperacion()) { <p role="alert" class="text-sm">{{ errorRecuperacion() }}</p> }
-          @if (documentosConsultados(); as docs) { <div class="space-y-2 text-sm"><p role="status">Documentos adjuntos: {{ docs.length }}</p>@for (d of docs; track d.id) { <div class="appeal-file-row"><span>{{ d.nombreOriginal || 'Documento adjunto' }}</span><button type="button" class="btn-ghost-brand !text-xs" [attr.aria-label]="'Descargar ' + (d.nombreOriginal || 'documento adjunto')" (click)="descargarRegistrado(d)">Descargar</button></div> }</div> }
-          <button type="button" class="btn-brand" (click)="irPanelCiudadano()">Ir a mi panel</button>
-        </div></section>
-      }
+      @if (estadoEnvio() !== 'confirmada') {
       @if (solicitud(); as s) { <section class="rounded-lg p-5" style="background:var(--brand-subtle);border:1px solid var(--brand-200)"><span class="eyebrow">Expediente vinculado</span><p class="text-sm mt-2 font-medium">{{ s.asunto || 'Asunto no recuperado' }}</p><p class="text-sm mt-1">{{ s.entidadNombre || 'Nombre de entidad no recuperado' }}</p></section> }
       @if (solicitud(); as s) {
         @if (avisoPlazoAmpliacion(s); as aviso) {
@@ -222,6 +214,7 @@
         <section class="form-shell"><div class="p-6 md:p-7 flex flex-col md:flex-row items-start md:items-center justify-between gap-5"><div class="flex items-start gap-3"><div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background:var(--brand-subtle);border:1px solid var(--brand-200)"><svg aria-hidden="true" lucideInfo class="w-4 h-4" style="color:var(--brand-700)"></svg></div><p class="text-sm text-muted-foreground leading-relaxed">Al presentar el recurso, declara que la información es verídica. El Tribunal califica la procedencia con los documentos y fundamentos registrados.</p></div><button type="button" class="btn-brand !px-6 !py-3 whitespace-nowrap justify-center" [disabled]="!puedeEnviar()" (click)="abrirConfirmacionApelacion()"><svg aria-hidden="true" lucideSend class="w-4 h-4"></svg>Presentar apelación</button></div></section>
       </fieldset>
       <p role="note" class="text-xs text-muted-foreground">Los fundamentos y archivos nuevos se conservan mientras permanezca en este formulario. Si el envío queda pendiente, consulte su recepción antes de salir.</p>
+      }
     }
   </div>
   <app-reference-confirm-modal [open]="confirmModalAbierto()" [manageFocus]="true" presentation="saip-response" [submitting]="loading()" title="Confirme su apelación" titleLead="Confirme" titleEmphasis="su apelación" eyebrow="Revisión final · Apelación" description="Revise el expediente, los documentos y los fundamentos antes de presentar su apelación." [summary]="apelacionConfirmSummary()" [warning]="apelacionWarning()" confirmLabel="Presentar apelación" (close)="confirmModalAbierto.set(false)" (confirm)="crearApelacion()"></app-reference-confirm-modal>

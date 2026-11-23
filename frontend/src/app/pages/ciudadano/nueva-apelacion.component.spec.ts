@@ -418,14 +418,15 @@ describe('AppealForm — origen, documentos y registro autorizado', () => {
     expect(c.confirmModalAbierto()).toBe(false);
   });
   it('el diálogo de recepción contiene el foco y al cerrarse conserva el registro, sin recrearlo', async () => {
-    const f = externa(), c = f.componentInstance; document.body.appendChild(f.nativeElement); f.detectChanges();
+    const f = externa(), c = f.componentInstance, nav = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    document.body.appendChild(f.nativeElement); f.detectChanges();
     c.crearApelacion(); const req = http.expectOne(`${base}/apelaciones/recepciones`), datos = await payload(req), r = resultado(c, resultadoExterno(datos)); req.flush(r); http.expectOne(`${base}/apelaciones/recepciones/${c.claveOperacion()}`).flush(r); f.detectChanges(); await f.whenStable();
     const dialog = document.body.querySelector('[role="dialog"]') as HTMLElement; expect(dialog).not.toBeNull(); expect(dialog.contains(document.activeElement)).toBe(true);
     const buttons = dialog.querySelectorAll<HTMLButtonElement>('button'); const first = buttons[0], last = buttons[buttons.length - 1];
     last.focus(); last.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true })); expect(document.activeElement).toBe(first);
     first.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true })); expect(document.activeElement).toBe(last);
     dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); f.detectChanges(); await f.whenStable();
-    expect(c.successModalAbierto()).toBe(false); expect(c.apelacionCreada()?.id).toBe(145); expect(document.activeElement?.id).toBe('apelacion-resultado');
+    expect(c.successModalAbierto()).toBe(false); expect(c.apelacionCreada()?.id).toBe(145); expect(nav).toHaveBeenCalledWith(['/ciudadano']); expect(f.nativeElement.querySelector('#apelacion-fundamentos')).toBeNull();
     c.crearApelacion(); http.expectNone(`${base}/apelaciones/recepciones`); f.nativeElement.remove();
   });
   it('recupera tras pérdida de confirmación sin otro POST y mantiene los mismos IDs', () => {

@@ -399,10 +399,6 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
       if (doc) this.descargar(doc);
     }
   }
-  descargarRegistrado(doc: DocumentoMetadata): void {
-    if (this.actual() && doc.apelacionId === this.apelacionCreada()?.id
-      && [...(this.documentosConsultados() ?? []), ...this.documentosEnviados().flatMap(d => d.documento ? [d.documento] : [])].some(d => d.id === doc.id)) this.descargar(doc);
-  }
   private descargar(doc: DocumentoMetadata): void {
     const gen = this.generacion; this.documentoError.set('');
     this.descargas.add(this.documentoService.download(doc.id!, doc.nombreOriginal || 'documento').subscribe({
@@ -669,7 +665,12 @@ export class NuevaApelacionComponent implements OnInit, OnDestroy {
   rutaRegreso(): string[] { const s = this.solicitud(); return s && (this.entrada.expediente || this.entrada.id) ? ['/ciudadano/solicitud', s.expediente] : ['/ciudadano']; }
   irPanelCiudadano(): void { if (this.actual()) this.router.navigate(['/ciudadano']); }
   verSolicitudOrigen(): void { if (this.actual() && this.solicitud()) this.router.navigate(['/ciudadano/solicitud', this.solicitud()!.expediente]); }
-  cerrarResultado(): void { this.successModalAbierto.set(false); this.enfocar('apelacion-resultado'); }
+  cerrarResultado(): void {
+    this.successModalAbierto.set(false);
+    if (this.actual() && this.apelacionCreada() && this.estadoEnvio() === 'confirmada') {
+      void this.router.navigate(['/ciudadano']);
+    }
+  }
   private enfocar(id: string): void { const gen = this.generacion; queueMicrotask(() => { if (this.actual(gen)) document.getElementById(id)?.focus(); }); }
   private subirAlInicio(): void {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' });
