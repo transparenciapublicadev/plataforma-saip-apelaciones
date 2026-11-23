@@ -504,7 +504,7 @@ class ExpedienteTtaipServiceTest {
         CumplimientoResolucionTtaip cumplimiento = crearCumplimiento(expediente);
         cumplimiento.setFechaLimiteCumplimiento(LocalDate.now().minusDays(1));
 
-        when(cumplimientoRepository.findByEstadoCumplimientoInAndFechaLimiteCumplimientoBefore(
+        when(cumplimientoRepository.findByEstadoCumplimientoInAndFechaLimiteCumplimientoBeforeAndIdNotificacionInicioIsNull(
                 anyList(),
                 any(LocalDate.class))).thenReturn(List.of(cumplimiento));
         when(cumplimientoRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));

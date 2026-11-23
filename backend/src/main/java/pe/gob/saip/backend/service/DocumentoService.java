@@ -2,6 +2,7 @@ package pe.gob.saip.backend.service;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
@@ -251,8 +252,12 @@ public class DocumentoService {
         String entidad = origen.getEntidad() != null ? origen.getEntidad().getNombre() : null;
         List<Documento> fuentes = documentoRepository.findBySolicitud_IdSolicitudAndEstadoOrderByFechaCreacionDesc(
                 origen.getId(), Documento.EstadoDocumento.ACTIVO);
-        for (Documento fuente : fuentes) {
-            if (!esDocumentoDelAdministrado(fuente)) {
+        var archivosDelAdministrado = fuentes.stream()
+                .filter(DocumentoService::esDocumentoDelAdministrado)
+                .sorted(Comparator.comparing(Documento::getStorageKey))
+                .toList();
+        for (Documento fuente : archivosDelAdministrado) {
+            if (!bloquearObjetoYListarReferenciasActivas(fuente).contains(fuente.getId())) {
                 continue;
             }
             Documento copia = new Documento();
@@ -408,14 +413,30 @@ public class DocumentoService {
         if (documento.getEntregaParcial() != null) {
             throw new ConflictoEstadoException("El documento pertenece a una entrega parcial registrada");
         }
-        if (documento.getPresentacionAdmision() != null || documento.isBorradorTtaip() || documento.isSoloInstitucionalTtaip()
+        if (documento.getCumplimiento() != null || documento.getPresentacionAdmision() != null
+                || documento.isBorradorTtaip() || documento.isSoloInstitucionalTtaip()
                 || (documento.getCedulaNotificacion() != null && documento.getCedulaNotificacion().getTipoActo() != null)
                 || (documento.getResolucion() != null && documento.getResolucion().isActosDocumentales())) {
             throw new ConflictoEstadoException("El archivo pertenece a una actuación documental TTAIP");
         }
-        providerFor(documento.getStorageProvider()).delete(documento.getStorageKey());
+        var referencias = bloquearObjetoYListarReferenciasActivas(documento);
+        if (!referencias.contains(documentoId)) {
+            throw new RecursoNoEncontradoException("Documento activo no encontrado");
+        }
+        if (referencias.size() == 1) {
+            providerFor(documento.getStorageProvider()).delete(documento.getStorageKey());
+        }
         documento.setEstado(Documento.EstadoDocumento.ELIMINADO);
         documentoRepository.save(documento);
+    }
+
+    private List<Long> bloquearObjetoYListarReferenciasActivas(Documento documento) {
+        StorageProviderType provider = documento.getStorageProvider();
+        String key = documento.getStorageKey();
+        // La fila más antigua conserva su identidad aunque se elimine lógicamente.
+        // El conteo separado ve las referencias creadas por la transacción que liberó el bloqueo.
+        documentoRepository.findFirstByStorageProviderAndStorageKeyOrderByIdDocumentoAsc(provider, key);
+        return documentoRepository.idsPorObjetoYEstado(provider, key, Documento.EstadoDocumento.ACTIVO);
     }
 
     private void validarCarga(MultipartFile file, DocumentoUploadRequest request) {
@@ -470,6 +491,18 @@ public class DocumentoService {
     }
 
     private void verificarAcceso(Documento documento) {
+        if (documento.getCumplimiento() != null) {
+            var cumplimiento = documento.getCumplimiento();
+            autorizacion.verificarApelacionAccesible(cumplimiento.getApelacion());
+            boolean visible = autorizacion.esFuncionario()
+                    || (autorizacion.esAdministradorOTtaip() && cumplimiento.getOperacionRemision() != null)
+                    || (!autorizacion.esAdministradorOTtaip()
+                        && documento.getClaseAdjuntoCumplimiento().visibleAlAdministrado());
+            if (!visible) {
+                throw new org.springframework.security.access.AccessDeniedException("El documento de cumplimiento no está disponible para esta parte");
+            }
+            return;
+        }
         if (documento.getPresentacionAdmision() != null) {
             autorizacion.verificarApelacionAccesible(documento.getPresentacionAdmision().getExpediente().getApelacion());
             if (!puedeLeerPresentacion(documento)) {

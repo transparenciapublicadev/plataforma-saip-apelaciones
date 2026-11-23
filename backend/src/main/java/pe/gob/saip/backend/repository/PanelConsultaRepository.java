@@ -27,7 +27,7 @@ public class PanelConsultaRepository {
           or (r2.actos_documentales is true and r2.fecha_validacion_actos is null)
           or (rf.actos_documentales is true and rf.fecha_validacion_actos is null))
         """;
-    private static final String AP_STAGE = "case when a.estado='PENDIENTE_ELEVACION' then 'elevacion' when a.estado='EN_CALIFICACION_1' then 'calificacion1' when a.estado='EN_SUBSANACION' then 'subsanacion' when a.estado='NOTIFICACION_SEGUNDA_CALIFICACION' and r2.actos_documentales is true and r2.fecha_validacion_actos is not null and r2.decision in ('ADMISIBLE','ADMITIDO') then 'resolucion' when a.estado in ('EN_CALIFICACION_2','NOTIFICACION_SEGUNDA_CALIFICACION') then 'calificacion2' when a.estado='EN_RESOLUCION' then 'resolucion' when a.estado in " + FINAL + " and " + ACTOS_PENDIENTES + " then 'notificaciones' when a.estado in " + FINAL + " then 'resueltos'  else 'otras' end";
+    private static final String AP_STAGE = "case when a.estado='PENDIENTE_ELEVACION' then 'elevacion' when a.estado='EN_CALIFICACION_1' then 'calificacion1' when a.estado='EN_SUBSANACION' then 'subsanacion' when a.estado='NOTIFICACION_SEGUNDA_CALIFICACION' and r2.actos_documentales is true and r2.fecha_validacion_actos is not null and r2.decision in ('ADMISIBLE','ADMITIDO') then 'resolucion' when a.estado in ('EN_CALIFICACION_2','NOTIFICACION_SEGUNDA_CALIFICACION') then 'calificacion2' when a.estado='EN_RESOLUCION' then 'resolucion' when a.estado='NOTIFICACION_RESOLUCION_FINAL' then 'notificaciones' when a.estado='EN_CUMPLIMIENTO' and rf.fecha_validacion_actos is null then 'notificaciones' when a.estado='EN_CUMPLIMIENTO' then 'cumplimiento' when a.estado in " + FINAL + " and " + ACTOS_PENDIENTES + " then 'notificaciones' when a.estado in " + FINAL + " then 'resueltos'  else 'otras' end";
     private static final String PENDING_OBSERVATION = "exists (select 1 from observaciones_solicitud o where o.id_solicitud=s.id_solicitud and o.estado='PENDIENTE_SUBSANACION')";
     private static final String CITIZEN_STAGE = "case when a.estado='EN_SUBSANACION' or (s.estado='PENDIENTE_INFORMACION' and " + PENDING_OBSERVATION + ") then 'accion' when a.estado in " + FINAL + " and not " + ACTOS_PENDIENTES + " then 'resueltas' when a.id_apelacion is not null then 'tribunal' when s.estado in ('DENEGADA','VENCIDA') or (s.estado in ('RECEPCIONADA','EN_REVISION','PENDIENTE_INFORMACION') and s.fecha_limite<=:vencida) then 'apelar' when s.estado='RESPONDIDA' then 'respondidas' when s.estado in ('RECEPCIONADA','EN_REVISION','PENDIENTE_INFORMACION') then 'proceso' else 'otras' end";
     /** Total referral keeps the same expediente at the destination. The origin still lists it, outside the work queues. */
@@ -65,6 +65,12 @@ public class PanelConsultaRepository {
             when ev.id_apelacion is null and ra.modalidad in ('DIRECTA_TTAIP','EXTERNA')
                 then cast(ra.fecha_recepcion as date)
         end a_recepcion_tribunal,
+        cast(ex.fecha_apertura at time zone 'America/Lima' as date) a_apertura_tribunal,
+        cast(sr.fecha_recepcion as date) inicio_segunda_calificacion,
+        dc.fecha_requerimiento_cumplimiento inicio_cumplimiento,
+        dc.fecha_limite_cumplimiento limite_cumplimiento,
+        dc.fecha_entrega is not null respuesta_cumplimiento_disponible,
+        coalesce(dc.estado_cumplimiento='CUMPLIDO' and dc.fecha_cumplimiento is not null, false) cumplimiento_remitido,
         ((r1.actos_documentales is true and r1.fecha_validacion_actos is null)
           or (r2.actos_documentales is true and r2.fecha_validacion_actos is null)
           or (rf.actos_documentales is true and rf.fecha_validacion_actos is null)) actos_pendientes,
@@ -84,7 +90,6 @@ public class PanelConsultaRepository {
               and nc.id_resolucion=coalesce(r2.id_resolucion,r1.id_resolucion)
               and n.destinatario='ENTIDAD_PUBLICA' and nc.destinatario='ENTIDAD_PUBLICA'
               and n.estado='VALIDADA' and left(coalesce(n.resultado_notificacion,''),14)<>'ENTREGADA_POR_'
-              and coalesce(r2.actos_documentales,r1.actos_documentales) is true
               and coalesce(r2.decision,r1.decision) in ('ADMISIBLE','ADMITIDO')
               and a.estado in ('EN_RESOLUCION','NOTIFICACION_SEGUNDA_CALIFICACION')) inicio_resolucion_entidad,
         (select sum(sp.dias_suspendidos) from suspensiones_plazo_ttaip sp
@@ -110,6 +115,9 @@ public class PanelConsultaRepository {
             where id_apelacion=a.id_apelacion and tipo_resolucion='RESOLUCION_FINAL'
             order by fecha_resolucion desc nulls last,id_resolucion desc limit 1) rf on true
         left join inicios_plazo_subsanacion_ttaip ip on ip.id_requerimiento=r1.id_resolucion and ip.id_ciudadano=a.id_ciudadano
+        left join recepciones_subsanacion_ttaip sr on sr.id_requerimiento=r1.id_resolucion and sr.id_creado_por=a.id_ciudadano
+        left join cumplimientos_resolucion_ttaip dc on dc.id_expediente_ttaip=ex.id_expediente_ttaip
+            and dc.id_resolucion=rf.id_resolucion and dc.id_notificacion_inicio is not null
         """;
     private static final String SAIP_FROM = """
         from solicitudes s join ciudadanos c on c.id_usuario=s.id_ciudadano

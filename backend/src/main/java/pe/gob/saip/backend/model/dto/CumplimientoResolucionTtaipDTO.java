@@ -26,7 +26,8 @@ public record CumplimientoResolucionTtaipDTO(
         String referenciaDocumento,
         String responsableEntidad,
         String observacion,
-        String trazabilidad
+        String trazabilidad,
+        boolean documental
 ) {
     public static CumplimientoResolucionTtaipDTO from(CumplimientoResolucionTtaip cumplimiento) {
         return new CumplimientoResolucionTtaipDTO(
@@ -55,7 +56,8 @@ public record CumplimientoResolucionTtaipDTO(
                 cumplimiento.getReferenciaDocumento(),
                 cumplimiento.getResponsableEntidad(),
                 cumplimiento.getObservacion(),
-                cumplimiento.getTrazabilidad()
+                cumplimiento.getTrazabilidad(),
+                cumplimiento.getIdNotificacionInicio() != null
         );
     }
 }

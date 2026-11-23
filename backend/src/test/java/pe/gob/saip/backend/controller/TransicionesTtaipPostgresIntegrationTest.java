@@ -28,6 +28,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.repository.*;
 import pe.gob.saip.backend.service.SubsanacionTtaipService;
+import pe.gob.saip.backend.service.CumplimientoDocumentalTtaipService;
+import pe.gob.saip.backend.service.PlazoCalculadorService;
+import pe.gob.saip.backend.storage.StorageProvider;
+import pe.gob.saip.backend.storage.StorageProviderType;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -46,6 +50,7 @@ import tools.jackson.databind.json.JsonMapper;
 @AutoConfigureMockMvc(print = org.springframework.boot.webmvc.test.autoconfigure.MockMvcPrint.NONE)
 class TransicionesTtaipPostgresIntegrationTest {
     private static final Path ROOT = temporal();
+    private static final boolean S3 = "true".equals(System.getenv("RUN_CUMPLIMIENTO_S3_TESTS"));
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired JsonMapper json;
@@ -61,8 +66,11 @@ class TransicionesTtaipPostgresIntegrationTest {
     @Autowired ResolucionRepository resoluciones;
     @Autowired NotificacionTtaipRepository notificaciones;
     @Autowired SubsanacionTtaipService subsanaciones;
+    @Autowired CumplimientoDocumentalTtaipService cumplimiento;
+    @Autowired PlazoCalculadorService calendario;
     @Autowired DocumentoRepository documentos;
     @Autowired Flyway flyway;
+    @Autowired List<StorageProvider> storage;
     @LocalServerPort int port;
     long apelacionId, expedienteId;
 
@@ -74,6 +82,7 @@ class TransicionesTtaipPostgresIntegrationTest {
         r.add("spring.datasource.username", () -> "yaiku_e11_test");
         r.add("spring.datasource.password", () -> "");
         r.add("app.storage.local.base-path", () -> ROOT.toString());
+        if (S3) r.add("app.storage.provider", () -> "s3");
     }
     static Path temporal() {
         try { return Files.createTempDirectory("yaiku-r3-local-"); }
@@ -100,6 +109,16 @@ class TransicionesTtaipPostgresIntegrationTest {
             exp.setNumeroExpediente(ap.getExpediente()); exp.setEstado(ap.getEstado()); expedientes.saveAndFlush(exp);
             expedienteId = exp.getId();
         });
+    }
+
+    @AfterEach void limpiarObjetosDePruebaS3() {
+        if (!S3) return;
+        var proveedor = storage.stream().filter(p -> p.type() == StorageProviderType.S3_COMPATIBLE).findFirst().orElseThrow();
+        var claves = jdbc.queryForList("select distinct ruta_archivo from documentos where storage_provider='S3_COMPATIBLE'", String.class);
+        for (var clave : claves) {
+            proveedor.delete(clave);
+            assertThat(proveedor.exists(clave)).isFalse();
+        }
     }
     Ciudadano ciudadano(String email, String dni, String hash) {
         Ciudadano c = new Ciudadano(); c.setEmail(email); c.setDni(dni); c.setNombreCompleto("Persona sintética");
@@ -229,6 +248,188 @@ class TransicionesTtaipPostgresIntegrationTest {
     private JsonNode subirActo(String url, String tipo, String token) throws Exception {
         return respuestaJson(mvc.perform(multipart(org.springframework.http.HttpMethod.PUT, url + "/archivos/" + tipo)
                 .file(archivoTtaip("archivo", "evidencia.pdf")).header("Authorization", "Bearer " + token)));
+    }
+
+    private void acreditarFinal(String url, long id, String tribunal) throws Exception {
+        var acto = url + "/actos-notificacion/" + id;
+        subirActo(acto, "CARGO", tribunal);
+        subirActo(acto, "ACUSE", tribunal);
+        mvc.perform(post(acto + "/revision").contentType("application/json")
+                .content(json.writeValueAsString(Map.of("valida", true,
+                        "fechaEficacia", calendario.hoy() + "T00:00:00", "observacion", "Evidencia verificada")))
+                .header("Authorization", "Bearer " + tribunal)).andExpect(status().isOk());
+    }
+
+    private String emitirFinalDocumental(String sentido, String comando, String tribunal) throws Exception {
+        String expediente = "/api/ttaip/expedientes/" + expedienteId;
+        comando("calificacion/{id}/admitir", tribunal).andExpect(status().isOk());
+        for (long id : notificacionesDe(Resolucion.TipoResolucion.PRIMERA_CALIFICACION)) validarNotificacion(id, tribunal);
+        jdbc.update("update salas_ttaip set nombre='PRIMERA SALA' where nombre='Sala sintética'");
+        for (String clave : List.of("RESOLUCION", "CIUDADANO", "ENTIDAD_PUBLICA")) {
+            mvc.perform(multipart(org.springframework.http.HttpMethod.PUT, expediente + "/documentos-oficiales/RESOLUCION_FINAL/" + clave)
+                    .file(archivoTtaip("archivo", "firmado-final.pdf")).param("decision", sentido)
+                    .param("sala", "PRIMERA SALA").header("Authorization", "Bearer " + tribunal)).andExpect(status().isOk());
+        }
+        comando("resolucion/{id}/" + comando, tribunal).andExpect(status().isOk())
+                .andExpect(jsonPath("$.resuelta").value(false));
+        assertThat(estado()).isEqualTo("NOTIFICACION_RESOLUCION_FINAL");
+        return expediente;
+    }
+
+    @Test
+    void listaDiezDiasParaResolverSinDeclaracionDeAdmisibilidad() throws Exception {
+        LocalDate ingreso = calendario.hoy().minusDays(4);
+        jdbc.update("update apelaciones set estado='EN_RESOLUCION' where id_apelacion=?", apelacionId);
+        jdbc.update("update expedientes_ttaip set estado='EN_RESOLUCION', fecha_apertura=? where id_expediente_ttaip=?",
+                ingreso.atTime(12, 0), expedienteId);
+        LocalDate limite = pe.gob.saip.backend.util.DiasHabilesUtil.sumarDiasHabiles(ingreso, 10);
+        mvc.perform(get("/api/panel/apelaciones").header("Authorization", "Bearer " + tribunal()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].diasBaseResolucion").value(10))
+                .andExpect(jsonPath("$.contenido[0].plazoResolucion.fechaLimite").value(limite.toString()));
+    }
+
+    @Test
+    void entregaYRemiteCumplimientoDocumentalConLosMismosAdjuntos() throws Exception {
+        String tribunal = tribunal();
+        String entidad = login("funcionario@example.invalid");
+        String ciudadano = login("persona@example.invalid");
+        String ajeno = login("ajeno@example.invalid");
+        String otraPersona = login("otra@example.invalid");
+        String expediente = emitirFinalDocumental("FUNDADO", "fundado", tribunal);
+        String url = expediente + "/cumplimiento-documental";
+        var ids = notificacionesDe(Resolucion.TipoResolucion.RESOLUCION_FINAL);
+        assertThat(ids).hasSize(2);
+        acreditarFinal(expediente, ids.getFirst(), tribunal);
+        assertThat(estado()).isEqualTo("NOTIFICACION_RESOLUCION_FINAL");
+        assertThat(cuenta("cumplimientos_resolucion_ttaip")).isZero();
+        acreditarFinal(expediente, ids.getLast(), tribunal);
+        assertThat(estado()).isEqualTo("EN_CUMPLIMIENTO");
+        assertThat(cuenta("cumplimientos_resolucion_ttaip")).isEqualTo(1);
+        mvc.perform(get("/api/panel/apelaciones").param("etapa", "cumplimiento").header("Authorization", "Bearer " + tribunal))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.contenido[0].etapa").value("cumplimiento"))
+                .andExpect(jsonPath("$.contenido[0].resuelta").value(false));
+        var fase = respuestaJson(mvc.perform(get(url).header("Authorization", "Bearer " + entidad))).path("cumplimiento");
+        String esperado = calendario.calcularFechaVencimiento(calendario.hoy(), 7, faseEntidadId()).toString();
+        assertThat(fase.path("fechaLimite").asString()).isEqualTo(esperado);
+        mvc.perform(get("/api/panel/apelaciones").header("Authorization", "Bearer " + tribunal))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].plazoCumplimiento.fechaLimite").value(esperado));
+        assertThat(fase.path("puedeEntregar").asBoolean()).isTrue();
+        long seguimientoId = fase.path("id").asLong();
+
+        mvc.perform(get(url).header("Authorization", "Bearer " + ajeno)).andExpect(status().isForbidden());
+        mvc.perform(get(url).header("Authorization", "Bearer " + otraPersona)).andExpect(status().isForbidden());
+        mvc.perform(post(expediente + "/cumplimientos/" + seguimientoId + "/registrar")
+                .header("Authorization", "Bearer " + entidad).contentType("application/json")
+                .content("{\"tipoCumplimiento\":\"TOTAL\",\"descripcionCumplimiento\":\"Intento alternativo\","
+                        + "\"referenciaDocumento\":\"Evidencia\",\"responsableEntidad\":\"Funcionario\"}"))
+                .andExpect(status().isConflict());
+        mvc.perform(multipart(url + "/remision").file(archivoTtaip("oficio", "oficio.pdf"))
+                .param("numeroOficio", "001-SINT").param("fundamento", "Cumplimiento de la resolución")
+                .param("operacion", UUID.randomUUID().toString()).header("Authorization", "Bearer " + entidad))
+                .andExpect(status().isConflict());
+        var respuesta = archivoTtaip("respuesta", "respuesta.pdf");
+        var anexo = archivoTtaip("anexos", "anexo.pdf");
+        var invalido = new org.springframework.mock.web.MockMultipartFile("anexos", "anexo.exe", "application/octet-stream", new byte[] {1});
+        String entrega = UUID.randomUUID().toString();
+        var antes = cuenta("documentos");
+        mvc.perform(multipart(url + "/entrega").file(respuesta).file(invalido).param("operacion", entrega)
+                .header("Authorization", "Bearer " + entidad)).andExpect(status().is4xxClientError());
+        assertThat(cuenta("documentos")).isEqualTo(antes);
+        mvc.perform(multipart(url + "/entrega").file(respuesta).param("operacion", entrega)
+                .header("Authorization", "Bearer " + ciudadano)).andExpect(status().isForbidden());
+        for (int intento = 0; intento < 2; intento++) {
+            mvc.perform(multipart(url + "/entrega").file(respuesta).file(anexo).param("operacion", entrega)
+                    .header("Authorization", "Bearer " + entidad)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.documentos.length()").value(2)).andExpect(jsonPath("$.operacionEntrega").value(entrega));
+        }
+        var bandeja = respuestaJson(mvc.perform(get(url).header("Authorization", "Bearer " + ciudadano))).path("cumplimiento");
+        assertThat(bandeja.path("documentos").size()).isEqualTo(2);
+        mvc.perform(get("/api/panel/apelaciones").header("Authorization", "Bearer " + ciudadano))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].respuestaCumplimientoDisponible").value(true))
+                .andExpect(jsonPath("$.contenido[0].cumplimientoRemitido").value(false));
+        long respuestaId = bandeja.path("documentos").get(0).path("documento").path("id").asLong();
+        mvc.perform(get("/api/documentos/" + respuestaId + "/download").header("Authorization", "Bearer " + ciudadano))
+                .andExpect(status().isOk()).andExpect(content().bytes(respuesta.getBytes()));
+        mvc.perform(get("/api/documentos/" + respuestaId + "/download").header("Authorization", "Bearer " + otraPersona))
+                .andExpect(status().isForbidden());
+
+        var evidencias = respuestaJson(mvc.perform(multipart(url + "/validacion-entrega")
+                .file(archivoTtaip("cargo", "cargo.pdf")).file(archivoTtaip("acuse", "acuse.pdf"))
+                .param("fechaEficacia", calendario.hoy().toString()).param("operacion", UUID.randomUUID().toString())
+                .header("Authorization", "Bearer " + entidad)));
+        assertThat(evidencias.path("puedeRemitir").asBoolean()).isTrue();
+        long cargoId = evidencias.path("documentos").get(2).path("documento").path("id").asLong();
+        mvc.perform(get("/api/documentos/" + cargoId + "/download").header("Authorization", "Bearer " + ciudadano))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/documentos/" + cargoId + "/download").header("Authorization", "Bearer " + tribunal))
+                .andExpect(status().isForbidden());
+        String remision = UUID.randomUUID().toString();
+        for (int intento = 0; intento < 2; intento++) {
+            mvc.perform(multipart(url + "/remision").file(archivoTtaip("oficio", "oficio.pdf")).file(anexo)
+                    .param("operacion", remision).param("numeroOficio", "001-SINT").param("fundamento", "Cumplimiento de la resolución")
+                    .header("Authorization", "Bearer " + entidad)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.operacionRemision").value(remision)).andExpect(jsonPath("$.estado").value("CUMPLIDO"));
+        }
+        assertThat(estado()).isEqualTo("RESUELTO_FUNDADO");
+        mvc.perform(get(base()).header("Authorization", "Bearer " + tribunal))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.expedienteTtaip.cumplimientoDocumental.fechaEntrega").isNotEmpty())
+                .andExpect(jsonPath("$.expedienteTtaip.cumplimientoDocumental.fechaRemision").isNotEmpty())
+                .andExpect(jsonPath("$.expedienteTtaip.cumplimientoDocumental.fechaCierre").isNotEmpty());
+        mvc.perform(get("/api/panel/apelaciones").header("Authorization", "Bearer " + tribunal))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].cumplimientoRemitido").value(true))
+                .andExpect(jsonPath("$.contenido[0].etapa").value("resueltos"));
+        mvc.perform(get(url).header("Authorization", "Bearer " + tribunal)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.cumplimiento.documentos.length()").value(6))
+                .andExpect(jsonPath("$.cumplimiento.documentos[0].documento.id").value(respuestaId))
+                .andExpect(jsonPath("$.cumplimiento.documentos[2].documento.id").value(cargoId));
+        mvc.perform(get("/api/documentos/" + cargoId + "/download").header("Authorization", "Bearer " + tribunal))
+                .andExpect(status().isOk()).andExpect(content().bytes(respuesta.getBytes()));
+        assertThat(cuenta("documentos")).isEqualTo(antes + 6);
+        if (S3) {
+            assertThat(jdbc.queryForObject("select count(*) from documentos where id_cumplimiento=? and storage_provider='S3_COMPATIBLE'",
+                    Long.class, seguimientoId)).isEqualTo(6);
+        }
+    }
+
+    private Long faseEntidadId() {
+        return jdbc.queryForObject("select id_entidad from cumplimientos_resolucion_ttaip", Long.class);
+    }
+
+    @Test
+    void entidadNotificadaPrimeroPuedeActuarYCierraPorVencimientoTrasLaUltimaNotificacion() throws Exception {
+        String tribunal = tribunal();
+        String expediente = emitirFinalDocumental("FUNDADO_EN_PARTE", "fundado-en-parte", tribunal);
+        long entidad = 0;
+        long ciudadano = 0;
+        for (var acto : respuestaJson(mvc.perform(get(expediente + "/actos-notificacion").header("Authorization", "Bearer " + tribunal)))) {
+            if (!"RESOLUCION_FINAL".equals(acto.path("etapa").asString())) continue;
+            if ("ENTIDAD_PUBLICA".equals(acto.path("destinatario").asString())) entidad = acto.path("id").asLong();
+            if ("CIUDADANO".equals(acto.path("destinatario").asString())) ciudadano = acto.path("id").asLong();
+        }
+        assertThat(entidad).isPositive();
+        assertThat(ciudadano).isPositive();
+        acreditarFinal(expediente, entidad, tribunal);
+        assertThat(estado()).isEqualTo("EN_CUMPLIMIENTO");
+        mvc.perform(get("/api/panel/apelaciones").param("etapa", "notificaciones").header("Authorization", "Bearer " + tribunal))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.contenido[0].estado").value("EN_CUMPLIMIENTO"));
+        mvc.perform(get(expediente + "/cumplimiento-documental").header("Authorization", "Bearer " + login("funcionario@example.invalid")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cumplimiento.puedeEntregar").value(true));
+        jdbc.update("update cumplimientos_resolucion_ttaip set fecha_limite_cumplimiento=?", calendario.hoy());
+        assertThat(cumplimiento.procesarVencidos()).isZero();
+        jdbc.update("update cumplimientos_resolucion_ttaip set fecha_limite_cumplimiento=?", calendario.hoy().minusDays(1));
+        assertThat(cumplimiento.procesarVencidos()).isEqualTo(1);
+        assertThat(cumplimiento.procesarVencidos()).isZero();
+        assertThat(estado()).isEqualTo("EN_CUMPLIMIENTO");
+        acreditarFinal(expediente, ciudadano, tribunal);
+        assertThat(estado()).isEqualTo("RESUELTO_FUNDADO_EN_PARTE");
+        mvc.perform(get(expediente + "/cumplimiento-documental").header("Authorization", "Bearer " + tribunal))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cumplimiento.estado").value("VENCIDO"))
+                .andExpect(jsonPath("$.cumplimiento.expedienteResuelto").value(true));
     }
 
     private JsonNode respuestaJson(ResultActions accion) throws Exception {
@@ -440,7 +641,10 @@ class TransicionesTtaipPostgresIntegrationTest {
                         .param("sala", "PRIMERA SALA").header("Authorization", "Bearer " + tribunal)).andExpect(status().isOk());
             }
             comando("resolucion/{id}/infundado", tribunal).andExpect(status().isOk());
+            assertThat(estado()).isEqualTo("NOTIFICACION_RESOLUCION_FINAL");
+            for (var id : notificacionesDe(Resolucion.TipoResolucion.RESOLUCION_FINAL)) acreditarFinal(url, id, tribunal);
             assertThat(estado()).isEqualTo("RESUELTO_INFUNDADO");
+            assertThat(cuenta("cumplimientos_resolucion_ttaip")).isZero();
             mvc.perform(get(escritos).header("Authorization", "Bearer " + entidad)).andExpect(status().isOk())
                     .andExpect(jsonPath("$.fechaLimiteResolucion").value(limite.toString()))
                     .andExpect(jsonPath("$.descargo.estado").value("CERRADO_SIN_PRESENTACION"))
@@ -674,7 +878,7 @@ class TransicionesTtaipPostgresIntegrationTest {
         assertThat(registros()).isEqualTo(despues);
         completarDescargos(token);
         comando("resolucion/{id}/fundado",token).andExpect(status().isOk());
-        assertThat(estado()).isEqualTo("RESUELTO_FUNDADO");
+        assertThat(estado()).isEqualTo("NOTIFICACION_RESOLUCION_FINAL");
         despues=registros(); comando("resolucion/{id}/fundado",token).andExpect(status().isConflict());
         assertThat(registros()).isEqualTo(despues);
         mvc.perform(patch(base()+"/estado").header("Authorization","Bearer "+token).contentType("application/json")
@@ -687,7 +891,7 @@ class TransicionesTtaipPostgresIntegrationTest {
         for(long id:notificacionesDe(Resolucion.TipoResolucion.PRIMERA_CALIFICACION)) validarNotificacion(id,token);
         completarDescargos(token);
         comando("resolucion/{id}/fundado",token).andExpect(status().isOk());
-        assertThat(estado()).isEqualTo("RESUELTO_FUNDADO");
+        assertThat(estado()).isEqualTo("NOTIFICACION_RESOLUCION_FINAL");
     }
     @Test void etiquetaValidadaSinActuacionRegistradaNoAcreditaEficacia() throws Exception {
         String token=tribunal(); segundaCalificacion(token);
@@ -722,7 +926,7 @@ class TransicionesTtaipPostgresIntegrationTest {
         for(long id:notificacionesDe(Resolucion.TipoResolucion.PRIMERA_CALIFICACION)) validarNotificacion(id,token);
         if(requeridosPendientes) requerirDescargos(token);
         comando("resolucion/{id}/fundado",token).andExpect(status().isOk());
-        assertThat(estado()).isEqualTo("RESUELTO_FUNDADO");
+        assertThat(estado()).isEqualTo("NOTIFICACION_RESOLUCION_FINAL");
         assertThat(jdbc.queryForObject("select count(*) from descargos_entidad_ttaip where fecha_presentacion is not null", Integer.class)).isZero();
         if (requeridosPendientes) {
             mvc.perform(get("/api/ttaip/expedientes/" + expedienteId + "/presentaciones-admision")

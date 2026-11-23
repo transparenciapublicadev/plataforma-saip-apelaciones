@@ -313,16 +313,12 @@ Las decisiones `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO` se registran como res
 
 ### Cumplimiento de resolucion fundada
 
-- Si el TTAIP declara `FUNDADO` o `FUNDADO_EN_PARTE`, la entidad debe cumplir en maximo 7 dias habiles.
-- En el mismo plazo, la entidad debe comunicar el cumplimiento al Tribunal, adjuntando evidencia o referencia documental.
-- No aplica para `INFUNDADO`, `INFUNDADO_EN_PARTE`, `IMPROCEDENTE`, `CONCLUSION_SUSTRACCION_MATERIA` ni `CONCLUSION_DESISTIMIENTO`.
-- Implementacion actual: `CumplimientoResolucionTtaip` registra expediente, apelacion, resolucion, entidad, fecha de requerimiento, fecha limite, fecha de cumplimiento, estado, tipo `TOTAL`/`PARCIAL`/`NO_CUMPLE`, descripcion, evidencia o referencia documental, responsable, observacion y trazabilidad.
-- La fecha limite se calcula sumando 7 dias habiles desde la notificacion valida de la resolucion final a la entidad publica cuando existe. Si no hay una notificacion valida segura, el backend usa la fecha de la resolucion/notificacion disponible como base operativa y conserva esa decision en la documentacion.
-- Una notificacion valida para iniciar el seguimiento puede estar `ENTREGADA` o `VALIDADA`, tener resultado equivalente o haber sido validada manualmente con sustento.
-- Solo TTAIP/administrador puede crear, observar o cerrar el seguimiento; funcionario de entidad/administrador puede registrar la comunicacion de cumplimiento.
-- No se permite mas de un seguimiento activo `PENDIENTE` u `OBSERVADO` para la misma resolucion.
-- Si vence sin cumplimiento, el procesamiento operativo marca el seguimiento como `VENCIDO`, sin borrar expediente ni resolucion.
-- Postman/Newman valida creacion dinamica del seguimiento sobre una resolucion final fundada, rechazo por duplicado activo, registro de evidencia por entidad, observacion/cierre por TTAIP, rechazo sobre resolucion no fundada y procesamiento de vencidos.
+- Al registrar una nueva resolución final, el expediente permanece en `NOTIFICACION_RESOLUCION_FINAL` hasta acreditar la notificación a ambas partes. Para los sentidos distintos de `FUNDADO` y `FUNDADO_EN_PARTE`, la última validación cierra el expediente con el sentido registrado.
+- Para `FUNDADO` y `FUNDADO_EN_PARTE`, la notificación eficaz a la entidad habilita un único seguimiento y el expediente pasa a `EN_CUMPLIMIENTO`, incluso si la notificación al administrado todavía está pendiente. El plazo de siete días hábiles se calcula con el calendario de la entidad obligada a partir de su fecha de notificación eficaz. El seguimiento conserva la identificación de esa notificación.
+- El funcionario de la entidad obligada publica una nueva respuesta y sus anexos en la bandeja del administrado. Después registra y valida el cargo y el acuse, junto con la fecha eficaz acreditada.
+- La entidad remite al Tribunal el oficio numerado, su fundamento y sus anexos. La remisión incorpora los archivos ya registrados de la respuesta, el cargo y el acuse. Los archivos de la remisión se habilitan para el Tribunal al registrar esa actuación.
+- La remisión en plazo registra cumplimiento de la entidad. Si vence el plazo sin remisión, el procesamiento programado registra incumplimiento. El expediente se cierra cuando constan las dos notificaciones eficaces y uno de esos resultados. La apelación conserva el sentido del fallo.
+- Los seguimientos históricos conservan el contrato anterior de comunicación, observación y cierre operativo. La nueva fase documental se aplica a las resoluciones finales registradas con el flujo actualizado.
 
 ## Reglas de notificacion
 

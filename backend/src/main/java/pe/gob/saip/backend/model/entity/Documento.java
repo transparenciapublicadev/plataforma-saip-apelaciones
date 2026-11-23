@@ -132,6 +132,16 @@ public class Documento {
     @Column(name = "clase_adjunto_admision", length = 10)
     private PresentacionAdmisionTtaip.Adjunto claseAdjuntoAdmision;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_cumplimiento")
+    private CumplimientoResolucionTtaip cumplimiento;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "clase_adjunto_cumplimiento", length = 24)
+    private CumplimientoResolucionTtaip.Adjunto claseAdjuntoCumplimiento;
+
     @PrePersist
     protected void onCreate() {
         fechaCreacion = fechaCreacion != null ? fechaCreacion : LocalDateTime.now();

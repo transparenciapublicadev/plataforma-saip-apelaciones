@@ -154,6 +154,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/suspensiones/informacion-complementaria").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PATCH, "/api/ttaip/expedientes/*/suspensiones/*/cancelar").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/cumplimientos").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/cumplimiento-documental").hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/cumplimiento-documental/*").hasRole("FUNCIONARIO")
                         .requestMatchers(HttpMethod.GET, "/api/ttaip/expedientes/*/cumplimientos/activo").hasAnyRole("FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/ttaip/expedientes/*/resoluciones/*/cumplimientos").hasAnyRole("TTAIP", "ADMINISTRADOR")
                         .requestMatchers(request -> HttpMethod.POST.matches(request.getMethod())
