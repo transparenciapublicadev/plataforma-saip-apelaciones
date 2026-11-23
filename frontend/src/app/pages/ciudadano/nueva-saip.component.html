@@ -87,7 +87,7 @@
                 </div>
               </div>
             </section>
-            <section class="form-shell">
+            <section class="form-shell" [class.zone-invalid]="!!errores()['entidad'] || !!errores()['asunto'] || !!errores()['descripcion'] || !!errores()['tema']">
 <div class="form-section-header flex items-start justify-between gap-4">
 <div>
 <span class="eyebrow">01 · Entidad e información requerida</span>
@@ -103,14 +103,15 @@
                     <option [ngValue]="null">Seleccione la entidad receptora</option>@for (entidad of entidades(); track entidad.id) { <option [ngValue]="entidad.id">{{ entidad.nombre }}{{ entidad.acronimo ? ' (' + entidad.acronimo + ')' : '' }}</option> }
                   </select>
                   <p id="saip-entidad-estado" role="status" class="field-hint">@if (estadoEntidades() === 'cargando') { Consultando entidades… } @else if (estadoEntidades() === 'vacio') { Por el momento no hay entidades disponibles para seleccionar. } @else if (errorEntidades()) { {{ errorEntidades() }} }</p>
-                  <p id="saip-entidad-error" class="field-hint text-destructive">{{ errores()['entidad'] }}</p>
+                  <p id="saip-entidad-error" class="field-error">{{ errores()['entidad'] }}</p>
                   @if (reintentarEntidades()) { <button type="button" class="btn-ghost-brand" (click)="cargarEntidades()">Volver a consultar entidades</button> }
                 </div>
                 <div class="field">
 <label for="saip-tema" class="field-label">Tema o materia <span class="text-muted-foreground font-normal">(opcional)</span>
 </label>
-<input id="saip-tema" class="field-input" name="tema" [(ngModel)]="tema" maxlength="100" aria-describedby="saip-tema-hint">
+<input id="saip-tema" class="field-input" name="tema" [(ngModel)]="tema" maxlength="100" aria-describedby="saip-tema-hint saip-tema-error" [attr.aria-invalid]="!!errores()['tema']">
 <p id="saip-tema-hint" class="field-hint">Indique el tema de su solicitud, en hasta 100 caracteres.</p>
+<p id="saip-tema-error" class="field-error">{{ errores()['tema'] }}</p>
 </div>
                 <div class="field">
 <label for="saip-oficina" class="field-label">Oficina o unidad orgánica destinataria <span class="text-muted-foreground font-normal">(opcional)</span>
@@ -122,7 +123,7 @@
 <label for="saip-asunto" class="field-label">Asunto <span class="req">*</span>
 </label>
 <input id="saip-asunto" class="field-input" name="asunto" [(ngModel)]="asunto" maxlength="500" required aria-required="true" aria-describedby="saip-asunto-error" [attr.aria-invalid]="!!errores()['asunto']" placeholder="Ej. Solicitud de información sobre presupuesto">
-<p id="saip-asunto-error" class="field-hint text-destructive">{{ errores()['asunto'] }}</p>
+<p id="saip-asunto-error" class="field-error">{{ errores()['asunto'] }}</p>
 </div>
                 <div class="rounded-lg p-4" style="background:var(--info-subtle);border:1px solid var(--border)">
 <div class="flex items-start gap-2.5">
@@ -142,13 +143,13 @@
 <textarea id="saip-descripcion" class="field-input" name="descripcion" rows="6" style="resize:vertical;min-height:140px" [(ngModel)]="descripcion" required aria-required="true" aria-describedby="saip-descripcion-hint saip-descripcion-error" [attr.aria-invalid]="!!errores()['descripcion']" placeholder="Describa con claridad y detalle la información que solicita…">
 </textarea>
 <p id="saip-descripcion-hint" class="field-hint">Pida documentos concretos e indique periodo, área y tipo de documento. No necesita explicar para qué la quiere.</p>
-<p id="saip-descripcion-error" class="field-hint text-destructive">{{ errores()['descripcion'] }}</p>
+<p id="saip-descripcion-error" class="field-error">{{ errores()['descripcion'] }}</p>
 </div>
               </div>
             </section>
           }
           @if (step() === 2) {
-            <section class="form-shell">
+            <section class="form-shell" [class.zone-invalid]="!!errores()['formato']">
 <div class="form-section-header flex items-start justify-between gap-4">
 <div>
 <span class="eyebrow">02 · Forma de entrega de la información</span>
@@ -157,7 +158,7 @@
 <span aria-hidden="true" class="saip-section-number">02</span>
 </div>
               <div class="p-6 md:p-8">
-<div role="group" aria-label="Modalidad de entrega" aria-describedby="saip-formato-error" class="grid grid-cols-1 md:grid-cols-2 gap-3">@for (item of formatos; track item.key) {
+<div role="group" id="saip-formato" aria-label="Modalidad de entrega" aria-describedby="saip-formato-error" class="grid grid-cols-1 md:grid-cols-2 gap-3" [class.zone-invalid]="!!errores()['formato']" [attr.aria-invalid]="!!errores()['formato']">@for (item of formatos; track item.key) {
                 <label class="saip-option cursor-pointer rounded-lg p-4 flex items-start gap-3" [style.background]="formatoRespuesta[item.key] ? 'var(--brand-50)' : 'var(--card)'" [style.border]="'1px solid ' + (formatoRespuesta[item.key] ? 'var(--brand-300)' : 'var(--border)')">
 <input type="checkbox" class="sr-only" [(ngModel)]="formatoRespuesta[item.key]" [name]="'formato_' + item.key">
 <span aria-hidden="true" class="saip-checkbox">@if (formatoRespuesta[item.key]) { <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white">
@@ -168,10 +169,10 @@
 </span>
 </label>
               }</div>
-<p id="saip-formato-error" class="field-hint text-destructive">{{ errores()['formato'] }}</p>
+<p id="saip-formato-error" class="field-error">{{ errores()['formato'] }}</p>
 </div>
             </section>
-            <section class="form-shell">
+            <section class="form-shell" [class.zone-invalid]="!!errores()['medio']">
 <div class="form-section-header flex items-start justify-between gap-4">
 <div>
 <span class="eyebrow">03 · Cómo desea ser notificado</span>
@@ -181,27 +182,27 @@
 </div>
               <div class="p-6 md:p-8 space-y-4">
 <p class="text-sm text-muted-foreground">Elija cómo prefiere recibir las notificaciones de su trámite.</p>
-                <div role="radiogroup" aria-label="Medio de notificación" class="grid grid-cols-1 md:grid-cols-2 gap-3">@for (item of mediosNotificacion; track item.key) { <label class="saip-option text-left rounded-lg p-4 flex items-start gap-3" [style.background]="medioNotificacion === item.key ? 'var(--brand-50)' : 'var(--card)'" style="border:1px solid var(--border)">
+                <div role="radiogroup" id="saip-medio" aria-label="Medio de notificación" class="grid grid-cols-1 md:grid-cols-2 gap-3" [class.zone-invalid]="!!errores()['medio'] && !medioNotificacion" [attr.aria-invalid]="!!errores()['medio'] && !medioNotificacion">@for (item of mediosNotificacion; track item.key) { <label class="saip-option text-left rounded-lg p-4 flex items-start gap-3" [style.background]="medioNotificacion === item.key ? 'var(--brand-50)' : 'var(--card)'" style="border:1px solid var(--border)">
 <input type="radio" class="sr-only" name="medio" [value]="item.key" [(ngModel)]="medioNotificacion">
 <span>
 <span class="block text-sm font-medium">{{ item.label }}</span>
 <span class="block text-xs text-muted-foreground mt-0.5">{{ item.desc }}</span>
 </span>
 </label> }</div>
-                @if (medioNotificacion === 'correo') { <label class="rounded-lg p-5 flex items-start gap-2.5 text-sm" style="background:var(--brand-subtle);border:1px solid var(--brand-200)">
-<input type="checkbox" [(ngModel)]="aceptaCorreo" name="aceptaCorreo" aria-describedby="saip-medio-error">
+                @if (medioNotificacion === 'correo') { <label class="rounded-lg p-5 flex items-start gap-2.5 text-sm" style="background:var(--brand-subtle);border:1px solid var(--brand-200)" [class.zone-invalid]="!!errores()['medio']">
+<input type="checkbox" [(ngModel)]="aceptaCorreo" name="aceptaCorreo" aria-describedby="saip-medio-error" [attr.aria-invalid]="!!errores()['medio']">
 <span>Acepto la notificación por correo electrónico al correo registrado (<span class="font-mono">{{ correoMask() }}</span>).</span>
 </label> }
-                @if (medioNotificacion === 'fisica') { <label class="rounded-lg p-5 flex items-start gap-2.5 text-sm" style="background:var(--brand-subtle);border:1px solid var(--brand-200)">
-<input type="checkbox" [(ngModel)]="aceptaFisica" name="aceptaFisica" aria-describedby="saip-medio-error">
+                @if (medioNotificacion === 'fisica') { <label class="rounded-lg p-5 flex items-start gap-2.5 text-sm" style="background:var(--brand-subtle);border:1px solid var(--brand-200)" [class.zone-invalid]="!!errores()['medio']">
+<input type="checkbox" [(ngModel)]="aceptaFisica" name="aceptaFisica" aria-describedby="saip-medio-error" [attr.aria-invalid]="!!errores()['medio']">
 <span>Me comprometo a realizar el pago correspondiente por las reproducciones solicitadas, según el TUPA aplicable de la entidad.</span>
 </label> }
-                <p id="saip-medio-error" class="field-hint text-destructive">{{ errores()['medio'] }}</p>
+                <p id="saip-medio-error" class="field-error">{{ errores()['medio'] }}</p>
               </div>
             </section>
           }
           @if (step() === 3) {
-            <section class="form-shell">
+            <section class="form-shell" [class.zone-invalid]="!!errores()['archivos']">
 <div class="form-section-header flex items-start justify-between gap-4">
 <div>
 <span class="eyebrow">04 · Archivo principal y anexos</span>
@@ -239,7 +240,7 @@
 </div>
 </div>
                     } @else {
-                      <div class="file-upload-zone reference-upload-feedback" role="button" [attr.tabindex]="bloqueado() ? -1 : 0" [attr.aria-disabled]="bloqueado()" [attr.aria-label]="'Seleccionar ' + zona.label + ' (opcional)'" (click)="!bloqueado() && fileInput.click()" (keydown)="abrirSelector($event, fileInput)" [class.is-dragging]="zona.dragging()" (dragover)="arrastrarArchivo($event, i, true)" (dragleave)="arrastrarArchivo($event, i, false)" (drop)="soltarArchivo($event, i)">
+                      <div class="file-upload-zone reference-upload-feedback" role="button" [attr.tabindex]="bloqueado() ? -1 : 0" [attr.aria-disabled]="bloqueado()" [attr.aria-label]="'Seleccionar ' + zona.label + ' (opcional)'" [class.zone-invalid]="!!zona.warning()" (click)="!bloqueado() && fileInput.click()" (keydown)="abrirSelector($event, fileInput)" [class.is-dragging]="zona.dragging()" (dragover)="arrastrarArchivo($event, i, true)" (dragleave)="arrastrarArchivo($event, i, false)" (drop)="soltarArchivo($event, i)">
 <svg aria-hidden="true" lucideUpload class="w-8 h-8 mx-auto text-muted-foreground">
 </svg>
 <p class="text-sm mt-2">Arrastre un archivo o <span class="upload-action-link">selecciónelo</span>
@@ -248,14 +249,14 @@
 </div>
                     }
                     <input #fileInput [id]="'saip-archivo-' + i" type="file" class="sr-only" tabindex="-1" [accept]="accept" (change)="seleccionarArchivo($event, i)" [attr.aria-describedby]="'saip-archivo-error-' + i">
-<p [id]="'saip-archivo-error-' + i" role="status" class="field-hint text-destructive">{{ zona.warning() }}</p>
+<p [id]="'saip-archivo-error-' + i" role="status" class="field-error">{{ zona.warning() }}</p>
                   </div>
                 }</div>
               </div>
             </section>
           }
           @if (step() === 4) {
-            <section class="form-shell">
+            <section class="form-shell" [class.zone-invalid]="!!errores()['consentimiento'] || !!errores()['veracidad']">
 <div class="form-section-header">
 <span class="eyebrow">Antes de enviar</span>
 <h3 class="form-section-title flex items-center gap-2">
@@ -281,16 +282,16 @@
 <p class="whitespace-pre-line mt-1">{{ descripcion }}</p>
 <p class="mt-2 text-xs text-muted-foreground">Entidad: {{ getEntidadSeleccionadaNombre() }} · Entrega: {{ formatosSeleccionadosLabels().join(', ') }}</p>
 <p class="mt-1 text-xs text-muted-foreground">Canal: {{ medioNotificacion === 'fisica' ? 'Física' : 'Correo electrónico' }} · Tema: {{ temaEfectivo() || 'No indicado' }}</p>@if (oficinaDestinataria) { <p class="mt-1 text-xs">Referencia a oficina: {{ oficinaDestinataria }}</p> }@for (zona of zonas; track zona.label) { @if (zona.file(); as file) { <p class="mt-1 text-xs">{{ zona.label }}: {{ file.name }} </p> } }</div>
-                <label class="flex items-start gap-2.5 text-sm">
-<input type="checkbox" name="consentimiento" [(ngModel)]="consentimientoDatosPersonales" aria-describedby="saip-consentimiento-error">
+                <label class="flex items-start gap-2.5 text-sm rounded-md" [class.zone-invalid]="!!errores()['consentimiento']">
+<input type="checkbox" name="consentimiento" [(ngModel)]="consentimientoDatosPersonales" aria-describedby="saip-consentimiento-error" [attr.aria-invalid]="!!errores()['consentimiento']">
 <span>Acepto expresamente el tratamiento de mis datos personales para este procedimiento SAIP.</span>
 </label>
-<p id="saip-consentimiento-error" class="field-hint text-destructive">{{ errores()['consentimiento'] }}</p>
-                <label class="flex items-start gap-2.5 text-sm">
-<input type="checkbox" name="veracidad" [(ngModel)]="declaraVeracidad" aria-describedby="saip-veracidad-error">
+<p id="saip-consentimiento-error" class="field-error">{{ errores()['consentimiento'] }}</p>
+                <label class="flex items-start gap-2.5 text-sm rounded-md" [class.zone-invalid]="!!errores()['veracidad']">
+<input type="checkbox" name="veracidad" [(ngModel)]="declaraVeracidad" aria-describedby="saip-veracidad-error" [attr.aria-invalid]="!!errores()['veracidad']">
 <span>Declaro que la información consignada es veraz.</span>
 </label>
-<p id="saip-veracidad-error" class="field-hint text-destructive">{{ errores()['veracidad'] }}</p>
+<p id="saip-veracidad-error" class="field-error">{{ errores()['veracidad'] }}</p>
               </div>
             </section>
 
@@ -324,9 +325,9 @@
             @if (step() > 1) { <button type="button" class="btn-ghost-brand justify-center !py-3" (click)="irPaso(step() - 1)">
 <svg aria-hidden="true" lucideChevronLeft class="w-4 h-4">
 </svg>Atrás</button> }
-            <button type="button" class="btn-ghost-brand flex-1 justify-center !py-3" (click)="guardarBorrador()">
+            <button type="button" class="btn-ghost-brand flex-1 justify-center !py-3" (click)="guardarBorrador()" [disabled]="guardandoBorrador() || bloqueado()">
 <svg aria-hidden="true" lucideSave class="w-4 h-4">
-</svg>Borrador en esta pantalla</button>
+</svg>{{ guardandoBorrador() ? 'Guardando…' : 'Guardar borrador' }}</button>
             @if (step() < 4) { <button type="button" class="btn-brand flex-1 justify-center !py-3" (click)="irPaso(step() + 1)">Continuar<svg aria-hidden="true" lucideChevronRight class="w-4 h-4">
 </svg>
 </button> }
@@ -335,7 +336,7 @@
 </svg>Presentar solicitud</button> }
           </div>
         </fieldset>
-        <p role="note" class="text-xs text-muted-foreground">Si sale de esta página o la recarga antes de presentar la solicitud, perderá el texto y los archivos seleccionados.</p>
+        <p role="note" class="text-xs text-muted-foreground">Guardar borrador conserva el texto en su cuenta. Los archivos se eligen otra vez al presentar. Puede retomarlo desde Borradores.</p>
       </div>
       <aside class="lg:col-span-4">
 <div class="sticky top-28 space-y-5">
@@ -388,7 +389,7 @@
 </app-reference-confirm-modal>
   <app-reference-success-modal [open]="successModalAbierto() && !!solicitudCreada() && estadoEnvio() === 'confirmada'" [manageFocus]="true" presentation="saip-response" variant="saip-creada" tone="success" eyebrow="Solicitud presentada" title="Tu SAIP fue registrada" [description]="solicitudSuccessDescription()" [expediente]="expedienteCreado()" [expedienteHint]="solicitudSuccessHint()" [plazoDias]="10" plazoTipo="hábiles" plazoDescripcion="Es el plazo ordinario de atención. Consulte en su expediente la fecha aplicable." plazoNorma="Ley N° 27806 — TUO de Acceso a la Información Pública" [metadata]="solicitudSuccessMetadata()" [nextSteps]="solicitudNextSteps()" primaryLabel="Ir a mi panel" secondaryLabel="Ver expediente" (close)="cerrarResultado()" (primary)="irPanelCiudadano()" (secondary)="verSolicitudCreada()">
 </app-reference-success-modal>
-  <app-reference-confirm-modal [open]="draftModalAbierto()" [manageFocus]="true" presentation="saip-response" eyebrow="Solicitud en preparación" title="Borrador en esta pantalla" description="Puede avanzar y retroceder para seguir editando. Si sale, recarga la página o cierra sesión, perderá el texto y los archivos seleccionados." confirmLabel="Continuar editando" cancelLabel="Cerrar" (close)="draftModalAbierto.set(false)" (confirm)="draftModalAbierto.set(false)"></app-reference-confirm-modal>
+  <app-reference-confirm-modal [open]="draftModalAbierto()" [manageFocus]="true" presentation="saip-response" eyebrow="Solicitud en preparación" title="Borrador guardado" [description]="borradorAviso()" confirmLabel="Seguir editando" cancelLabel="Cerrar" (close)="draftModalAbierto.set(false)" (confirm)="draftModalAbierto.set(false)"></app-reference-confirm-modal>
   <app-reference-confirm-modal [open]="!!modeloPendiente()" [manageFocus]="true" presentation="saip-response" title="Reemplazar descripción" description="El modelo sustituirá el texto que ya escribió. Revíselo y adapte sus ejemplos antes de presentar." confirmLabel="Usar modelo" (close)="modeloPendiente.set(null)" (confirm)="confirmarModelo()">
 </app-reference-confirm-modal>
   <app-document-preview-modal [doc]="previewTarget()" [open]="isPreviewOpen()" [manageFocus]="true" (close)="cerrarPreview()">

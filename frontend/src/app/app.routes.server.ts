@@ -40,6 +40,10 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client
   },
   {
+    path: 'ciudadano/borradores',
+    renderMode: RenderMode.Client
+  },
+  {
     path: 'ciudadano/nueva-apelacion',
     renderMode: RenderMode.Client
   },

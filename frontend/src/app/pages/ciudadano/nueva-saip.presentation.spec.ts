@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -104,7 +104,47 @@ describe('SAIPForm — contrato HTTP y estados de presentación', () => {
     expect(c.fileWarningPrincipal()).toContain('un archivo por casillero');
   });
   it('el borrador no copia el contenido personal al almacenamiento del navegador', () => {
-    const f = preparar(); f.componentInstance.guardarBorrador(); expect(localStorage.getItem('saip.borrador')).toBeNull();
+    const f = preparar(); f.componentInstance.guardarBorrador();
+    const req = http.expectOne(`${base}/borradores-saip`);
+    expect(req.request.method).toBe('POST');
+    expect(JSON.stringify(req.request.body)).not.toContain('persona@example');
+    expect(req.request.body.asunto).toBe('Pedido sintético');
+    req.flush({ id: 9, asunto: 'Pedido sintético', paso: 1, actualizado: '2026-11-21T10:00:00' });
+    expect(localStorage.getItem('saip.borrador')).toBeNull();
+    expect(f.componentInstance.draftModalAbierto()).toBe(true);
+    expect(f.componentInstance.borradorId()).toBe(9);
+  });
+  it('al confirmar la presentación retira solo el borrador de esa pantalla', () => {
+    const f = preparar();
+    f.componentInstance.borradorId.set(9);
+    f.componentInstance.crearSolicitud();
+    confirmar(f);
+    const baja = http.expectOne(`${base}/borradores-saip/9`);
+    expect(baja.request.method).toBe('DELETE');
+    baja.flush(null);
+    expect(f.componentInstance.borradorId()).toBeNull();
+  });
+  it('no crea un borrador si el formulario está vacío', () => {
+    const f = pagina(); http.expectOne(`${base}/entidades/activas`).flush(entidades);
+    f.componentInstance.guardarBorrador();
+    http.expectNone(`${base}/borradores-saip`);
+    expect(f.componentInstance.error()).toContain('al menos un dato');
+  });
+  it('continúa un borrador de la cuenta sin leer el legado del navegador', () => {
+    const route = TestBed.inject(ActivatedRoute);
+    vi.spyOn(route.snapshot.queryParamMap, 'get').mockReturnValue('9');
+    const f = pagina(); http.expectOne(`${base}/entidades/activas`).flush(entidades);
+    const req = http.expectOne(`${base}/borradores-saip/9`);
+    req.flush({
+      id: 9, entidadId: 3, asunto: 'Pedido guardado', descripcion: 'Texto guardado', tipoInformacion: null,
+      oficinaDestinataria: null, formatoCorreo: true, copiaSimple: false, copiaCertificada: false, soporteMagnetico: false,
+      canalNotificacion: 'CORREO', aceptaCanal: true, consentimientoDatos: false, declaraVeracidad: false, paso: 2,
+      actualizado: '2026-11-21T10:00:00'
+    });
+    expect(f.componentInstance.asunto).toBe('Pedido guardado');
+    expect(f.componentInstance.step()).toBe(2);
+    expect(f.componentInstance.medioNotificacion).toBe('correo');
+    expect(localStorage.getItem('saip.borrador')).toBeNull();
   });
   it('una respuesta de creación sin identidad verificable no se confirma', () => {
     const f = preparar(); f.componentInstance.crearSolicitud(); http.expectOne(`${base}/solicitudes/recepciones`).flush({});
@@ -150,7 +190,36 @@ describe('SAIPForm — contrato HTTP y estados de presentación', () => {
     f.componentInstance.irPaso(4); f.detectChanges(); await f.whenStable();
     expect(f.componentInstance.step()).toBe(1); expect(f.componentInstance.errores()['asunto']).toBeTruthy();
     expect(f.nativeElement.querySelector('#saip-asunto').getAttribute('aria-describedby')).toContain('saip-asunto-error');
+    expect(f.nativeElement.querySelector('#saip-asunto').getAttribute('aria-invalid')).toBe('true');
+    expect(f.nativeElement.querySelector('#saip-asunto-error').textContent).toContain('Ingrese un asunto');
+    expect(f.nativeElement.querySelector('#saip-entidad').getAttribute('aria-invalid')).toBe('true');
+    expect(f.nativeElement.querySelector('#saip-descripcion').getAttribute('aria-invalid')).toBe('true');
+    expect(f.nativeElement.querySelector('section.form-shell.zone-invalid')).not.toBeNull();
     expect(document.activeElement?.id).toBe('saip-errores');
+  });
+  it('marca en el propio paso la entrega, la notificación y las declaraciones que faltan', async () => {
+    const f = preparar(), c = f.componentInstance;
+    c.formatoRespuesta.correo = false; c.medioNotificacion = '';
+    c.irPaso(2); f.detectChanges(); await f.whenStable();
+    c.irPaso(3); f.detectChanges(); await f.whenStable();
+    expect(c.step()).toBe(2);
+    expect(f.nativeElement.querySelector('#saip-formato').classList.contains('zone-invalid')).toBe(true);
+    expect(f.nativeElement.querySelector('#saip-formato-error').textContent).toContain('modalidad de entrega');
+    expect(f.nativeElement.querySelector('#saip-medio').classList.contains('zone-invalid')).toBe(true);
+    expect(f.nativeElement.querySelector('#saip-medio-error').textContent).toContain('medio formal');
+    c.formatoRespuesta.correo = true; c.medioNotificacion = 'correo'; c.aceptaCorreo = false;
+    c.irPaso(3); f.detectChanges(); await f.whenStable();
+    expect(c.step()).toBe(2);
+    expect(f.nativeElement.querySelector('[name=aceptaCorreo]').getAttribute('aria-invalid')).toBe('true');
+    c.aceptaCorreo = true; c.consentimientoDatosPersonales = false; c.declaraVeracidad = false;
+    c.irPaso(4); f.detectChanges(); await f.whenStable();
+    c.handleSubmit(false); f.detectChanges(); await f.whenStable();
+    expect(c.step()).toBe(4); expect(c.confirmModalAbierto()).toBe(false);
+    expect(f.nativeElement.querySelector('[name=consentimiento]').getAttribute('aria-invalid')).toBe('true');
+    expect(f.nativeElement.querySelector('#saip-consentimiento-error').textContent).toContain('datos personales');
+    expect(f.nativeElement.querySelector('#saip-veracidad-error').textContent).toContain('veracidad');
+    c.asunto = ''; c.handleSubmit(false); f.detectChanges(); await f.whenStable();
+    expect(c.step()).toBe(1); expect(f.nativeElement.querySelector('#saip-asunto').getAttribute('aria-invalid')).toBe('true');
   });
   it('registra solo la identidad autenticada y los campos admitidos, sin archivos obligatorios', () => {
     const f = preparar(); f.componentInstance.crearSolicitud(); const req = http.expectOne(`${base}/solicitudes/recepciones`);

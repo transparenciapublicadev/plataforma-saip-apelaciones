@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, Injector, OnDestroy, OnInit, afterNextRender, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, timeout } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { SolicitudService } from '../../services/solicitud.service';
+import { BorradorSaip, BorradorSaipService, GuardarBorradorSaip } from '../../services/borrador-saip.service';
 import { EntidadService } from '../../services/entidad.service';
 import { AuthService } from '../../services/auth.service';
 import { Entidad } from '../../models/entidad.model';
@@ -48,6 +49,8 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
   private readonly entidadService = inject(EntidadService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly borradores = inject(BorradorSaipService);
   private readonly injector = inject(Injector);
   readonly formatos = FORMATOS;
   readonly mediosNotificacion = MEDIOS_NOTIFICACION;
@@ -74,6 +77,9 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
   readonly confirmModalAbierto = signal(false);
   readonly successModalAbierto = signal(false);
   readonly draftModalAbierto = signal(false);
+  readonly guardandoBorrador = signal(false);
+  readonly borradorId = signal<number | null>(null);
+  readonly borradorAviso = signal('El texto quedó guardado en su cuenta. Los archivos se eligen otra vez al presentar. Puede continuarlo desde Borradores.');
   readonly modeloPendiente = signal<{ texto: string; asunto?: string } | null>(null);
   readonly expedienteCreado = signal('');
   readonly solicitudCreada = signal<Solicitud | null>(null);
@@ -126,7 +132,7 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
       }
     }); });
   }
-  ngOnInit(): void { this.cargarSesionVisual(); this.cargarEntidades(); }
+  ngOnInit(): void { this.cargarSesionVisual(); this.cargarEntidades(); this.cargarBorradorInicial(); }
   ngOnDestroy(): void { this.destruido = true; this.limpiarContexto(); }
   private actual(generacion = this.generacion): boolean {
     return !this.destruido && generacion === this.generacion && !!this.token && this.token === this.authService.getToken()
@@ -198,6 +204,12 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
     return errors;
   }
   canSubmit(): boolean { return !this.bloqueado() && Object.keys(this.validar(4)).length === 0; }
+  private pasoConFalta(errors: Record<string, string>): number {
+    if (errors['sesion'] || errors['entidad'] || errors['asunto'] || errors['descripcion'] || errors['tema']) return 1;
+    if (errors['formato'] || errors['medio']) return 2;
+    if (errors['archivos']) return 3;
+    return 4;
+  }
   irPaso(paso: number): void {
     if (!this.actual() || this.bloqueado() || paso < 1 || paso > 4) return;
     const errors = paso > this.step() ? this.validar(Math.min(paso - 1, 3)) : {};
@@ -266,7 +278,104 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
     this.previewTarget.set({ nombre: file.name, blob: file, file, tipo: file.type }); this.isPreviewOpen.set(true);
   }
   cerrarPreview(): void { this.isPreviewOpen.set(false); this.previewTarget.set(null); }
-  guardarBorrador(): void { if (this.actual() && !this.bloqueado()) this.draftModalAbierto.set(true); }
+  guardarBorrador(): void {
+    if (!this.actual() || this.bloqueado() || this.guardandoBorrador()) return;
+    const datos = this.datosBorrador();
+    if (!this.borradorConContenido(datos)) {
+      this.error.set('Escriba al menos un dato antes de guardar el borrador.');
+      this.subir('saip-errores');
+      return;
+    }
+    const gen = this.generacion;
+    const id = this.borradorId();
+    this.guardandoBorrador.set(true);
+    this.error.set('');
+    const pedido = id ? this.borradores.actualizar(id, datos) : this.borradores.crear(datos);
+    this.operaciones.add(pedido.pipe(timeout(30_000)).subscribe({
+      next: guardado => {
+        if (!this.actual(gen)) return;
+        this.guardandoBorrador.set(false);
+        if (!guardado || !this.idValido(guardado.id)) {
+          this.error.set('No se pudo confirmar el borrador guardado. El texto sigue en esta pantalla.');
+          return;
+        }
+        this.borradorId.set(guardado.id);
+        this.borradorAviso.set('El texto quedó guardado en su cuenta. Los archivos se eligen otra vez al presentar. Puede continuarlo desde Borradores.');
+        this.draftModalAbierto.set(true);
+      },
+      error: () => {
+        if (!this.actual(gen)) return;
+        this.guardandoBorrador.set(false);
+        this.error.set('No se pudo guardar el borrador. El texto sigue en esta pantalla.');
+      },
+    }));
+  }
+  private cargarBorradorInicial(): void {
+    const crudo = this.route.snapshot?.queryParamMap?.get?.('borrador');
+    const id = Number(crudo);
+    if (!crudo || !this.idValido(id) || !this.actual()) return;
+    const gen = this.generacion;
+    this.consultas.add(this.borradores.obtener(id).subscribe({
+      next: guardado => { if (this.actual(gen)) this.aplicarBorrador(guardado); },
+      error: () => { if (this.actual(gen)) this.error.set('No se encontró el borrador para continuar.'); },
+    }));
+  }
+  private aplicarBorrador(guardado: BorradorSaip): void {
+    if (!guardado || !this.idValido(guardado.id)) {
+      this.error.set('No se encontró el borrador para continuar.');
+      return;
+    }
+    this.borradorId.set(guardado.id);
+    this.entidadId = this.idValido(guardado.entidadId) ? guardado.entidadId : null;
+    this.asunto = guardado.asunto ?? '';
+    this.descripcion = guardado.descripcion ?? '';
+    this.tema = guardado.tipoInformacion ?? '';
+    this.oficinaDestinataria = guardado.oficinaDestinataria ?? '';
+    this.formatoRespuesta = {
+      correo: !!guardado.formatoCorreo,
+      copiaSimple: !!guardado.copiaSimple,
+      copiaCertificada: !!guardado.copiaCertificada,
+      soporteMagnetico: !!guardado.soporteMagnetico,
+    };
+    if (guardado.canalNotificacion === 'CORREO') this.medioNotificacion = 'correo';
+    else if (guardado.canalNotificacion === 'DOMICILIO') this.medioNotificacion = 'fisica';
+    else this.medioNotificacion = '';
+    this.aceptaCorreo = this.medioNotificacion === 'correo' && !!guardado.aceptaCanal;
+    this.aceptaFisica = this.medioNotificacion === 'fisica' && !!guardado.aceptaCanal;
+    this.consentimientoDatosPersonales = !!guardado.consentimientoDatos;
+    this.declaraVeracidad = !!guardado.declaraVeracidad;
+    this.step.set(guardado.paso >= 1 && guardado.paso <= 4 ? guardado.paso : 1);
+  }
+  private datosBorrador(): GuardarBorradorSaip {
+    const canal = this.medioNotificacion === 'correo' ? 'CORREO' : this.medioNotificacion === 'fisica' ? 'DOMICILIO' : null;
+    return {
+      entidadId: this.idValido(this.entidadId) ? this.entidadId : null,
+      asunto: this.asunto.trim() || null,
+      descripcion: this.descripcion.trim() || null,
+      tipoInformacion: this.tema.trim() || null,
+      oficinaDestinataria: this.oficinaDestinataria.trim() || null,
+      formatoCorreo: this.formatoRespuesta.correo,
+      copiaSimple: this.formatoRespuesta.copiaSimple,
+      copiaCertificada: this.formatoRespuesta.copiaCertificada,
+      soporteMagnetico: this.formatoRespuesta.soporteMagnetico,
+      canalNotificacion: canal,
+      aceptaCanal: canal === 'CORREO' ? this.aceptaCorreo : canal === 'DOMICILIO' ? this.aceptaFisica : false,
+      consentimientoDatos: this.consentimientoDatosPersonales,
+      declaraVeracidad: this.declaraVeracidad,
+      paso: this.step(),
+    };
+  }
+  private borradorConContenido(datos: GuardarBorradorSaip): boolean {
+    return datos.entidadId != null || !!datos.asunto || !!datos.descripcion || !!datos.tipoInformacion
+      || !!datos.oficinaDestinataria || datos.formatoCorreo || datos.copiaSimple || datos.copiaCertificada
+      || datos.soporteMagnetico || !!datos.canalNotificacion;
+  }
+  private retirarBorradorPresentado(): void {
+    const id = this.borradorId();
+    if (!id) return;
+    this.borradorId.set(null);
+    this.operaciones.add(this.borradores.eliminar(id).subscribe({ error: () => undefined }));
+  }
   resetForm(): void {
     this.entidadId = null; this.tema = ''; this.oficinaDestinataria = ''; this.asunto = ''; this.descripcion = '';
     this.formatoRespuesta = { correo: false, copiaSimple: false, copiaCertificada: false, soporteMagnetico: false };
@@ -289,6 +398,8 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
     this.errorRecuperacion.set('');
     this.confirmModalAbierto.set(false);
     this.draftModalAbierto.set(false);
+    this.guardandoBorrador.set(false);
+    this.borradorId.set(null);
     this.modeloPendiente.set(null);
     this.cerrarPreview();
   }
@@ -296,7 +407,13 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
     if (isDraft) { this.guardarBorrador(); return; }
     if (this.bloqueado()) return;
     const errors = this.validar(4); this.errores.set(errors);
-    if (Object.keys(errors).length) { this.error.set('Revise los campos señalados antes de presentar.'); this.enfocar('saip-errores'); return; }
+    if (Object.keys(errors).length) {
+      const destino = this.pasoConFalta(errors);
+      if (destino !== this.step()) this.step.set(destino);
+      this.error.set('Revise los campos señalados antes de presentar.');
+      this.subir('saip-errores');
+      return;
+    }
     this.error.set(''); this.confirmacion = this.capturarEnvio(); this.confirmModalAbierto.set(true);
   }
   private capturarEnvio(clave: string = crypto.randomUUID()): Envio {
@@ -344,6 +461,7 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
         this.operacionPendiente.set(false);
         this.loading.set(false);
         this.estadoEnvio.set('confirmada');
+        this.retirarBorradorPresentado();
         this.error.set('');
         this.successModalAbierto.set(true);
       },
@@ -423,7 +541,7 @@ export class NuevaSaipComponent implements OnInit, OnDestroy {
         this.recepcionEsperada = r; this.recepcionId.set(r.id); this.solicitudCreada.set(r.solicitud as Solicitud); this.expedienteCreado.set(r.solicitud.expediente!);
         envio.archivos.forEach((a, i) => { a.estado = 'registrado'; a.documento = r.documentos[i]; });
         this.archivosEnviados.set([...envio.archivos]); this.documentosConsultados.set(r.documentos); this.operacionPendiente.set(false);
-        this.estadoEnvio.set('confirmada'); this.error.set(''); if (!yaConfirmada) this.successModalAbierto.set(true);
+        this.estadoEnvio.set('confirmada'); this.retirarBorradorPresentado(); this.error.set(''); if (!yaConfirmada) this.successModalAbierto.set(true);
       },
       error: error => { if (this.actual(gen) && this.envio === envio) {
         this.loading.set(false);

@@ -412,6 +412,10 @@ public class AutorizacionRecursosService {
         return funcionario.getEntidad().getId();
     }
 
+    public Ciudadano ciudadanoDeLaSesion() {
+        return obtenerCiudadanoActual();
+    }
+
     private Ciudadano obtenerCiudadanoActual() {
         Long usuarioId = IdentidadUsuario.usuarioId(obtenerAutenticacion());
         return ciudadanoRepository.findById(usuarioId)

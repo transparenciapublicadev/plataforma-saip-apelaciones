@@ -113,6 +113,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, resourceMatchers("/api/solicitudes")).hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PATCH, resourceMatchers("/api/solicitudes")).hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.DELETE, resourceMatchers("/api/solicitudes")).hasRole("ADMINISTRADOR")
+                        .requestMatchers("/api/borradores-saip", "/api/borradores-saip/**").hasRole("CIUDADANO")
 
                         .requestMatchers(HttpMethod.GET, resourceMatchers("/api/respuestas")).hasAnyRole("CIUDADANO", "FUNCIONARIO", "TTAIP", "ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, resourceMatchers("/api/respuestas")).hasAnyRole("FUNCIONARIO", "ADMINISTRADOR")

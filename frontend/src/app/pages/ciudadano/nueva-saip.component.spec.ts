@@ -6,6 +6,7 @@ import { signal } from '@angular/core';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { NuevaSaipComponent } from './nueva-saip.component';
 import { SolicitudService } from '../../services/solicitud.service';
+import { BorradorSaipService } from '../../services/borrador-saip.service';
 import { EntidadService } from '../../services/entidad.service';
 import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
@@ -53,6 +54,14 @@ describe('NuevaSaipComponent', () => {
     navigate: vi.fn()
   };
 
+  const mockBorradores = {
+    obtener: vi.fn(() => of({ id: 9 })),
+    crear: vi.fn(() => of({ id: 9 })),
+    actualizar: vi.fn(() => of({ id: 9 })),
+    eliminar: vi.fn(() => of(undefined)),
+    listar: vi.fn(() => of([]))
+  };
+
   beforeEach(async () => {
     vi.clearAllMocks();
     localStorage.clear();
@@ -65,7 +74,8 @@ describe('NuevaSaipComponent', () => {
         { provide: SolicitudService, useValue: mockSolicitudService },
         { provide: EntidadService, useValue: mockEntidadService },
         { provide: AuthService, useValue: mockAuthService },
-        { provide: DocumentoService, useValue: mockDocumentoService }
+        { provide: DocumentoService, useValue: mockDocumentoService },
+        { provide: BorradorSaipService, useValue: mockBorradores }
       ]
     }).compileComponents();
   });
@@ -136,7 +146,7 @@ describe('NuevaSaipComponent', () => {
     expect(component.aceptaCorreo).toBe(false);
   });
 
-  it('debería informar que el borrador permanece solo en memoria', () => {
+  it('guarda el borrador en la cuenta y no en el navegador', () => {
     const fixture = TestBed.createComponent(NuevaSaipComponent);
     const component = fixture.componentInstance;
     fixture.detectChanges();
@@ -146,7 +156,10 @@ describe('NuevaSaipComponent', () => {
     component.descripcion = 'Descripción preliminar';
     component.guardarBorrador();
 
+    expect(mockBorradores.crear).toHaveBeenCalled();
+    expect(JSON.stringify(mockBorradores.crear.mock.calls)).not.toContain('juan.perez');
     expect(component.draftModalAbierto()).toBe(true);
+    expect(component.borradorId()).toBe(9);
     expect(localStorage.getItem('saip.borrador')).toBeNull();
     expect(component.asunto).toBe('Borrador de prueba');
     expect(component.entidadId).toBe(2);

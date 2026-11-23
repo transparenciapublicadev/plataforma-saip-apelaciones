@@ -71,6 +71,12 @@ export const routes: Routes = [
     canActivate: [tipoUsuarioGuard('CIUDADANO')]
   },
   {
+    path: 'ciudadano/borradores',
+    title: 'Borradores de solicitud | Yaiku',
+    loadComponent: () => import('./pages/ciudadano/borradores-saip.component').then(m => m.BorradoresSaipComponent),
+    canActivate: [tipoUsuarioGuard('CIUDADANO')]
+  },
+  {
     path: 'ciudadano/solicitud/:expediente',
     title: 'Detalle de solicitud | Yaiku',
     loadComponent: () => import('./pages/ciudadano/solicitud-detalle.component').then(m => m.SolicitudDetalleComponent),
