@@ -3,7 +3,9 @@ package pe.gob.saip.backend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -328,10 +330,30 @@ class DocumentoServiceTest {
         when(documentoRepository.findByIdDocumentoAndEstado(99L, Documento.EstadoDocumento.ACTIVO))
                 .thenReturn(Optional.of(documento));
 
+        when(documentoRepository.idsPorObjetoYEstado(StorageProviderType.LOCAL, documento.getStorageKey(),
+                Documento.EstadoDocumento.ACTIVO)).thenReturn(List.of(99L));
+
         service.eliminar(99L);
 
         verify(autorizacion).verificarAdministrador();
         verify(storageProvider).delete("2026/06/opaque.txt");
+        assertThat(documento.getEstado()).isEqualTo(Documento.EstadoDocumento.ELIMINADO);
+        verify(documentoRepository).save(documento);
+    }
+
+    @Test
+    void eliminarConReferenciaEncauzadaConservaElObjetoFisico() {
+        Documento documento = documentoActivo();
+        when(documentoRepository.findByIdDocumentoAndEstado(99L, Documento.EstadoDocumento.ACTIVO))
+                .thenReturn(Optional.of(documento));
+        when(documentoRepository.idsPorObjetoYEstado(StorageProviderType.LOCAL, documento.getStorageKey(),
+                Documento.EstadoDocumento.ACTIVO)).thenReturn(List.of(99L, 100L));
+
+        service.eliminar(99L);
+
+        verify(documentoRepository).findFirstByStorageProviderAndStorageKeyOrderByIdDocumentoAsc(
+                StorageProviderType.LOCAL, documento.getStorageKey());
+        verify(storageProvider, never()).delete(anyString());
         assertThat(documento.getEstado()).isEqualTo(Documento.EstadoDocumento.ELIMINADO);
         verify(documentoRepository).save(documento);
     }
@@ -528,6 +550,9 @@ class DocumentoServiceTest {
         when(documentoRepository.findBySolicitud_IdSolicitudAndEstadoOrderByFechaCreacionDesc(
                 8L, Documento.EstadoDocumento.ACTIVO)).thenReturn(List.of(precision, respuesta, informe));
         when(documentoRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        when(documentoRepository.idsPorObjetoYEstado(StorageProviderType.LOCAL, precision.getStorageKey(),
+                Documento.EstadoDocumento.ACTIVO)).thenReturn(List.of(1L));
 
         service.copiarDocumentosDelAdministrado(origen, destino);
 

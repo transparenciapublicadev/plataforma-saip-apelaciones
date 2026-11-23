@@ -167,6 +167,8 @@ public class Apelacion {
         EN_CALIFICACION_2,
         NOTIFICACION_SEGUNDA_CALIFICACION,
         EN_RESOLUCION,
+        NOTIFICACION_RESOLUCION_FINAL,
+        EN_CUMPLIMIENTO,
         RESUELTO,
         TENER_POR_NO_PRESENTADO,
         CONCLUSION_SUSTRACCION_MATERIA,
@@ -260,6 +262,7 @@ public class Apelacion {
                estado == EstadoApelacion.RESUELTO_FUNDADO ||
                estado == EstadoApelacion.RESUELTO_FUNDADO_EN_PARTE ||
                estado == EstadoApelacion.RESUELTO_INFUNDADO ||
+               estado == EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE ||
                estado == EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE ||
                estado == EstadoApelacion.RESUELTO_IMPROCEDENTE ||
                estado == EstadoApelacion.RESUELTO_ESTESE_A_LO_RESUELTO ||

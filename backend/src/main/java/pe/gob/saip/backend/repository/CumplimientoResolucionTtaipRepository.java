@@ -1,6 +1,7 @@
 package pe.gob.saip.backend.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import pe.gob.saip.backend.model.entity.CumplimientoResolucionTtaip;
 
@@ -11,6 +12,16 @@ import java.util.Optional;
 
 @Repository
 public interface CumplimientoResolucionTtaipRepository extends JpaRepository<CumplimientoResolucionTtaip, Long> {
+
+    Optional<CumplimientoResolucionTtaip> findByExpediente_IdExpedienteTtaipAndIdNotificacionInicioIsNotNull(Long expedienteId);
+
+    @Query("""
+        select c.idCumplimiento from CumplimientoResolucionTtaip c
+        where c.idNotificacionInicio is not null and c.estadoCumplimiento = 'PENDIENTE'
+            and c.fechaLimiteCumplimiento < :hoy
+        order by c.apelacion.idApelacion
+        """)
+    List<Long> buscarDocumentalesVencidos(LocalDate hoy);
 
     List<CumplimientoResolucionTtaip> findByExpediente_IdExpedienteTtaipOrderByFechaRequerimientoCumplimientoDesc(
             Long expedienteId
@@ -26,7 +37,7 @@ public interface CumplimientoResolucionTtaipRepository extends JpaRepository<Cum
             Collection<CumplimientoResolucionTtaip.EstadoCumplimiento> estados
     );
 
-    List<CumplimientoResolucionTtaip> findByEstadoCumplimientoInAndFechaLimiteCumplimientoBefore(
+    List<CumplimientoResolucionTtaip> findByEstadoCumplimientoInAndFechaLimiteCumplimientoBeforeAndIdNotificacionInicioIsNull(
             Collection<CumplimientoResolucionTtaip.EstadoCumplimiento> estados,
             LocalDate fechaReferencia
     );

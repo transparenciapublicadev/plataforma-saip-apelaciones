@@ -80,7 +80,7 @@ public class PanelConsultaService {
             catch(IllegalArgumentException ex){throw new IllegalArgumentException("Estado de listado no válido");}
         }
         etapa=blank(etapa); if("todas".equals(etapa)||"todos".equals(etapa))etapa=null;
-        Set<String> stages=apelaciones?Set.of("elevacion","calificacion1","subsanacion","calificacion2","resolucion","notificaciones","resueltos","otras")
+        Set<String> stages=apelaciones?Set.of("elevacion","calificacion1","subsanacion","calificacion2","resolucion","notificaciones","cumplimiento","resueltos","otras")
             :alcance.ciudadanoId()!=null?Set.of("accion","proceso","respondidas","apelar","tribunal","resueltas","otras")
             :Set.of("san","hoy","semana","plazo","precision","respondidas","derivada","desconocido");
         if(etapa!=null&&!stages.contains(etapa))throw new IllegalArgumentException("Etapa no válida para este panel");
@@ -120,13 +120,16 @@ public class PanelConsultaService {
         return guardada != null ? guardada : Solicitud.oficinaIndicada(str(r, "descripcion"));
     }
     private PanelApelacionDTO apelacion(Map<String,Object> r) {
+        Integer diasBase = diasBaseResolucion(r);
         return new PanelApelacionDTO(id(r,"a_id"),str(r,"a_expediente"),str(r,"a_fundamentos"),str(r,"a_estado"),str(r,"a_resultado"),text(r,"a_fecha"),
             id(r,"a_solicitud_id"),str(r,"a_solicitud_expediente"),str(r,"a_solicitud_asunto"),id(r,"a_ciudadano_id"),str(r,"a_ciudadano_nombre"),
             id(r,"a_entidad_id"),str(r,"a_entidad_nombre"),str(r,"entidad_externa_nombre"),str(r,"resumen_solicitud_original"),str(r,"tipo_origen"),
             str(r,"numero_solicitud_externa"),str(r,"calificacion_primera"),str(r,"calificacion_segunda"),"resueltos".equals(str(r,"a_etapa")),str(r,"a_etapa"),
             id(r,"id_expediente_ttaip")==null?null:new PanelApelacionDTO.PanelExpedienteDTO(id(r,"id_expediente_ttaip"),id(r,"id_sala_ttaip")==null?null:new PanelOpcionDTO(id(r,"id_sala_ttaip"),str(r,"sala_nombre"))),
             resolution(r,"rf","RESOLUCION_FINAL"),resolution(r,"r1","PRIMERA_CALIFICACION"),resolution(r,"r2","SEGUNDA_CALIFICACION"),clock(r),
-            plazoPrimeraCalificacion(r), plazoResolucion(r), Boolean.TRUE.equals(r.get("actos_pendientes")), Boolean.TRUE.equals(r.get("informacion_pendiente")), Boolean.TRUE.equals(r.get("descargos_pendientes")));
+            plazoPrimeraCalificacion(r), plazoResolucion(r, diasBase), diasBase, day(r, "inicio_segunda_calificacion"), plazoCumplimiento(r),
+            flag(r, "respuesta_cumplimiento_disponible"), flag(r, "cumplimiento_remitido"),
+            flag(r, "actos_pendientes"), flag(r, "informacion_pendiente"), flag(r, "descargos_pendientes"));
     }
     private PanelApelacionDTO.PanelPlazoPrimeraCalificacionDTO plazoPrimeraCalificacion(Map<String,Object> row) {
         if (!"EN_CALIFICACION_1".equals(str(row,"a_estado")) || id(row,"id_expediente_ttaip") == null
@@ -134,6 +137,7 @@ public class PanelConsultaService {
             return null;
         }
         LocalDate recepcion = date(row,"a_recepcion_tribunal");
+        if (recepcion == null) recepcion = day(row, "a_apertura_tribunal");
         LocalDate hoy = calendario.hoy();
         if (recepcion == null || recepcion.isAfter(hoy)) {
             return null;
@@ -145,15 +149,44 @@ public class PanelConsultaService {
         int diasRestantes = vencido ? 0 : calendario.contarDiasHabiles(desde, limite);
         return new PanelApelacionDTO.PanelPlazoPrimeraCalificacionDTO(diasRestantes, vencido, suspendidos, limite);
     }
-    private PanelApelacionDTO.PanelPlazoResolucionDTO plazoResolucion(Map<String,Object> fila) {
-        LocalDate inicio = day(fila, "inicio_resolucion_entidad");
+    private Integer diasBaseResolucion(Map<String,Object> fila) {
+        String estado = str(fila, "a_estado");
+        if (!"EN_RESOLUCION".equals(estado) && !"NOTIFICACION_SEGUNDA_CALIFICACION".equals(estado)) return null;
+        String decision = str(fila, id(fila, "r2_id") != null ? "r2_decision" : "r1_decision");
+        if (decision == null) {
+            decision = str(fila, "calificacion_segunda");
+            if (decision == null) decision = str(fila, "calificacion_primera");
+        }
+        return "ADMISIBLE".equals(decision) || "ADMITIDO".equals(decision)
+                ? ExpedienteTtaipService.PLAZO_BASE_RESOLUCION : ExpedienteTtaipService.PLAZO_RESOLUCION_SIN_ADMISION;
+    }
+
+    private PanelApelacionDTO.PanelPlazoResolucionDTO plazoResolucion(Map<String,Object> fila, Integer diasBase) {
+        if (diasBase == null) return null;
+        LocalDate inicio = diasBase == ExpedienteTtaipService.PLAZO_BASE_RESOLUCION
+                ? day(fila, "inicio_resolucion_entidad") : day(fila, "a_recepcion_tribunal");
+        if (inicio == null && diasBase == ExpedienteTtaipService.PLAZO_RESOLUCION_SIN_ADMISION) {
+            inicio = day(fila, "a_apertura_tribunal");
+        }
         if (inicio == null) return null;
         Number suspension = (Number) fila.get("dias_adicionales_resolucion");
         int diasAdicionales = suspension == null ? 0 : suspension.intValue();
-        LocalDate limite = ExpedienteTtaipService.limiteDocumental(inicio, diasAdicionales);
+        LocalDate limite = ExpedienteTtaipService.limiteResolucion(inicio, diasBase, diasAdicionales);
         LocalDate hoy = calendario.hoy();
         return new PanelApelacionDTO.PanelPlazoResolucionDTO(DiasHabilesUtil.diasHabilesVigentes(inicio, limite, hoy),
                 hoy.isAfter(limite), diasAdicionales, limite);
+    }
+
+    private PanelApelacionDTO.PanelPlazoCumplimientoDTO plazoCumplimiento(Map<String,Object> fila) {
+        if (!"EN_CUMPLIMIENTO".equals(str(fila, "a_estado")) || flag(fila, "cumplimiento_remitido")) return null;
+        LocalDate inicio = day(fila, "inicio_cumplimiento");
+        LocalDate limite = day(fila, "limite_cumplimiento");
+        if (inicio == null || limite == null) return null;
+        LocalDate hoy = calendario.hoy();
+        boolean vencido = hoy.isAfter(limite);
+        LocalDate desde = hoy.isAfter(inicio) ? hoy.minusDays(1) : inicio;
+        int restantes = vencido ? 0 : calendario.contarDiasHabiles(desde, limite, id(fila, "a_entidad_id"));
+        return new PanelApelacionDTO.PanelPlazoCumplimientoDTO(restantes, vencido, limite);
     }
 
     private PanelApelacionDTO.PanelResolucionDTO resolution(Map<String,Object> r,String prefix,String type) {

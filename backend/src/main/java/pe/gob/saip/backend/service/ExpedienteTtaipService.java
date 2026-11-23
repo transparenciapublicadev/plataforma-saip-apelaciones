@@ -55,6 +55,7 @@ public class ExpedienteTtaipService {
     private final CumplimientoResolucionTtaipRepository cumplimientoRepository;
     private final InicioPlazoSubsanacionTtaipService inicioPlazoSubsanacion;
     private final DocumentosOficialesTtaipService documentosOficiales;
+    private final CumplimientoDocumentalTtaipService cumplimientoDocumental;
 
     public ExpedienteTtaipService(ExpedienteTtaipRepository expedienteRepository,
                                   SalaTtaipRepository salaRepository,
@@ -68,7 +69,8 @@ public class ExpedienteTtaipService {
                                   SuspensionPlazoTtaipRepository suspensionRepository,
                                   CumplimientoResolucionTtaipRepository cumplimientoRepository,
                                   InicioPlazoSubsanacionTtaipService inicioPlazoSubsanacion,
-                                  DocumentosOficialesTtaipService documentosOficiales) {
+                                  DocumentosOficialesTtaipService documentosOficiales,
+                                  CumplimientoDocumentalTtaipService cumplimientoDocumental) {
         this.expedienteRepository = expedienteRepository;
         this.salaRepository = salaRepository;
         this.miembroService = miembroService;
@@ -82,6 +84,7 @@ public class ExpedienteTtaipService {
         this.cumplimientoRepository = cumplimientoRepository;
         this.inicioPlazoSubsanacion = inicioPlazoSubsanacion;
         this.documentosOficiales = documentosOficiales;
+        this.cumplimientoDocumental = cumplimientoDocumental;
     }
 
     @Transactional
@@ -278,6 +281,9 @@ public class ExpedienteTtaipService {
                 responsable,
                 "NOTIFICACION-" + saved.getId() + ":ACUSE:" + estadoAcuse
         );
+        if (esNotificacionFinalPendiente(saved) && "ENTREGADA".equals(saved.getEstado())) {
+            cumplimientoDocumental.alAcreditarNotificacion(saved, request.fechaAcuse());
+        }
         return saved;
     }
 
@@ -320,7 +326,16 @@ public class ExpedienteTtaipService {
                 responsable,
                 "NOTIFICACION-" + saved.getId() + ":VALIDACION_MANUAL"
         );
+        if (esNotificacionFinalPendiente(saved)) {
+            cumplimientoDocumental.alAcreditarNotificacion(saved, request.fechaEficacia());
+        }
         return saved;
+    }
+
+    private static boolean esNotificacionFinalPendiente(NotificacionTtaip n) {
+        return n.getCedula() != null && n.getCedula().getResolucion() != null
+                && n.getCedula().getResolucion().getTipoResolucion() == Resolucion.TipoResolucion.RESOLUCION_FINAL
+                && CumplimientoDocumentalTtaipService.esperaNotificaciones(n.getExpediente());
     }
 
     @Transactional(readOnly = true)
@@ -689,6 +704,11 @@ public class ExpedienteTtaipService {
         ExpedienteTtaip expediente = buscarExpediente(expedienteId);
         Resolucion resolucion = buscarResolucion(resolucionId);
         validarResolucionFundadaDelExpediente(expediente, resolucion);
+        if (expediente.getApelacion().getEstado() == Apelacion.EstadoApelacion.NOTIFICACION_RESOLUCION_FINAL
+                || cumplimientoRepository.findByExpediente_IdExpedienteTtaipAndIdNotificacionInicioIsNotNull(expedienteId).isPresent()) {
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException(
+                    "El seguimiento documental se habilita al acreditar las notificaciones de la resolución final");
+        }
 
         if (cumplimientoRepository.existsByResolucion_IdResolucionAndEstadoCumplimientoIn(
                 resolucionId,
@@ -871,7 +891,7 @@ public class ExpedienteTtaipService {
     @Transactional
     public List<CumplimientoResolucionTtaip> procesarCumplimientosVencidos() {
         List<CumplimientoResolucionTtaip> vencidos = cumplimientoRepository
-                .findByEstadoCumplimientoInAndFechaLimiteCumplimientoBefore(
+                .findByEstadoCumplimientoInAndFechaLimiteCumplimientoBeforeAndIdNotificacionInicioIsNull(
                         estadosCumplimientoActivos(),
                         LocalDate.now());
 
@@ -991,6 +1011,9 @@ public class ExpedienteTtaipService {
     private void validarCumplimientoDelExpediente(Long expedienteId, CumplimientoResolucionTtaip cumplimiento) {
         if (cumplimiento.getExpediente() == null || !expedienteId.equals(cumplimiento.getExpediente().getId())) {
             throw new IllegalArgumentException("El seguimiento de cumplimiento no pertenece al expediente TTAIP indicado");
+        }
+        if (cumplimiento.getIdNotificacionInicio() != null) {
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException("Use el flujo de cumplimiento documental del expediente");
         }
     }
 
@@ -1337,26 +1360,34 @@ public class ExpedienteTtaipService {
         return calcularFechaLimiteResolucion(expediente, true);
     }
 
-    private LocalDate calcularFechaLimiteResolucion(ExpedienteTtaip expediente, boolean soloDocumental) {
+    private LocalDate calcularFechaLimiteResolucion(ExpedienteTtaip expediente, boolean consulta) {
         Resolucion admision = resolucionAdmision(expediente);
         boolean documental = admision != null && admision.isActosDocumentales();
-        if (!documental && soloDocumental) return expediente.getFechaLimiteResolucion();
-        LocalDate inicio = documental ? fechaEficazEntidad(expediente, admision) : fechaInicioPlazoResolucion(expediente);
+        boolean usarInicioAcreditado = documental || consulta;
+        LocalDate inicio;
+        if (usarInicioAcreditado) {
+            inicio = admision != null ? fechaEficazEntidad(expediente, admision)
+                    : expediente.getFechaApertura() == null ? null : expediente.getFechaApertura().toLocalDate();
+        } else {
+            inicio = fechaInicioPlazoResolucion(expediente);
+        }
         if (inicio == null) return null;
         int suspendidos = suspensionRepository.findByExpediente_IdExpedienteTtaipOrderByFechaInicioSuspensionAsc(expediente.getId())
                 .stream()
                 .filter(s -> s.getEtapaComplementaria() == null || s.getEtapaComplementaria() == Resolucion.TipoResolucion.RESOLUCION_FINAL)
-                .filter(s -> !documental || s.getMotivoSuspension() != SuspensionPlazoTtaip.MotivoSuspension.DESCARGOS_ENTIDAD)
+                .filter(s -> !usarInicioAcreditado || s.getMotivoSuspension() != SuspensionPlazoTtaip.MotivoSuspension.DESCARGOS_ENTIDAD)
                 .mapToInt(s -> s.getDiasSuspendidos() == null ? 0 : s.getDiasSuspendidos())
                 .sum();
-        return documental ? limiteDocumental(inicio, suspendidos) : DiasHabilesUtil.sumarDiasHabiles(inicio, 10 + suspendidos);
+        int diasBase = usarInicioAcreditado && admision != null ? PLAZO_BASE_RESOLUCION : PLAZO_RESOLUCION_SIN_ADMISION;
+        return limiteResolucion(inicio, diasBase, suspendidos);
     }
 
     static final int DIAS_DESCARGOS = 7;
-    static final int PLAZO_BASE_RESOLUCION = 10 + DIAS_DESCARGOS;
+    static final int PLAZO_RESOLUCION_SIN_ADMISION = 10;
+    static final int PLAZO_BASE_RESOLUCION = PLAZO_RESOLUCION_SIN_ADMISION + DIAS_DESCARGOS;
 
-    static LocalDate limiteDocumental(LocalDate fechaEficazEntidad, int suspensionesAdicionales) {
-        return DiasHabilesUtil.sumarDiasHabiles(fechaEficazEntidad, PLAZO_BASE_RESOLUCION + suspensionesAdicionales);
+    static LocalDate limiteResolucion(LocalDate inicio, int diasBase, int suspensionesAdicionales) {
+        return DiasHabilesUtil.sumarDiasHabiles(inicio, diasBase + suspensionesAdicionales);
     }
 
     private LocalDate fechaEficazEntidad(ExpedienteTtaip expediente, Resolucion admision) {

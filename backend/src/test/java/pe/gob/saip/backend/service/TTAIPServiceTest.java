@@ -8,10 +8,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import pe.gob.saip.backend.model.dto.ResolucionRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
+import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.model.entity.Resolucion;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,7 +45,7 @@ class TTAIPServiceTest {
     TTAIPService ttaipService;
 
     @Test
-    void declararEsteseALoResuelto_enResolucion_debeCerrarConDecisionEspecial() {
+    void declararEsteseALoResuelto_registraDecisionEspecialPendienteDeNotificacion() {
         Apelacion apelacion = crearApelacion(Apelacion.EstadoApelacion.EN_RESOLUCION);
         when(transiciones.bloquear(10L)).thenReturn(apelacion);
         when(expedienteTtaipService.prepararResolucion(any(Resolucion.class)))
@@ -66,13 +66,14 @@ class TTAIPServiceTest {
         assertThat(resolucion.getTipoResolucion()).isEqualTo(Resolucion.TipoResolucion.RESOLUCION_FINAL);
         assertThat(resolucion.getFundamentoLegal()).contains("27444");
         assertThat(resolucion.getObservaciones()).contains("Resolución previa");
-        assertThat(apelacion.getEstado()).isEqualTo(Apelacion.EstadoApelacion.RESUELTO_ESTESE_A_LO_RESUELTO);
+        assertThat(apelacion.getEstado()).isEqualTo(Apelacion.EstadoApelacion.NOTIFICACION_RESOLUCION_FINAL);
+        assertThat(apelacion.isResuelta()).isFalse();
         assertThat(apelacion.getResultado()).isEqualTo("ESTESE_A_LO_RESUELTO");
         verify(expedienteTtaipService).registrarResolucion(resolucion);
     }
 
     @Test
-    void declararNulidadDelActo_enResolucion_debeCerrarConDecisionEspecial() {
+    void declararNulidadDelActo_registraDecisionEspecialPendienteDeNotificacion() {
         Apelacion apelacion = crearApelacion(Apelacion.EstadoApelacion.EN_RESOLUCION);
         when(transiciones.bloquear(11L)).thenReturn(apelacion);
         when(expedienteTtaipService.prepararResolucion(any(Resolucion.class)))
@@ -91,7 +92,8 @@ class TTAIPServiceTest {
         Resolucion resolucion = resolucionCaptor.getValue();
         assertThat(resolucion.getDecision()).isEqualTo(Resolucion.DecisionResolucion.NULIDAD_DEL_ACTO);
         assertThat(resolucion.getObservaciones()).contains("retrotraer");
-        assertThat(apelacion.getEstado()).isEqualTo(Apelacion.EstadoApelacion.RESUELTO_NULIDAD_ACTO);
+        assertThat(apelacion.getEstado()).isEqualTo(Apelacion.EstadoApelacion.NOTIFICACION_RESOLUCION_FINAL);
+        assertThat(apelacion.isResuelta()).isFalse();
         assertThat(apelacion.getResultado()).isEqualTo("NULIDAD_DEL_ACTO");
         verify(expedienteTtaipService).registrarResolucion(resolucion);
     }
@@ -115,8 +117,12 @@ class TTAIPServiceTest {
     }
 
     @Test
-    void declararFundado_enResolucion_debeCerrarConDecisionFundadoYPersistir() {
+    void declararFundado_registraDecisionPendienteDeNotificacion() {
         Apelacion apelacion = crearApelacion(Apelacion.EstadoApelacion.EN_RESOLUCION);
+        var entidad = new Entidad();
+        entidad.setIdEntidad(3L);
+        entidad.setNombre("Entidad de prueba");
+        apelacion.setEntidadApelada(entidad);
         when(transiciones.bloquear(10L)).thenReturn(apelacion);
         when(expedienteTtaipService.prepararResolucion(any(Resolucion.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -125,7 +131,7 @@ class TTAIPServiceTest {
         ttaipService.declararFundado(10L, new ResolucionRequest(
                 "Se fundan los extremos del pedido de información.",
                 "Norma de transparencia y Ley 27806.",
-                "Entregar información en 3 días hábiles.",
+                "Entregar información conforme a la resolución.",
                 11L,
                 true));
 
@@ -135,9 +141,22 @@ class TTAIPServiceTest {
         assertThat(resolucion.getDecision()).isEqualTo(Resolucion.DecisionResolucion.FUNDADO);
         assertThat(resolucion.getTipoResolucion()).isEqualTo(Resolucion.TipoResolucion.RESOLUCION_FINAL);
         assertThat(resolucion.getIniciarProcesoDisciplinario()).isTrue();
-        assertThat(apelacion.getEstado()).isEqualTo(Apelacion.EstadoApelacion.RESUELTO_FUNDADO);
+        assertThat(apelacion.getEstado()).isEqualTo(Apelacion.EstadoApelacion.NOTIFICACION_RESOLUCION_FINAL);
+        assertThat(apelacion.isResuelta()).isFalse();
         assertThat(apelacion.getResultado()).isEqualTo("FUNDADO");
         verify(expedienteTtaipService).registrarResolucion(resolucion);
+    }
+
+    @Test
+    void declararFundado_requiereIdentificarALaEntidadObligada() {
+        Apelacion apelacion = crearApelacion(Apelacion.EstadoApelacion.EN_RESOLUCION);
+        when(transiciones.bloquear(10L)).thenReturn(apelacion);
+
+        assertThatThrownBy(() -> ttaipService.declararFundado(10L, new ResolucionRequest(
+                "Se fundan los extremos del pedido de información.", null, null, null, false)))
+                .isInstanceOf(pe.gob.saip.backend.exception.ConflictoEstadoException.class)
+                .hasMessageContaining("entidad obligada");
+        verify(resolucionService, never()).save(any());
     }
 
     private Apelacion crearApelacion(Apelacion.EstadoApelacion estado) {
