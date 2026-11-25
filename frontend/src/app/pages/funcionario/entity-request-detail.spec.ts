@@ -317,10 +317,10 @@ describe('EntityRequestDetail — relaciones, registros y contexto', () => {
       observaciones: [{ id: 8, solicitudId: 101, estado: 'SUBSANADA', motivoObservacion: 'Aclare qué documentos solicita.' }]
     })));
     const f = page();
-    const observation = f.nativeElement.querySelector('[role=tabpanel] details') as HTMLDetailsElement;
-    expect(observation.open).toBe(false);
-    observation.querySelector('summary')?.click();
-    expect(observation.open).toBe(true);
+    f.componentInstance.activeTab.set('observacion');
+    f.detectChanges();
+    const observation = f.nativeElement.querySelector('[role=tabpanel]') as HTMLElement;
+    expect(observation.textContent).toContain('Observación de la entidad');
     expect(observation.textContent).toContain('Aclare qué documentos solicita.');
   });
   it('el último día y la respuesta tardía conservan las condiciones del servidor', () => {
