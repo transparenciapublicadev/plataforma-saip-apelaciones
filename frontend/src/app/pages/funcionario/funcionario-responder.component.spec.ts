@@ -9,7 +9,7 @@ import { BehaviorSubject, of, throwError, Subject } from 'rxjs';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Entidad } from '../../models/entidad.model';
 import { Solicitud } from '../../models/solicitud.model';
-import { hoyLima } from '../../models/calendario.model';
+import { hoyLima, sumarHabiles } from '../../models/calendario.model';
 import { AuthService } from '../../services/auth.service';
 import { DocumentoService } from '../../services/documento.service';
 import { EntidadService } from '../../services/entidad.service';
@@ -581,20 +581,22 @@ describe('FuncionarioResponderComponent UI integrada (cronograma y cupón de pag
     expect(root.querySelector('#fecha-comunicacion-ampliacion')).toBeNull();
     expect(root.textContent).toContain('Se comunica hoy');
     expect(root.textContent).toContain('17/11/2026');
+    const topeDesdeHoy = sumarHabiles('2026-11-17', 30);
+    const fueraDeHoy = sumarHabiles('2026-11-17', 31);
     expect(root.querySelector('#cronograma-fecha-0')?.getAttribute('min')).toBe('2026-11-17');
-    expect(root.querySelector('#cronograma-fecha-0')?.getAttribute('max')).toBe('2026-12-17');
+    expect(root.querySelector('#cronograma-fecha-0')?.getAttribute('max')).toBe(topeDesdeHoy);
     expect(root.textContent).toContain('Desde hoy, 17/11/2026');
-    expect(root.textContent).toContain('como máximo 30 días');
+    expect(root.textContent).toContain('como máximo 30 días hábiles');
     expect(c.hitos().every(h => !h.cierre)).toBe(true);
     expect(c.hitos().at(-1)?.fecha).toBe('');
     expect(root.textContent).not.toContain('queda fija');
     expect(root.textContent).not.toContain('Esta fecha es el vencimiento');
     expect(root.textContent).not.toContain('Elija una fecha posterior a la entrega 1');
 
-    c.actualizarHitoFecha(0, '2026-12-20');
+    c.actualizarHitoFecha(0, fueraDeHoy);
     fixture.detectChanges();
-    expect(root.querySelector('#cronograma-fecha-error-0')?.textContent).toContain('30 días desde hoy');
-    expect(root.querySelector('#cronograma-fecha-error-0')?.textContent).toContain('17/12/2026');
+    expect(root.querySelector('#cronograma-fecha-error-0')?.textContent).toContain('30 días hábiles desde hoy');
+    expect(root.querySelector('#cronograma-fecha-error-0')?.textContent).toContain(topeDesdeHoy.slice(8) + '/' + topeDesdeHoy.slice(5, 7) + '/' + topeDesdeHoy.slice(0, 4));
 
     c.actualizarHitoFecha(0, '2027-02-12');
     fixture.detectChanges();
@@ -610,27 +612,29 @@ describe('FuncionarioResponderComponent UI integrada (cronograma y cupón de pag
     c.quitarHito(2);
     expect(c.hitos()[1].fecha).toBe('');
     fixture.detectChanges();
+    const topeSegunda = sumarHabiles('2026-12-15', 30);
     expect(root.querySelector('#cronograma-fecha-1')?.getAttribute('min')).toBe('2026-12-16');
-    expect(root.querySelector('#cronograma-fecha-1')?.getAttribute('max')).toBe('2027-01-14');
+    expect(root.querySelector('#cronograma-fecha-1')?.getAttribute('max')).toBe(topeSegunda);
     c.actualizarHitoFecha(1, '2026-12-15');
     fixture.detectChanges();
     expect(root.querySelector('#cronograma-fecha-error-1')?.textContent).toContain('15/12/2026');
 
-    c.actualizarHitoFecha(1, '2027-01-15');
+    c.actualizarHitoFecha(1, sumarHabiles('2026-12-15', 31));
     fixture.detectChanges();
-    expect(root.querySelector('#cronograma-fecha-error-1')?.textContent).toContain('30 días');
-    c.actualizarHitoFecha(1, '2027-01-14');
+    expect(root.querySelector('#cronograma-fecha-error-1')?.textContent).toContain('30 días hábiles');
+    c.actualizarHitoFecha(1, topeSegunda);
     c.actualizarHitoEntregable(1, 'Segundo bloque');
     c.handleSubmit();
     expect(c.confirmModalAbierto()).toBe(true);
-    expect(c.respuestaConfirmSummary()).toContainEqual({ label: 'Entrega 2 · 14/01/2027', value: 'Segundo bloque' });
+    const entregaDos = `${topeSegunda.slice(8)}/${topeSegunda.slice(5, 7)}/${topeSegunda.slice(0, 4)}`;
+    expect(c.respuestaConfirmSummary()).toContainEqual({ label: `Entrega 2 · ${entregaDos}`, value: 'Segundo bloque' });
     c.confirmarAccion();
     expect(solicitudes.registrarAmpliacion).toHaveBeenCalledWith(12, expect.objectContaining({
       fechaNotificacionAmpliacion: '2026-11-17',
       diasHabilesAdicionales: 50,
       cronograma: [
         expect.objectContaining({ numeroEntrega: 1, fechaProgramada: '2026-12-15' }),
-        expect.objectContaining({ numeroEntrega: 2, fechaProgramada: '2027-01-14' })
+        expect.objectContaining({ numeroEntrega: 2, fechaProgramada: topeSegunda })
       ]
     }));
     expect(c.respuestaSuccessTitle()).toBe('Ampliación del plazo registrada');

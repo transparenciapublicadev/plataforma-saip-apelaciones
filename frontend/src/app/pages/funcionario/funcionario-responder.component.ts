@@ -29,6 +29,7 @@ import { DocumentoService } from '../../services/documento.service';
 import { catchError, firstValueFrom, of, Subscription } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { problemDetailsMessage } from '../../utils/problem-details.util';
 import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 import { avisoDocumentosEncauzados, procedenciaEncauzada, ProcedenciaDocumental } from '../../utils/procedencia-encauzada';
@@ -120,7 +121,7 @@ export const CAUSALES_DENEGATORIA = [
     ReferenceTabsDirective, CommonModule,
     FormsModule,
     RouterLink,
-    StatusBadgeComponent,
+    StatusBadgeComponent, YaikuCargandoComponent,
     ReferenceConfirmModalComponent,
     ReferenceSuccessModalComponent,
     ReferenceComboboxComponent,
@@ -412,7 +413,7 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     const hoy = this.previsionVigente()?.hoy ?? null;
     const previa = this.fechaParcialVecina(index, -1);
     const ancla = previa ?? hoy;
-    let max = ancla ? desplazarDia(ancla, DIAS_CALENDARIO_ENTRE_ENTREGAS) : limite;
+    let max = ancla ? sumarHabiles(ancla, DIAS_HABILES_ENTRE_ENTREGAS) : limite;
     if (max > limite) max = limite;
     const posterior = this.fechaParcialVecina(index, 1);
     if (posterior) {
@@ -440,9 +441,9 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
     if (this.hitos().slice(0, index).some(h => !h.fecha)) return 'Complete antes la fecha de la entrega anterior.';
     const hoy = this.previsionVigente()?.hoy;
     if (!this.fechaParcialVecina(index, -1) && hoy && min === hoy) {
-      return `Desde hoy, ${fechaDmy(hoy)}, hasta el ${fechaDmy(max)}. Este calendario admite como máximo 30 días. La última entrega la elige usted y puede quedar antes del vencimiento (${fechaDmy(limite)}).`;
+      return `Desde hoy, ${fechaDmy(hoy)}, hasta el ${fechaDmy(max)}. Este calendario admite como máximo 30 días hábiles: no se cuentan sábados, domingos ni feriados. La última entrega la elige usted y puede quedar antes del vencimiento (${fechaDmy(limite)}).`;
     }
-    return `Elija del ${fechaDmy(min ?? max)} al ${fechaDmy(max)}. Entre una entrega y la siguiente no pueden pasar más de 30 días.`;
+    return `Elija del ${fechaDmy(min ?? max)} al ${fechaDmy(max)}. Entre una entrega y la siguiente no pueden pasar más de 30 días hábiles.`;
   }
 
   private fechaParcialVecina(index: number, sentido: -1 | 1): string | null {
@@ -639,11 +640,11 @@ export class FuncionarioResponderComponent implements OnInit, OnDestroy {
       if (max && hito.fecha > max) {
         const previa = this.fechaParcialVecina(index, -1);
         const ancla = previa ?? hoy;
-        const topeTreinta = desplazarDia(ancla, DIAS_CALENDARIO_ENTRE_ENTREGAS);
+        const topeTreinta = sumarHabiles(ancla, DIAS_HABILES_ENTRE_ENTREGAS);
         if (hito.fecha > topeTreinta) {
           return previa
-            ? `Cada entrega puede quedar hasta 30 días después de la anterior (${fechaDmy(previa)}). Elija hasta el ${fechaDmy(topeTreinta)}.`
-            : `Esta entrega solo puede programarse dentro de los 30 días desde hoy (${fechaDmy(ancla)}). Elija hasta el ${fechaDmy(topeTreinta)}.`;
+            ? `Cada entrega puede quedar hasta 30 días hábiles después de la anterior (${fechaDmy(previa)}). Elija hasta el ${fechaDmy(topeTreinta)}.`
+            : `Esta entrega solo puede programarse dentro de los 30 días hábiles desde hoy (${fechaDmy(ancla)}). Elija hasta el ${fechaDmy(topeTreinta)}.`;
         }
         const posterior = this.fechaParcialVecina(index, 1);
         if (posterior && hito.fecha >= posterior) return `Elija una fecha anterior a la siguiente entrega (${fechaDmy(posterior)}).`;
@@ -2107,7 +2108,7 @@ function fechaDmy(iso: string): string {
   return `${dia}/${mes}/${anio}`;
 }
 
-const DIAS_CALENDARIO_ENTRE_ENTREGAS = 30;
+const DIAS_HABILES_ENTRE_ENTREGAS = 30;
 
 function desplazarDia(iso: string, dias: number): string {
   const [anio, mes, dia] = iso.split('-').map(Number);

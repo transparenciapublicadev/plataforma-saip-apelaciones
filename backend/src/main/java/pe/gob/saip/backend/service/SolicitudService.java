@@ -46,7 +46,6 @@ import static pe.gob.saip.backend.config.ClockConfig.ZONA_LIMA;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -651,7 +650,7 @@ public class SolicitudService {
     private static final int DIAS_HABILES_ENCAUZAMIENTO = 4;
     private static final int UMBRAL_CRONOGRAMA = 30;
     private static final int DIAS_HABILES_PARA_COMUNICAR_AMPLIACION = 2;
-    private static final int DIAS_CALENDARIO_ENTRE_ENTREGAS = 30;
+    private static final int DIAS_HABILES_ENTRE_ENTREGAS = 30;
 
     @Transactional(readOnly = true)
     public PrevisionAmpliacionDTO preverAmpliacion(Long solicitudId, int dias) {
@@ -1227,8 +1226,8 @@ public class SolicitudService {
                     throw new IllegalArgumentException("La entrega %d debe programarse después de la entrega %d"
                             .formatted(entrega.numeroEntrega(), anterior.numeroEntrega()));
                 }
-                if (ChronoUnit.DAYS.between(anterior.fechaProgramada(), entrega.fechaProgramada()) > DIAS_CALENDARIO_ENTRE_ENTREGAS) {
-                    throw new IllegalArgumentException("La entrega %d no puede programarse a más de 30 días de la entrega %d"
+                if (entrega.fechaProgramada().isAfter(DiasHabilesUtil.sumarDiasHabiles(anterior.fechaProgramada(), DIAS_HABILES_ENTRE_ENTREGAS))) {
+                    throw new IllegalArgumentException("La entrega %d no puede programarse a más de 30 días hábiles de la entrega %d"
                             .formatted(entrega.numeroEntrega(), anterior.numeroEntrega()));
                 }
             }

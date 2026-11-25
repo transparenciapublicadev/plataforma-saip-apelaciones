@@ -1,10 +1,7 @@
 <div class="min-h-screen bg-background">
   @if (loadingSolicitud()) {
     <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
-      <div class="form-shell p-16 text-center" role="status" aria-live="polite">
-        <div class="w-8 h-8 border-2 border-[var(--brand-700)] border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p class="mt-4 text-muted-foreground">Cargando solicitud...</p>
-      </div>
+      <app-yaiku-cargando mensaje="Cargando solicitud..." />
     </div>
   } @else if (solicitud(); as sol) {
     <div class="relative bg-brand-gradient text-white overflow-hidden">
@@ -415,7 +412,7 @@
                 @if (usarCronograma() || cronogramaRequerido()) {
                   <div class="rounded-lg p-4 space-y-3" style="background: var(--card); border: 1px solid var(--border)">
                     <span class="eyebrow">Cronograma de entrega <span class="req">*</span></span>
-                    <p class="text-sm text-muted-foreground">Cada entrega en un día posterior a la anterior y a no más de 30 días. Usted elige la fecha de la última entrega; puede ser anterior o igual al vencimiento de la ampliación.</p>
+                    <p class="text-sm text-muted-foreground">Cada entrega en un día posterior a la anterior y a no más de 30 días hábiles. No se cuentan sábados, domingos ni feriados. Usted elige la fecha de la última entrega; puede ser anterior o igual al vencimiento de la ampliación.</p>
                     @for (h of hitos(); track $index) {
                       @let errorFecha = erroresFechaHitos()[$index];
                       <div class="grid grid-cols-1 sm:grid-cols-[180px_1fr_auto] gap-2 items-end">
@@ -964,7 +961,7 @@
               <p role="note" class="text-sm text-foreground/80 rounded-md p-3 leading-relaxed" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">{{ avisoDocumentosEncauzados() }}</p>
             }
             @if (loadingSolicitud()) {
-              <p class="text-sm text-muted-foreground">Cargando documentos del expediente…</p>
+              <app-yaiku-cargando mensaje="Cargando documentos del expediente…" />
             }
 
             @if (!loadingSolicitud() && todosDocumentosAdministrado().length === 0) {

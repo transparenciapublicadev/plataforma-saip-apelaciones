@@ -520,6 +520,8 @@ class SolicitudServiceTest {
         when(ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(eq(1L), anyList()))
                 .thenReturn(false);
 
+        LocalDate primera = hoy.plusDays(10);
+        LocalDate segunda = DiasHabilesUtil.sumarDiasHabiles(primera, 31);
         assertThatThrownBy(() -> solicitudService.registrarAmpliacion(
                         1L,
                         new RegistrarAmpliacionPlazoRequest(
@@ -528,13 +530,13 @@ class SolicitudServiceTest {
                                 hoy,
                                 "Funcionario",
                                 List.of(
-                                        new RegistrarEntregaParcialRequest(1, "Primer bloque", hoy.plusDays(10), null),
-                                        new RegistrarEntregaParcialRequest(2, "Segundo bloque", hoy.plusDays(41), null)
+                                        new RegistrarEntregaParcialRequest(1, "Primer bloque", primera, null),
+                                        new RegistrarEntregaParcialRequest(2, "Segundo bloque", segunda, null)
                                 )
                         )
                 ))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("más de 30 días");
+                .hasMessageContaining("30 días hábiles");
         verify(ampliacionRepository, never()).save(any());
     }
 

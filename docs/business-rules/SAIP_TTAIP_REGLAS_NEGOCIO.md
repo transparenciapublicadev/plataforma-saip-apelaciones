@@ -127,12 +127,12 @@ Cuando el ciudadano seleccione casilla electronica como medio de notificacion, e
 
 - Si el pedido es amplio o requiere gran volumen de informacion, la entidad puede pedir ampliacion.
 - Cuando el plazo supera los 30 dias habiles, se incluye un cronograma de entregas parciales progresivas (Mapa Integral, proceso de atencion SAIP; Reglamento de la Ley 27806, art. 23.3).
-- El incumplimiento de una fecha del cronograma constituye denegatoria. El art. 23.3 no fija un intervalo maximo entre entregas. El criterio de requisitos vigente limita ese intervalo a 30 dias calendario entre una fecha programada y la siguiente, incluida la ultima entrega del vencimiento.
+- El incumplimiento de una fecha del cronograma constituye denegatoria. El art. 23.3 no fija un intervalo maximo entre entregas. El criterio de producto vigente limita ese intervalo a 30 dias habiles entre una fecha programada y la siguiente: no se cuentan sabados, domingos ni feriados del calendario institucional. La ultima entrega la elige la entidad y puede ser anterior o igual al vencimiento de la ampliacion.
 - La ampliacion se comunica como maximo hasta el dia habil 2 de atencion, contado desde el dia siguiente de la presentacion o de la subsanacion. La fecha de esa comunicacion es la del registro.
 - Si no se notifica dentro de ese limite, se mantiene el plazo ordinario de 10 dias habiles.
 - Implementacion actual: `AmpliacionPlazoSolicitud` registra motivo, informe, fecha de solicitud, fecha de notificacion, plazo original, plazo ampliado, estado, responsable, trazabilidad y `CronogramaEntregaParcialSolicitud`.
 - El backend solo permite registrar ampliacion en estados `RECEPCIONADA` o `EN_REVISION`, sin otra ampliacion activa, y actualiza `Solicitud.fechaLimite` al ultimo hito valido del cronograma.
-- El cronograma registra numero de entrega, descripcion, fecha programada, estado, fecha real de entrega y observacion. Las fechas programadas deben ir en orden y cada una a no mas de 30 dias calendario de la anterior. En el formulario la ultima entrega queda fija en el vencimiento ampliado y las anteriores se eligen antes de esa fecha.
+- El cronograma registra numero de entrega, descripcion, fecha programada, estado, fecha real de entrega y observacion. Las fechas programadas deben ir en orden y cada una a no mas de 30 dias habiles de la anterior. En el formulario la ultima entrega la elige la entidad y puede quedar antes del vencimiento ampliado.
 - La coleccion Postman incluye el flujo positivo y un caso negativo de entrega previa a la comunicacion, con Problem Details RFC 9457.
 
 ### Encauzamiento
