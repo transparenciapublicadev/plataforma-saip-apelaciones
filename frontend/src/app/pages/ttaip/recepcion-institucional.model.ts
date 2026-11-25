@@ -38,7 +38,7 @@ export function consultarRecepcionInstitucional(service: TtaipService, ap: Apela
         || data.recepcionId === undefined || data.fechaRecepcion === undefined || data.fundamentosAdicionales === undefined)
         return { estado: 'incompleto', mensaje: 'La consulta no proporcionó información completa de la recepción.' };
       return recepcionCompatible(data, ap, req) ? { estado: data.estado === 'RECIBIDA' ? 'disponible' : 'ausente', datos: data,
-        mensaje: data.estado === 'RECIBIDA' ? 'Recepción registrada consultada por requerimiento.' : 'El servidor no registra recepción para este requerimiento.' }
+        mensaje: data.estado === 'RECIBIDA' ? 'Recepción registrada consultada por requerimiento.' : 'No hay una subsanación presentada para este requerimiento.' }
         : { estado: 'incompatible', mensaje: 'La consulta de recepción contiene datos incompletos o relaciones incompatibles.' };
     }),
     catchError(error => of<ConsultaRecepcion>({ estado: 'error', mensaje: falloConsulta(error, 'la recepción de subsanación').mensaje })),

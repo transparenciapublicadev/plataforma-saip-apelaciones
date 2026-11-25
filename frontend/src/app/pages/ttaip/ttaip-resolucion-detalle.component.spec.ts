@@ -185,14 +185,14 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
   it('historial omitido se distingue de historial confirmado vacío y la línea muestra solo hitos registrados', () => {
     const f = page(data({ fechaSubsanacion: '2026-10-01', expedienteTtaip: { ...data().expedienteTtaip, historial: undefined } }));
     expect(f.componentInstance.detalle().historial.error).not.toBe('');
-    expect(f.componentInstance.timeline().map(t => t.titulo)).toEqual(['Apelación presentada', '1ra calificación · INADMISIBLE']);
+    expect(f.componentInstance.timeline().map(t => t.titulo)).toEqual(['1ra calificación · INADMISIBLE', 'Apelación presentada']);
     expect(f.componentInstance.timeline().some(t => t.titulo.startsWith('Subsanación'))).toBe(false);
   });
   it('un acuse del historial no sustituye los hitos del proceso ni usa la fecha de apertura', () => {
     const c = page(data({ fechaSubsanacion: '2026-10-01', expedienteTtaip: { ...data().expedienteTtaip, fechaApertura: '2026-01-01', historial: [{ id: 61, tipoEvento: 'ACUSE_NOTIFICACION_REGISTRADO', fechaEvento: '2026-10-03T12:00:00', descripcion: 'Acuse registrado', referencia: 'NOTIFICACION-91:ACUSE:ENTREGADO' }] } })).componentInstance;
     expect(c.historialExpediente()[0].id).toBe(61);
     expect(c.timeline().some(t => t.id === 61 || t.fecha.includes('03/10/2026') || t.fecha.includes('01/01/2026'))).toBe(false);
-    expect(c.timeline().map(t => t.titulo)).toEqual(['Apelación presentada', '1ra calificación · INADMISIBLE']);
+    expect(c.timeline().map(t => t.titulo)).toEqual(['1ra calificación · INADMISIBLE', 'Apelación presentada']);
   });
   it('una fecha de actuación ausente no se sustituye por hoy ni se llama pendiente', () => {
     const c = page(data({ resolucionPrimeraCalificacion: { ...first, fechaResolucion: null } })).componentInstance;
@@ -258,7 +258,7 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
   });
   it('las pestañas tienen panel asociado y recorrido de teclado sin escrituras', () => {
     const f = page(); const tab = f.nativeElement.querySelector('#detail-tab-apelacion') as HTMLButtonElement; tab.focus(); tab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); f.detectChanges();
-    const next = f.nativeElement.querySelector('#detail-tab-subprocesos') as HTMLButtonElement; expect(document.activeElement).toBe(next); expect(next.getAttribute('aria-selected')).toBe('true'); expect(f.nativeElement.querySelector('#detail-panel-subprocesos')).not.toBeNull(); expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
+    const next = f.nativeElement.querySelector('#detail-tab-subsanacion') as HTMLButtonElement; expect(document.activeElement).toBe(next); expect(next.getAttribute('aria-selected')).toBe('true'); expect(f.nativeElement.querySelector('#detail-panel-subsanacion')).not.toBeNull(); expect(http.match(r => r.method !== 'GET')).toHaveLength(0);
   });
   it('el Tribunal recibe los escritos en su propia pestaña del expediente', () => {
     const f = page(data({ estado: 'EN_RESOLUCION' }));

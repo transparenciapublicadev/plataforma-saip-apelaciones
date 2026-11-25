@@ -57,6 +57,11 @@ describe('V4: continuidad del detalle TTAIP', () => {
     const f = pending(data);
     http.match(receiptUrl).forEach(r => r.flush(receipt)); f.detectChanges(); return f;
   }
+  function abrirSubsanacion(f: { nativeElement: HTMLElement; detectChanges(): void }): void {
+    const tab = Array.from(f.nativeElement.querySelectorAll('[role="tab"]')).find(boton => boton.textContent?.includes('Subsanación')) as HTMLButtonElement;
+    tab.click();
+    f.detectChanges();
+  }
   it('no declara inexistente una consulta institucional ya disponible', () => {
     expect(page().nativeElement.textContent).not.toContain('La consulta institucional de recepción de subsanación no está disponible');
   });
@@ -97,6 +102,7 @@ describe('V4: continuidad del detalle TTAIP', () => {
     const f = pending(); const req = http.expectOne(receiptUrl);
     expect(req.request.method).toBe('GET'); expect(req.request.headers.get('Authorization')).toBe('Bearer synthetic-ttaip-session');
     expect(f.componentInstance.recepcion().estado).toBe('cargando');
+    abrirSubsanacion(f);
     expect(f.nativeElement.querySelector('[aria-busy="true"]')).not.toBeNull();
     expect(f.componentInstance.navegacionSegunda()).toBe(false);
     http.expectNone(r => r.method !== 'GET'); http.expectNone(`${api}/apelaciones`);
@@ -109,10 +115,12 @@ describe('V4: continuidad del detalle TTAIP', () => {
       expect(f.componentInstance.recepcion().estado).toBe('disponible');
       expect(f.componentInstance.recepcion().datos?.recepcionId).toBe(111);
       expect(f.componentInstance.navegacionSegunda()).toBe(true);
+      abrirSubsanacion(f);
       expect(f.nativeElement.textContent).toContain(documentos.length ? 'Anexo sintético.pdf' : 'Recepción sin adjuntos');
-      // The authorized appeal includes two recorded milestones. The receipt adds no notification or advance.
+      expect(f.nativeElement.textContent).not.toContain('Recepción · ID');
+      // The authorized appeal includes two recorded milestones. The newest one is shown first.
       expect(f.componentInstance.timeline().map(event => [event.id, event.titulo])).toEqual([
-        [31, 'Apelación presentada'], [71, '1ra calificación · INADMISIBLE'],
+        [71, '1ra calificación · INADMISIBLE'], [31, 'Apelación presentada'],
       ]);
       http.expectNone(r => r.method !== 'GET');
     });
@@ -120,9 +128,11 @@ describe('V4: continuidad del detalle TTAIP', () => {
   it('solo un AUSENTE compatible confirma ausencia y permite reconsultar, sin habilitar registro', () => {
     const f = page(appeal(), { ...received(), estado: 'AUSENTE', recepcionId: null, fechaRecepcion: null, fundamentosAdicionales: null });
     expect(f.componentInstance.recepcion().estado).toBe('ausente');
-    expect(f.nativeElement.textContent).toContain('El servidor no registra recepción');
+    abrirSubsanacion(f);
+    expect(f.nativeElement.textContent).toContain('No hay una subsanación registrada');
+    expect(f.nativeElement.textContent).not.toContain('El servidor no registra recepción');
     expect(f.componentInstance.navegacionSegunda()).toBe(false);
-    const retry = Array.from(f.nativeElement.querySelectorAll('button')).find((b: any) => b.textContent.includes('Volver a consultar el contexto')) as HTMLButtonElement;
+    const retry = Array.from(f.nativeElement.querySelectorAll('button')).find((b: any) => b.textContent.includes('Actualizar consulta')) as HTMLButtonElement;
     retry.click(); f.detectChanges(); http.expectOne(`${api}/apelaciones/expediente/${code}`).flush(appeal()); f.detectChanges();
     http.expectOne(receiptUrl).flush(received()); f.detectChanges(); expect(f.componentInstance.navegacionSegunda()).toBe(true);
     http.expectNone(r => r.method !== 'GET');
@@ -135,6 +145,7 @@ describe('V4: continuidad del detalle TTAIP', () => {
       expect(f.componentInstance.recepcion().datos).toBeUndefined();
       expect(f.componentInstance.navegacionSegunda()).toBe(false);
       expect(f.nativeElement.textContent).not.toContain('El servidor no registra recepción');
+      abrirSubsanacion(f);
       expect(f.nativeElement.querySelector('[role="alert"]')).not.toBeNull();
     });
 
@@ -224,6 +235,24 @@ describe('V4: continuidad del detalle TTAIP', () => {
   it('resolución final previa impide ofrecer otro registro aunque el estado diga EN_RESOLUCION', () => {
     const data = { ...appeal(true), resolucion: { id: 101, tipoResolucion: 'RESOLUCION_FINAL', decision: 'INFUNDADO', cedulas: [] } } as any;
     expect(page(data).componentInstance.navegacionFinal()).toBe(false);
+  });
+
+  it('una inadmisible ya resuelta no consulta ni muestra la ausencia de subsanación', () => {
+    const f = pending({ ...appeal(), estado: 'RESUELTO_FUNDADO_EN_PARTE', resuelta: true });
+    http.expectNone(receiptUrl);
+    expect(f.componentInstance.requiereRecepcion()).toBe(false);
+    expect(f.nativeElement.textContent).not.toContain('No hay una subsanación');
+  });
+
+  it('la primera calificación improcedente no consulta una subsanación', () => {
+    const data = appeal();
+    data.estado = 'RESUELTO_IMPROCEDENTE';
+    data.calificacionPrimera = 'IMPROCEDENTE';
+    data.resolucionPrimeraCalificacion = { ...first, decision: 'IMPROCEDENTE' };
+    const f = pending(data);
+    http.expectNone(receiptUrl);
+    expect(f.componentInstance.requiereRecepcion()).toBe(false);
+    expect(f.nativeElement.textContent).not.toContain('Recepción de subsanación');
   });
 
   it('primera admisión conserva su continuidad sin inventar un requerimiento de subsanación', () => {

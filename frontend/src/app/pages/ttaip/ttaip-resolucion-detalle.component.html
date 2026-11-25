@@ -27,10 +27,7 @@
 
   <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
     @if (loading()) {
-      <div role="status" aria-live="polite" class="text-center py-16">
-        <div class="spinner spinner-lg mx-auto"></div>
-        <p class="mt-4 text-sm text-muted-foreground">Cargando expediente...</p>
-      </div>
+      <app-yaiku-cargando mensaje="Cargando expediente..." />
     } @else if (error()) {
       <div role="alert" class="alert alert-error p-6 text-center">
         <p>{{ error() }}</p><button type="button" class="btn-ghost-brand mt-3" (click)="cargarApelacion(expedienteDisplay())">Reintentar consulta</button>
@@ -38,11 +35,6 @@
     } @else {
       @if (coleccionesIncompletas().length) { <section class="rounded-lg p-4 border border-border text-sm" aria-label="Información incompleta">@for (issue of coleccionesIncompletas(); track $index) { <p role="status">{{ issue }}</p> }</section> }
       @if (actionUncertain()) { <section class="rounded-lg p-4 border border-border"><p role="alert" class="text-sm">La actuación tiene resultado incierto. No se repite automáticamente.</p><button type="button" class="btn-ghost-brand mt-2" (click)="recuperarActuacion()">Consultar actuación sin reenviar</button></section> }
-      @if (rolInstitucional() && requiereRecepcion()) {
-        <section class="rounded-lg p-4 border border-border" aria-label="Recepción de subsanación">
-          <app-recepcion-institucional [consulta]="recepcion()" (reintentar)="reintentarRecepcion()" />
-        </section>
-      }
       @if (navegacionPrimera() || navegacionSegunda() || navegacionFinal() || (rolInstitucional() && apelacion()?.estado === 'NOTIFICACION_SEGUNDA_CALIFICACION')) {
         <section class="space-y-2" aria-label="Actuaciones del expediente">
           @if (navegacionPrimera() || navegacionSegunda() || navegacionFinal()) {
@@ -173,7 +165,7 @@
                 }
 
                 @if (resolucionesExpediente().length > 1 && apelacion()?.resolucion?.tipoResolucion !== 'RESOLUCION_FINAL') {
-                  <div class="field"><label class="field-label" for="detail-selected-act">Actuación registrada</label><select id="detail-selected-act" class="field-input" [value]="selectedActId() || ''" (change)="seleccionarActuacion($any($event.target).value)"><option value="">Seleccione una actuación registrada</option>@for (act of resolucionesExpediente(); track act.id) { <option [value]="act.id">{{ act.tipoResolucion }} · {{ act.decision || 'Decisión no informada' }}</option> }</select></div>
+                  <div class="field"><label class="field-label" for="detail-selected-act">Actuación registrada</label><select id="detail-selected-act" class="field-input" [value]="selectedActId() || ''" (change)="seleccionarActuacion($any($event.target).value)"><option value="">Seleccione una actuación registrada</option>@for (act of resolucionesExpediente(); track act.id) { <option [value]="act.id">{{ act.decision ? etiquetaActuacion(act.tipoResolucion, act.decision) : etiquetaActuacion(act.tipoResolucion) + ' · Decisión no informada' }}</option> }</select></div>
                 }
                 @if (draftError()) { <p role="alert" class="text-sm text-destructive">{{ draftError() }}</p> }
                 <p role="note" class="text-xs text-muted-foreground">Copia de trabajo. No acredita firma ni emisión formal.</p>
@@ -187,6 +179,10 @@
                     Descargar resolución
                   </button>
                 </div>
+              </div>
+            } @else if (activeTab() === 'subsanacion' && rolInstitucional() && requiereRecepcion()) {
+              <div role="tabpanel" id="detail-panel-subsanacion" aria-labelledby="detail-tab-subsanacion" tabindex="0" class="p-6 animate-fade-in">
+                <app-recepcion-institucional [consulta]="recepcionVisible()" (reintentar)="reintentarRecepcion()" />
               </div>
             } @else if (activeTab() === 'subprocesos') {
               <div role="tabpanel" id="detail-panel-subprocesos" aria-labelledby="detail-tab-subprocesos" class="p-6 space-y-8 animate-fade-in">
@@ -344,9 +340,14 @@
                 }
               </div>
             } @else if (activeTab() === 'notificaciones') {
-              <div role="tabpanel" id="detail-panel-notificaciones" aria-labelledby="detail-tab-notificaciones" class="p-6 space-y-6 text-sm animate-fade-in">
+              <div role="tabpanel" id="detail-panel-notificaciones" aria-labelledby="detail-tab-notificaciones" class="p-6 space-y-8 text-sm animate-fade-in">
+                <div>
+                  <span class="eyebrow">Constancias y cédulas</span>
+                  <h3 class="font-display text-lg mt-1">Notificaciones del expediente</h3>
+                  <p class="text-xs text-muted-foreground mt-1 max-w-2xl">Revise el destino, el medio y los documentos de cada aviso. El envío técnico no acredita la notificación eficaz.</p>
+                </div>
                 @if (expedienteTtaip(); as exp) {
-                  <app-actos-notificacion [expedienteId]="exp.id" [expediente]="expedienteDisplay()" [tribunal]="rolInstitucional()"
+                  <app-actos-notificacion [expedienteId]="exp.id" [expediente]="expedienteDisplay()" [tribunal]="rolInstitucional()" [encabezado]="false"
                     (verExpediente)="cambiarTab('adjuntos')" (actualizado)="onDocumentoSubido()" />
                 }
                 @if (rolInstitucional()) {
@@ -366,7 +367,7 @@
                         <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2.5" style="border-color: var(--border)">
                           <div>
                             <div class="font-mono text-xs font-semibold">{{ resolucion.numeroResolucion || 'Resolución sin número oficial' }}</div>
-                            <div class="text-xs text-muted-foreground mt-0.5">{{ resolucion.tipoResolucion }} · {{ resolucion.decision }}</div>
+                            <div class="text-xs text-muted-foreground mt-0.5">{{ etiquetaActuacion(resolucion.tipoResolucion, resolucion.decision) }}</div>
                           </div>
                           <span class="pill">{{ nombreSalaResolucion(resolucion) }}</span>
                         </div>
@@ -392,7 +393,7 @@
                                     {{ cedula.destinatario === 'CIUDADANO' ? 'Ciudadano recurrente' : cedula.destinatario === 'ENTIDAD_PUBLICA' ? 'Entidad pública requerida' : 'Destinatario no informado' }}
                                   </div>
                                 </div>
-                                <span class="pill">{{ cedula.estado || 'Estado no registrado' }}</span>
+                                <span class="pill whitespace-nowrap shrink-0">{{ etiquetaEstado(cedula.estado) }}</span>
                               </div>
 
                               <div class="flex items-center gap-2 pt-1">
@@ -437,34 +438,36 @@
                 <div class="rule-ornament"></div>
 
                 <!-- SECCIÓN: Trazabilidad y Reprocesos -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
                     <h3 class="font-display text-base font-semibold tracking-wide">Trazabilidad del trámite</h3>
-                    <div class="mt-3 space-y-3">
-                      @for (evento of historialVisible(); track evento.id) {
-                        <div class="text-xs border-b pb-2 last:border-0 last:pb-0" style="border-color: var(--border)">
-                          <div class="flex items-center justify-between gap-2">
-                            <span class="flex min-w-0 items-center gap-2 font-semibold">
-                              <span class="inline-flex size-6 shrink-0 items-center justify-center rounded-md"
-                                style="color: var(--brand-700); background: var(--brand-subtle)">
-                                @switch (iconoTrazabilidad(evento.tipoEvento)) {
-                                  @case ('inicio') { <svg aria-hidden="true" lucideFolderOpen class="size-3.5"></svg> }
-                                  @case ('resolucion') { <svg aria-hidden="true" lucideScale class="size-3.5"></svg> }
-                                  @case ('notificacion') { <svg aria-hidden="true" lucideMail class="size-3.5"></svg> }
-                                  @case ('estado') { <svg aria-hidden="true" lucideRefreshCw class="size-3.5"></svg> }
-                                  @default { <svg aria-hidden="true" lucideFileText class="size-3.5"></svg> }
-                                }
-                              </span>
-                              {{ etiquetaEvento(evento.tipoEvento) }}
-                            </span>
-                            <span class="font-mono text-muted-foreground">{{ evento.fechaEvento | date:'dd/MM/yyyy HH:mm' }}</span>
+                    <p class="text-xs text-muted-foreground mt-1">Lo más reciente aparece primero.</p>
+                    <ol class="mt-4">
+                      @for (evento of historialVisible(); track evento.id; let ultimo = $last) {
+                        <li class="relative pl-8" [class.pb-4]="!ultimo">
+                          @if (!ultimo) {
+                            <span class="absolute left-[11px] top-6 bottom-0 border-l border-dashed" style="border-color: var(--brand-200)"></span>
+                          }
+                          <span class="absolute left-0 top-0 inline-flex size-6 items-center justify-center rounded-full"
+                            style="color: #fff; background: var(--brand-700)">
+                            @switch (iconoTrazabilidad(evento.tipoEvento)) {
+                              @case ('inicio') { <svg aria-hidden="true" lucideFolderOpen class="size-3.5"></svg> }
+                              @case ('resolucion') { <svg aria-hidden="true" lucideScale class="size-3.5"></svg> }
+                              @case ('notificacion') { <svg aria-hidden="true" lucideMail class="size-3.5"></svg> }
+                              @case ('estado') { <svg aria-hidden="true" lucideRefreshCw class="size-3.5"></svg> }
+                              @default { <svg aria-hidden="true" lucideFileText class="size-3.5"></svg> }
+                            }
+                          </span>
+                          <div class="flex flex-wrap items-baseline justify-between gap-2">
+                            <p class="font-semibold leading-snug">{{ etiquetaEvento(evento.tipoEvento) }}</p>
+                            <time class="font-mono text-[11px] text-muted-foreground">{{ evento.fechaEvento | date:'dd/MM/yyyy HH:mm' }}</time>
                           </div>
-                          <p class="text-foreground/75 mt-1 leading-relaxed">{{ evento.descripcion || evento.referencia }}</p>
-                        </div>
+                          <p class="text-xs text-foreground/75 mt-1 leading-relaxed">{{ evento.descripcion || 'Sin detalle adicional.' }}</p>
+                        </li>
                       } @empty {
-                        <p class="text-xs text-muted-foreground">{{ detalle().historial.error || 'La consulta no devuelve eventos de historial.' }}</p>
+                        <li class="text-xs text-muted-foreground">{{ detalle().historial.error || 'La consulta no devuelve eventos de historial.' }}</li>
                       }
-                    </div>
+                    </ol>
                   </div>
 
                   <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
@@ -474,12 +477,12 @@
                         <div class="rounded-md p-3 text-xs" style="background: var(--background); border: 1px dashed var(--border)">
                           <div class="flex items-center justify-between gap-2">
                             <span class="font-mono font-semibold">{{ reproceso.numeroCedulaOriginal || 'Cédula sin número' }}</span>
-                            <span class="pill">{{ reproceso.estado || 'PENDIENTE' }}</span>
+                            <span class="pill whitespace-nowrap shrink-0">{{ etiquetaEstado(reproceso.estado || 'PENDIENTE') }}</span>
                           </div>
                           <div class="text-muted-foreground mt-1">
                             {{ reproceso.destinatario === 'CIUDADANO' ? 'Ciudadano' : 'Entidad pública' }} · intento {{ reproceso.numeroIntento || 1 }}
                           </div>
-                          <p class="text-foreground/75 mt-1 leading-relaxed">{{ reproceso.observacionReproceso || 'Reproceso registrado por el backend.' }}</p>
+                          <p class="text-foreground/75 mt-1 leading-relaxed">{{ reproceso.observacionReproceso || 'Reproceso registrado.' }}</p>
                         </div>
                       } @empty {
                         <p class="text-xs text-muted-foreground">{{ detalle().reprocesos.error || 'Sin reprocesos registrados para este expediente.' }}</p>
@@ -542,6 +545,7 @@
           </div>
 
           <div class="p-6">
+            <p class="text-xs text-muted-foreground mb-4">Lo más reciente aparece primero.</p>
             <ol class="relative">
               @for (evento of timeline(); track evento.id; let i = $index) {
                 <li class="relative pl-7 pb-5 last:pb-0" data-table-row>

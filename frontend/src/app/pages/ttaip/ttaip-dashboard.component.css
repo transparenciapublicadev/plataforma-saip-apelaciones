@@ -1,30 +1,15 @@
 :host {
   display: block;
 }
-.ttaip-dashboard { overflow-wrap: anywhere; }
+.ttaip-dashboard { overflow-wrap: break-word; }
 .ttaip-dashboard button:focus-visible, .ttaip-dashboard a:focus-visible,
 .ttaip-dashboard select:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 3px; }
-.tribunal-row { flex-wrap: wrap; }
-@media (min-width: 768px) { .tribunal-row { flex-wrap: nowrap; } }
-@media (max-width: 767px) { .tribunal-row > .flex-1 { flex-basis: calc(100% - 60px); } }
+.tribunal-row { flex-wrap: nowrap; align-items: center; }
+.expediente-cuerpo { flex: 1 1 auto; min-width: 0; }
+.expediente-cuerpo .code-chip { white-space: nowrap; }
+.fila-plazo, .fila-acciones { flex: 0 0 auto; }
+.fila-acciones { align-self: center; }
+.fila-acciones a { white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) {
   .ttaip-dashboard *, .ttaip-dashboard *::before, .ttaip-dashboard *::after { animation: none !important; transition: none !important; }
-}
-
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 9999px;
 }

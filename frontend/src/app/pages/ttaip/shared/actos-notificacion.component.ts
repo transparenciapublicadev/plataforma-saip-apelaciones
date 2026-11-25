@@ -5,6 +5,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { LucideMail } from '@lucide/angular';
+import { YaikuCargandoComponent } from '../../../shared/yaiku-cargando.component';
 import { enOrdenDeEnvio, TtaipDocumentoFilaComponent } from './ttaip-documento-fila.component';
 import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../../shared/document-preview-modal.component';
 import type { DocumentoMetadata } from '../../../models/documento.model';
@@ -41,7 +42,7 @@ function identificarAnexo(doc: DocumentoMetadata): [string, string] {
 
 @Component({
   selector: 'app-actos-notificacion',
-  imports: [MultiFileUploadZoneComponent, DatePipe, FormsModule, DocumentPreviewModalComponent, LucideMail, TtaipDocumentoFilaComponent],
+  imports: [MultiFileUploadZoneComponent, DatePipe, FormsModule, DocumentPreviewModalComponent, LucideMail, TtaipDocumentoFilaComponent, YaikuCargandoComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .revision-dialog {
@@ -53,12 +54,21 @@ function identificarAnexo(doc: DocumentoMetadata): [string, string] {
   `,
   template: `
     <section class="space-y-4">
-      <h3 class="font-display text-base font-semibold">Constancias, acuses y validación</h3>
+      @if (encabezado()) {
+        <div>
+          <span class="eyebrow">Constancias y acuses</span>
+          <h3 class="font-display text-base font-semibold mt-1">Notificaciones de la actuación</h3>
+        </div>
+      }
       @if (error()) {
         <p role="alert" class="text-sm text-destructive">{{ error() }}</p>
         <button type="button" class="btn-ghost-brand" (click)="consultar()">Consultar notificaciones</button>
       }
-      @if (ocupado()) { <p role="status" class="text-sm">Comprobando notificaciones…</p> }
+      @if (ocupado() && !bloques().length) {
+        <app-yaiku-cargando mensaje="Comprobando notificaciones…" />
+      } @else if (ocupado()) {
+        <p role="status" class="text-sm text-muted-foreground">Comprobando notificaciones…</p>
+      }
       @for (bloque of bloques(); track bloque.etapa) {
         <section class="overflow-hidden rounded-lg border border-border" [attr.aria-label]="etapas[bloque.etapa]">
           <header class="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-3">
@@ -68,19 +78,35 @@ function identificarAnexo(doc: DocumentoMetadata): [string, string] {
           <div class="grid gap-3 p-3" [class]="bloque.actos.length > 1 ? 'xl:grid-cols-2' : ''">
             @for (item of bloque.actos; track item.acto.id) {
               @let acto = item.acto;
-              <article class="min-w-0 rounded-lg border border-border bg-card p-4 text-sm space-y-3">
-                <div class="flex flex-wrap items-start justify-between gap-2">
+              <article class="min-w-0 rounded-lg border border-border bg-card p-4 text-sm space-y-4">
+                <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
-                    <h5 class="font-semibold">{{ acto.destinatario === 'CIUDADANO' ? 'Notificación al ciudadano' : 'Notificación a la entidad pública' }}</h5>
-                    <p class="text-xs text-muted-foreground">{{ acto.nombre }}</p>
+                    <p class="eyebrow">{{ acto.destinatario === 'CIUDADANO' ? 'Ciudadano' : 'Entidad pública' }}</p>
+                    <h5 class="font-display text-base mt-1 leading-snug">{{ acto.nombre }}</h5>
                   </div>
-                  <strong class="pill whitespace-normal">{{ estado(acto) }}</strong>
+                  <strong class="pill whitespace-nowrap shrink-0">{{ estado(acto) }}</strong>
                 </div>
-                <dl class="grid grid-cols-2 gap-2">
-                  <div><dt class="eyebrow">{{ acto.tipo === 'CARTA' ? 'Número de carta' : 'Número de cédula' }}</dt><dd class="font-mono">{{ acto.numero }}</dd></div>
-                  <div><dt class="eyebrow">Medio</dt><dd>{{ medios[acto.medio] || acto.medio || 'Pendiente' }}</dd></div>
-                  @if (acto.direccion) { <div class="col-span-2"><dt class="eyebrow">Destino</dt><dd class="break-all">{{ acto.direccion }}</dd></div> }
-                  @if (acto.fechaEficacia) { <div class="col-span-2"><dt class="eyebrow">Fecha eficaz</dt><dd>{{ acto.fechaEficacia | date:'dd/MM/yyyy' }}</dd></div> }
+                <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div class="rounded-md px-3 py-2" style="background: var(--background)">
+                    <dt class="eyebrow">{{ acto.tipo === 'CARTA' ? 'Número de carta' : 'Número de cédula' }}</dt>
+                    <dd class="font-mono mt-1 break-all">{{ acto.numero }}</dd>
+                  </div>
+                  <div class="rounded-md px-3 py-2" style="background: var(--background)">
+                    <dt class="eyebrow">Medio</dt>
+                    <dd class="mt-1">{{ medios[acto.medio] || acto.medio || 'Pendiente' }}</dd>
+                  </div>
+                  @if (acto.direccion) {
+                    <div class="rounded-md px-3 py-2 sm:col-span-2" style="background: var(--background)">
+                      <dt class="eyebrow">Destino</dt>
+                      <dd class="mt-1 break-all">{{ acto.direccion }}</dd>
+                    </div>
+                  }
+                  @if (acto.fechaEficacia) {
+                    <div class="rounded-md px-3 py-2 sm:col-span-2" style="background: var(--background)">
+                      <dt class="eyebrow">Fecha eficaz</dt>
+                      <dd class="mt-1">{{ acto.fechaEficacia | date:'dd/MM/yyyy' }}</dd>
+                    </div>
+                  }
                 </dl>
                 @if (editable(acto) && tribunal()) {
                   @if (editando() === acto.id) {
@@ -187,6 +213,7 @@ export class ActosNotificacionComponent {
   readonly expedienteId = input.required<number>();
   readonly expediente = input.required<string>();
   readonly tribunal = input(false);
+  readonly encabezado = input(true);
   readonly actualizado = output<void>();
   readonly verExpediente = output<void>();
   private readonly api = inject(TtaipActuacionesService);

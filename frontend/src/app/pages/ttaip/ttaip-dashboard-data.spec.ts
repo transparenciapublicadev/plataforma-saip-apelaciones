@@ -355,7 +355,47 @@ describe('TTAIPDashboard — datos y etapas respaldados', () => {
     expect(f.nativeElement.querySelectorAll('h1').length).toBe(1); expect(f.nativeElement.querySelector('[aria-pressed=true]')).not.toBeNull();
     expect(f.nativeElement.querySelector('[role=listitem] h3').textContent).toContain('Asunto extenso');
     expect(f.nativeElement.querySelector('a[href="/ttaip/cumplimiento"]')).not.toBeNull();
+    expect(f.nativeElement.querySelector('[aria-label^="Ver expediente"]')).not.toBeNull();
+    expect(f.nativeElement.textContent).not.toContain('Ver expediente');
     const stored = localStorage.getItem('usuario'); f.componentInstance.searchModel = 'consulta sensible'; f.detectChanges();
     expect(localStorage.getItem('usuario')).toBe(stored); expect(localStorage.length).toBe(1); expect(sessionStorage.length).toBe(0);
+  });
+  it('colorea cada expediente con su etapa, reserva ver expediente a los abiertos y explica el filtro de descargos', () => {
+    const f = page();
+    reply([
+      row({ estado: 'EN_CALIFICACION_1' }),
+      row({ id: 22, expediente: '00022-2026-JUS/TTAIP', estado: 'EN_SUBSANACION', solicitudAsunto: 'SAIP - NOTIFICACION FISICA CON TODAS LAS CASUISTICAS T1' }),
+      row({ id: 23, expediente: '00023-2026-JUS/TTAIP', estado: 'RESUELTO_FUNDADO' })
+    ]);
+    f.detectChanges();
+    const filas = [...f.nativeElement.querySelectorAll('[role=listitem]')] as HTMLElement[];
+    expect(filas[0].getAttribute('style')).toContain('var(--info)');
+    expect(filas[1].getAttribute('style')).toContain('var(--gold-dark)');
+    expect(filas[2].getAttribute('style')).toContain('var(--success)');
+    expect(filas[1].querySelector('h3')?.textContent).toContain('SAIP - NOTIFICACION FISICA');
+    expect(filas[0].querySelector('[aria-label^="Ver expediente"]')).not.toBeNull();
+    expect(filas[0].textContent).not.toContain('Ver expediente');
+    const acciones = filas[0].querySelector('.fila-acciones');
+    expect(filas[0].querySelector('.expediente-cuerpo .fila-acciones')).toBeNull();
+    expect(acciones?.parentElement).toBe(filas[0]);
+    expect(acciones?.querySelector('[aria-label^="Ver expediente"]')).not.toBeNull();
+    expect(filas[2].querySelector('[aria-label^="Ver expediente"]')).toBeNull();
+    const filtro = [...f.nativeElement.querySelectorAll('button')].find(boton => boton.textContent?.includes('Descargos de entidades')) as HTMLButtonElement;
+    filtro.click();
+    f.detectChanges();
+    const req = http.expectOne(panelRequest);
+    expect(req.request.params.get('descargosPresentados')).toBe('true');
+    expect(req.request.params.get('etapa')).toBe('todos');
+    req.flush(payload([row()], Number(req.request.params.get('pagina')), Number(req.request.params.get('tamano')), []));
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('No hay descargos de entidades en Todos los expedientes.');
+    expect(f.nativeElement.textContent).not.toContain('Sin coincidencias en esta etapa.');
+    const volver = [...f.nativeElement.querySelectorAll('button')].find(boton => boton.textContent?.includes('Volver a la cola de la etapa')) as HTMLButtonElement;
+    volver.click();
+    f.detectChanges();
+    const vuelta = http.expectOne(panelRequest);
+    expect(vuelta.request.params.has('descargosPresentados')).toBe(false);
+    vuelta.flush(payload([row()]));
+    f.destroy();
   });
 });

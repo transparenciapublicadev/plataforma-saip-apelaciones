@@ -24,6 +24,7 @@ import { DocumentUploadComponent } from '../../shared/document-upload.component'
 import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
 
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { resolucionPdf, buildResolucionBlob, DocContext, OfficialStage } from './shared/official-docs.util';
 import {
   LucideEye, LucideDownload, LucideBuilding2, LucideFolderOpen, LucideFileText,
@@ -33,7 +34,7 @@ import {
   LucideRefreshCw, LucideShieldCheck, LucideUser
 } from '@lucide/angular';
 
-type DetailTab = 'apelacion' | 'subprocesos' | 'requerimientos' | 'notificaciones' | 'adjuntos';
+type DetailTab = 'apelacion' | 'subsanacion' | 'subprocesos' | 'requerimientos' | 'notificaciones' | 'adjuntos';
 type TimelineIcon = 'check' | 'x' | 'alert';
 type SuspensionAdicional = 'INFORME_ORAL' | 'INFORMACION_COMPLEMENTARIA';
 type SuspensionSolicitante = 'CIUDADANO' | 'ENTIDAD_PUBLICA' | 'TTAIP';
@@ -58,7 +59,7 @@ import { RegistrarSuspensionTtaipPayload } from '../../models/resolucion.model';
 @Component({
   selector: 'app-ttaip-resolucion-detalle',
   imports: [PresentacionesAdmisionComponent, ActosNotificacionComponent, InformacionComplementariaComponent, CumplimientoDocumentalComponent,
-    CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent, StatusBadgeComponent,
+    CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent, StatusBadgeComponent, YaikuCargandoComponent,
     DocumentPreviewModalComponent, RecepcionInstitucionalComponent,
     LucideEye, LucideDownload, LucideScale,
     LucideMail, LucideGlobe,
@@ -110,6 +111,7 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
     const tribunal = this.rolInstitucional();
     return [
       { id: 'apelacion', label: 'Apelación' },
+      ...(tribunal && this.requiereRecepcion() ? [{ id: 'subsanacion' as const, label: 'Subsanación' }] : []),
       { id: 'subprocesos', label: tribunal ? 'Descargos y cumplimiento' : 'Requerimientos del Tribunal' },
       ...(tribunal ? [{ id: 'requerimientos' as const, label: 'Requerimientos del administrado y de la entidad' }] : []),
       { id: 'notificaciones', label: 'Notificaciones' },
@@ -128,8 +130,9 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   readonly cedulasExpediente = computed(() => this.detalle().cedulas.data ?? []);
   readonly notificacionesExpediente = computed(() => this.detalle().notificaciones.data ?? []);
   readonly historialExpediente = computed(() => this.detalle().historial.data ?? []);
-  readonly historialVisible = computed(() => this.historialExpediente()
-    .filter(evento => evento.tipoEvento !== 'SUSPENSION_PLAZO'));
+  readonly historialVisible = computed(() => [...this.historialExpediente()]
+    .filter(evento => evento.tipoEvento !== 'SUSPENSION_PLAZO')
+    .sort((a, b) => (b.fechaEvento || '').localeCompare(a.fechaEvento || '')));
   readonly reprocesosExpediente = computed(() => this.detalle().reprocesos.data ?? []);
   readonly descargosExpediente = computed(() => this.detalle().descargosEntidad.data ?? []);
   readonly suspensionesExpediente = computed(() => this.detalle().suspensionesPlazo.data ?? []);
@@ -146,9 +149,17 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   readonly requerimiento = computed(() => requerimientoConsultado(this.apelacion()));
   readonly requiereRecepcion = computed(() => {
     const ap = this.apelacion();
-    return !!ap && (ap.calificacionPrimera === 'INADMISIBLE' || ap.resolucionPrimeraCalificacion?.decision === 'INADMISIBLE'
-      || ap.resolucionSegundaCalificacion != null || ap.calificacionSegunda != null
-      || ['EN_CALIFICACION_2', 'NOTIFICACION_SEGUNDA_CALIFICACION'].includes(ap.estado));
+    if (!ap) return false;
+    const inadmisible = ap.calificacionPrimera === 'INADMISIBLE' || ap.resolucionPrimeraCalificacion?.decision === 'INADMISIBLE';
+    return inadmisible && ['EN_SUBSANACION', 'EN_CALIFICACION_2', 'NOTIFICACION_SEGUNDA_CALIFICACION', 'EN_RESOLUCION'].includes(ap.estado);
+  });
+  readonly recepcionVisible = computed<ConsultaRecepcion>(() => {
+    const base = this.recepcion();
+    if (base.estado !== 'ausente') return base;
+    const espera = this.apelacion()?.estado === 'EN_SUBSANACION';
+    return { ...base, mensaje: espera
+      ? 'El administrado todavía no presenta la subsanación. La consulta está completa: no hay un escrito recibido.'
+      : 'No hay una subsanación registrada para el requerimiento inadmisible. Sin ese escrito no corresponde una nueva calificación.' };
   });
   readonly recepcion = computed<ConsultaRecepcion>(() => {
     const revision = this.auth.cambiosSesion(); this.resourceRevision();
@@ -376,7 +387,7 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   private current(query: number): boolean { return query === this.documentQuery && this.contextoVigente(); }
   ngOnInit(): void { this.initialized = true; this.routeSub = this.route.paramMap.subscribe(p => {
     const tab = this.route.snapshot?.queryParamMap?.get('tab');
-    if (tab === 'notificaciones' || tab === 'subprocesos' || (tab === 'requerimientos' && this.rolInstitucional())) this.activeTab.set(tab);
+    if (tab === 'notificaciones' || tab === 'subprocesos' || tab === 'subsanacion' || (tab === 'requerimientos' && this.rolInstitucional())) this.activeTab.set(tab);
     this.cargarApelacion(p.get('expediente') || '');
   }); }
   ngOnDestroy(): void { this.destroyed = true; this.documentQuery++; this.limpiarRecepcion(); this.requests.unsubscribe(); this.routeSub.unsubscribe(); this.cerrarPreviewModal(); }
@@ -626,6 +637,21 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   }
 
   etiquetaEvento(value?: string | null): string { return this.formatEventoTtaip(value); }
+  etiquetaActuacion(tipo?: string | null, decision?: string | null): string {
+    const nombres: Record<string, string> = {
+      PRIMERA_CALIFICACION: 'Primera calificación',
+      SEGUNDA_CALIFICACION: 'Segunda calificación',
+      RESOLUCION_FINAL: 'Resolución final',
+    };
+    const clave = this.normalizeKey(tipo);
+    const nombre = clave ? (nombres[clave] || this.formatEventoTtaip(clave)) : 'Actuación';
+    return decision ? `${nombre} · ${this.formatDecision(decision)}` : nombre;
+  }
+  etiquetaEstado(value?: string | null): string {
+    const clave = this.normalizeKey(value);
+    if (!clave) return 'Estado no registrado';
+    return this.formatEventoTtaip(clave);
+  }
   iconoTrazabilidad(tipo?: string | null): 'inicio' | 'resolucion' | 'notificacion' | 'estado' | 'documento' {
     if (tipo === 'APERTURA_EXPEDIENTE') return 'inicio';
     if (tipo === 'RESOLUCION_EMITIDA') return 'resolucion';
@@ -649,7 +675,7 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
         id: primera.id,
         fecha: this.formatDateLabel(primera.fechaResolucion),
         titulo: `1ra calificación · ${this.formatDecision(apelacion.calificacionPrimera)}`,
-        descripcion: primera.observaciones || 'Calificación de admisibilidad registrada por el Tribunal.',
+        descripcion: 'Calificación de admisibilidad registrada por el Tribunal.',
         icon: this.iconForDecision(apelacion.calificacionPrimera),
       });
     }
@@ -659,7 +685,7 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
         id: -apelacion.id,
         fecha: 'Fecha no informada',
         titulo: 'Subsanación presentada',
-        descripcion: apelacion.fundamentosSubsanacion?.trim() || 'El administrado registró la subsanación.',
+        descripcion: 'El administrado registró el escrito de subsanación.',
         icon: 'check',
       });
     }
@@ -669,7 +695,7 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
         id: segunda.id,
         fecha: this.formatDateLabel(segunda.fechaResolucion),
         titulo: `2da calificación · ${this.formatDecision(apelacion.calificacionSegunda)}`,
-        descripcion: segunda.observaciones || 'Segunda calificación registrada tras la subsanación.',
+        descripcion: 'Segunda calificación registrada tras la subsanación.',
         icon: this.iconForDecision(apelacion.calificacionSegunda),
       });
     }
@@ -680,7 +706,7 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
         id: final.id,
         fecha: this.formatDateLabel(final.fechaResolucion || apelacion.expedienteTtaip?.fechaResolucionFinal),
         titulo: `Resolución final · ${this.formatDecision(decision)}`,
-        descripcion: final.fundamentos || 'El Tribunal registró la resolución final.',
+        descripcion: 'El Tribunal registró la resolución final.',
         icon: this.iconForDecision(decision),
       });
     }
@@ -703,7 +729,7 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
         });
       }
     }
-    return eventos;
+    return eventos.reverse();
   }
   private normalizeKey(value?: string | null): string {
     return (value || '')

@@ -12,6 +12,7 @@ import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { TourStep } from '../../core/guided-tour/guided-tour.model';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { PaginationComponent } from '../../shared/pagination.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import {
   StageKey, StageMeta, stages, positiveId, stageOf, readAppeals, recordedDate,
   computePlazoStatus, PlazoStatusResult, actionFor, finalDecision, clockText,
@@ -29,7 +30,7 @@ import {
 
 @Component({
   selector: 'app-ttaip-dashboard',
-  imports: [LucideEye,
+  imports: [LucideEye, YaikuCargandoComponent,
     RouterLink, FormsModule, DatePipe, DecimalPipe, StatusBadgeComponent, PaginationComponent,
     LucideGavel, LucideCompass, LucideLayers, LucideScale, LucideHourglass, LucideCheckCircle2,
     LucideSearch, LucideInbox, LucideArrowRight, LucideBuilding2, LucideActivity, LucideClock,
@@ -288,6 +289,9 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
     }
 
     const account = this.authService.obtenerSesion();
+    if (!account?.token && this.authService.cerrandoSesion?.()) {
+      this.error.set(''); this.loading.set(true); this.queryLoading.set(false); return;
+    }
     if (!account?.token || !positiveId(account.usuarioId) || !['TTAIP', 'ADMINISTRADOR'].includes(account.tipoUsuario || '')) {
       this.error.set('La sesión no permite consultar el panel del Tribunal. Utilice el acceso interno.');
       this.loading.set(false);
@@ -326,7 +330,7 @@ export class TtaipDashboardComponent implements OnInit, OnDestroy {
         this.queryLoading.set(false);
       },
       error: err => {
-        if (!current()) return;
+        if (!current() || this.authService.cerrandoSesion?.()) return;
         const messages: Record<number, string> = {
           400: 'La consulta no es válida.',
           401: 'La sesión no es válida. Inicie sesión de nuevo.',

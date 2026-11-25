@@ -63,10 +63,7 @@
 
   <div class="max-w-7xl mx-auto px-6 md:px-10 py-8">
     @if (loading()) {
-      <div class="text-center py-16" role="status" aria-live="polite">
-        <div class="spinner spinner-lg mx-auto" aria-hidden="true"></div>
-        <p class="mt-4 text-sm text-muted-foreground">Cargando expedientes del Tribunal…</p>
-      </div>
+      <app-yaiku-cargando mensaje="Cargando expedientes del Tribunal…" />
     } @else if (error() || !contextoVigente()) {
       <div class="alert alert-error p-6 text-center" role="alert">
         <p>{{ error() || 'La sesión cambió. Consulte de nuevo con la cuenta actual.' }}</p>
@@ -125,9 +122,7 @@
                   <svg aria-hidden="true" lucideChevronRight class="w-3 h-3 text-muted-foreground"></svg>
                 </span>
               }
-              @if (stageKey() === s.key) {
-                <span aria-hidden="true" class="absolute left-0 top-0 bottom-0 w-1" [style.background]="s.color"></span>
-              }
+              <span aria-hidden="true" class="absolute left-0 top-0 bottom-0 w-1" [style.background]="s.color"></span>
               <div class="flex items-start justify-between mb-1.5">
                 <span class="font-mono text-[11px] tracking-widest font-semibold" [style.color]="s.color">{{ idx.toString().padStart(2, '0') }}</span>
                 @switch (s.icon) {
@@ -174,13 +169,23 @@
                 </h2>
               </div>
               <button type="button" class="btn-ghost-brand" [attr.aria-pressed]="descargosPresentados()"
-                (click)="alternarFiltroDescargos()">Descargos de entidades</button>
+                [style.background]="descargosPresentados() ? 'var(--brand-subtle)' : null"
+                [style.box-shadow]="descargosPresentados() ? 'inset 0 0 0 1.5px var(--brand-700)' : null"
+                [attr.title]="descargosPresentados() ? 'Quitar el filtro y ver la cola de la etapa' : 'Dentro de la etapa elegida, muestra solo expedientes con descargos de la entidad'"
+                (click)="alternarFiltroDescargos()">{{ descargosPresentados() ? 'Viendo descargos' : 'Descargos de entidades' }}</button>
               <div class="relative w-full md:w-[300px] md:shrink-0">
                 <label for="tribunal-search" class="sr-only">Buscar por entidad, administrado o N° de expediente</label>
                 <svg aria-hidden="true" lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
                 <input id="tribunal-search" type="search" class="field-input !pl-9 !py-2 !text-sm w-full" placeholder="Buscar entidad, administrado o N°…" [(ngModel)]="searchModel" maxlength="120"/>
               </div>
             </div>
+
+            @if (descargosPresentados()) {
+              <div class="mx-4 mt-4 rounded-md px-3 py-2.5 text-xs leading-relaxed" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                <p>Filtro activo en <span class="font-semibold">{{ activeStage().label }}</span>: solo expedientes con descargos ya presentados por la entidad. La etapa no cambia.</p>
+                <button type="button" class="mt-1 font-semibold underline" (click)="alternarFiltroDescargos()">Volver a la cola de la etapa</button>
+              </div>
+            }
 
             <!-- Aviso para Etapa de Subsanación (Espera Externa) -->
             @if (activeStage().esperaExterna) {
@@ -195,26 +200,26 @@
             }
 
             <!-- Lista de Expedientes -->
-            <div class="p-3 md:p-4 space-y-2 max-h-[640px] overflow-y-auto custom-scrollbar" role="list">
+            <div class="p-3 md:p-4 space-y-2" role="list">
               @if (queryLoading()) {
-                <p role="status" class="text-center py-12 text-sm text-muted-foreground">Consultando expedientes del Tribunal…</p>
+                <app-yaiku-cargando mensaje="Consultando expedientes del Tribunal…" />
               }
               @for (item of queueItems(); track item.apelacion.id) {
-                <div role="listitem" class="tribunal-row rounded-lg p-4 flex flex-wrap md:flex-nowrap items-center gap-4 hover:bg-[color:var(--brand-subtle)] transition-colors"
+                <div role="listitem" class="tribunal-row rounded-lg p-4 flex items-center gap-4 hover:bg-[color:var(--brand-subtle)] transition-colors"
                      style="background: var(--card); border: 1px solid var(--border)"
-                     [style.border-left]="'3px solid ' + toneColor(item.status.tone)">
+                     [style.border-left]="'3px solid ' + item.stage.color">
                   <!-- Avatar Iniciales -->
                   <div class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
                     {{ item.iniciales }}
                   </div>
 
                   <!-- Datos del Expediente -->
-                  <div class="flex-1 min-w-0">
+                  <div class="expediente-cuerpo">
                     <div class="flex items-center gap-2 flex-wrap">
                       <a class="code-chip" [routerLink]="['/ttaip/apelacion', item.apelacion.expediente]">
                         {{ item.apelacion.expediente }}
                       </a>
-                      <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
+                      <span class="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
                             [style.background]="item.stage.bg" [style.color]="item.stage.color" [style.border]="'1px solid ' + item.stage.color">
                         {{ item.stage.isResolved && item.apelacion.cumplimientoRemitido ? 'Listo para archivo y publicación' : item.stage.shortLabel }}
                       </span>
@@ -229,7 +234,7 @@
                   </div>
 
                   @if (!item.stage.isResolved) {
-                    <div class="flex flex-col items-end gap-1.5 w-full md:w-auto md:min-w-[132px]">
+                    <div class="fila-plazo flex flex-col items-end gap-1.5 shrink-0 md:min-w-[132px]">
                       <div class="text-right">
                         <div class="font-display text-[22px] leading-none" [style.color]="item.status.informado ? toneColor(item.status.tone) : 'var(--muted-foreground)'">
                           {{ plazoLista(item) }}
@@ -255,19 +260,21 @@
                     </div>
                   }
 
-                  <!-- Botón de Acción Operativa -->
-                  <div class="flex items-center gap-2 shrink-0">
+                  <!-- Icono de ver expediente y, a continuación, la actuación de la etapa -->
+                  <div class="fila-acciones flex items-center gap-2 shrink-0">
                     @if (item.stage.esperaExterna) {
                       <span class="hidden lg:inline-flex items-center gap-1.5 text-xs text-gold-dark bg-[rgba(176,136,66,0.10)] px-3 py-1.5 rounded-lg border border-dashed border-gold-dark">
                         <svg aria-hidden="true" lucideHourglass class="w-3.5 h-3.5"></svg> {{ item.stageKey === 'cumplimiento' ? 'Esperando entidad' : 'Esperando administrado' }}
                       </span>
                     }
-                    <a class="btn-ghost-brand !px-3 !py-2" [routerLink]="['/ttaip/apelacion', item.apelacion.expediente]"
-                      [queryParams]="descargosPresentados() ? { tab: 'subprocesos' } : null"
-                      [attr.aria-label]="(descargosPresentados() ? 'Ver descargos de ' : 'Ver expediente ') + item.apelacion.expediente"
-                      [title]="descargosPresentados() ? 'Ver descargos' : 'Ver expediente'">
-                      <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg>
-                    </a>
+                    @if (!item.stage.isResolved) {
+                      <a class="btn-ghost-brand !px-3 !py-2" [routerLink]="['/ttaip/apelacion', item.apelacion.expediente]"
+                        [queryParams]="descargosPresentados() ? { tab: 'subprocesos' } : null"
+                        [attr.aria-label]="'Ver expediente ' + item.apelacion.expediente"
+                        title="Ver expediente">
+                        <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg>
+                      </a>
+                    }
                     <a [routerLink]="item.action.route" [queryParams]="item.action.tab ? { tab: item.action.tab } : null" [class]="item.action.primary ? 'btn-brand !px-4 !py-2 !text-[13px]' : 'btn-ghost-brand !px-3 !py-2 !text-[12px]'">
                       {{ item.action.label }}
                       <svg aria-hidden="true" lucideArrowRight class="w-3.5 h-3.5"></svg>
@@ -278,7 +285,13 @@
                 @if (!queryLoading()) {
                   <div class="text-center py-12">
                     <svg aria-hidden="true" lucideInbox class="w-5 h-5 mx-auto mb-3 text-muted-foreground"></svg>
-                    <p class="text-sm font-medium">Sin coincidencias en esta etapa.</p>
+                    @if (descargosPresentados()) {
+                      <p class="text-sm font-medium">No hay descargos de entidades en {{ activeStage().label }}.</p>
+                      <p class="text-xs text-muted-foreground mt-1 max-w-md mx-auto">Eso no deja la etapa vacía. Los expedientes siguen en su cola; este filtro solo deja los que ya tienen descargos de la entidad.</p>
+                      <button type="button" class="btn-ghost-brand mt-3" (click)="alternarFiltroDescargos()">Volver a la cola de la etapa</button>
+                    } @else {
+                      <p class="text-sm font-medium">Sin coincidencias en esta etapa.</p>
+                    }
                   </div>
                 }
               }
