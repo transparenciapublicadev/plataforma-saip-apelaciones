@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { HttpErrorResponse } from '@angular/common/http';
 import { catchError, forkJoin, of, Subscription, switchMap } from 'rxjs';
 import {
@@ -32,6 +33,7 @@ interface Campo { key: string; label: string; ayuda?: string; largo?: boolean; n
     CommonModule,
     FormsModule,
     RouterLink,
+    YaikuCargandoComponent,
     LucideArrowLeft,
     LucideFileBarChart,
     LucideCalendarRange,

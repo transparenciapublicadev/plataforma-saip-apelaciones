@@ -76,7 +76,10 @@
       </form>
     </section>
 
-    @if (buscando()) { <p role="status" aria-live="polite" class="text-sm text-muted-foreground mb-7">Consultando el resumen público… Puede editar el número para cancelar esta búsqueda.</p> }
+    @if (buscando()) {
+      <app-yaiku-cargando mensaje="Consultando el resumen público…" />
+      <p class="text-sm text-muted-foreground text-center -mt-8 mb-7">Puede editar el número para cancelar esta búsqueda.</p>
+    }
 
     @if (mensaje()) {
       <section class="form-shell mb-7 border-[var(--brand-200)] animate-fade-in-up">

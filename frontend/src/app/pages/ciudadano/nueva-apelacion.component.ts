@@ -16,6 +16,7 @@ import { aISO, hoyLima } from '../../models/calendario.model';
 import { ampliacionParaApelar, ampliacionPermiteApelar, Solicitud, tienePlazoAmpliadoVigente } from '../../models/solicitud.model';
 import { DocumentoMetadata, DOCUMENTO_ACCEPT, DOCUMENTO_RELATION_KEYS, TipoDocumento, validarDocumento } from '../../models/documento.model';
 import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { ReferenceConfirmModalComponent, ReferenceConfirmSummary, ReferenceConfirmWarning } from '../../shared/reference-confirm-modal.component';
 import { ReferenceSuccessModalComponent, ReferenceSuccessMeta, ReferenceSuccessNextStep } from '../../shared/reference-success-modal.component';
 import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
@@ -37,7 +38,7 @@ interface DocumentoEnvio {
 }
 interface Intento { clave: string; comando: Comando; documentos: DocumentoEnvio[]; contexto: string; solicitudExpediente?: string; }
 @Component({
-  selector: 'app-nueva-apelacion', imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent,
+  selector: 'app-nueva-apelacion', imports: [CommonModule, FormsModule, RouterLink, YaikuCargandoComponent, ReferenceConfirmModalComponent,
     ReferenceSuccessModalComponent, DocumentPreviewModalComponent, StatusBadgeComponent, LucideArrowLeft,
     LucideArrowRight, LucideScale, LucideSend, LucideInfo, LucideSearch, LucideFileText, LucideAlertCircle,
     LucideEye, LucideDownload, LucideX, LucideUpload, LucideArchive],

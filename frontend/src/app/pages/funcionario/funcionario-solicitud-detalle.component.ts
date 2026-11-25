@@ -63,6 +63,7 @@ interface HistorialItem {
 }
 
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { MultiFileUploadZoneComponent } from '../../shared/multi-file-upload-zone.component';
 import { AreaResponsablePanelComponent } from '../../shared/area-responsable-panel.component';
 import {
@@ -77,7 +78,7 @@ import {
   imports: [
     CommonModule, FormsModule, RouterLink, ReferenceTabsDirective,
     DocumentPreviewModalComponent,
-    StatusBadgeComponent,
+    StatusBadgeComponent, YaikuCargandoComponent,
     MultiFileUploadZoneComponent,
     AreaResponsablePanelComponent,
     CronogramaEntregasPanelComponent,

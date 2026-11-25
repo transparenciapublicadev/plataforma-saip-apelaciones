@@ -9,6 +9,7 @@ import { Subscription, forkJoin } from 'rxjs';
 import { ApelacionService } from '../../services/apelacion.service';
 import { TtaipService } from '../../services/ttaip.service';
 import { AuthService } from '../../services/auth.service';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { DocumentoService } from '../../services/documento.service';
 import { Apelacion } from '../../models/apelacion.model';
 import { DocumentoMetadata, DocumentoRelation, validarDocumento } from '../../models/documento.model';
@@ -30,7 +31,7 @@ type ResolverTab = 'apelacion' | 'adjuntos' | 'subprocesos';
 interface DocumentGroup { label: string; relation: DocumentoRelation; documents: DocumentoMetadata[]; }
 @Component({
   selector: 'app-ttaip-resolver',
-  imports: [PresentacionesAdmisionComponent, MultiFileUploadZoneComponent, CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent, DocumentPreviewModalComponent,
+  imports: [PresentacionesAdmisionComponent, MultiFileUploadZoneComponent, CommonModule, FormsModule, RouterLink, YaikuCargandoComponent, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent, DocumentPreviewModalComponent,
     InformacionComplementariaComponent, OfficialDocsSectionComponent, OfficialPreviewComponent, RecepcionInstitucionalComponent, LucideArrowLeft, LucideGavel, LucideCheckCircle2, LucideFileText, LucideSend, LucideInfo,
     LucideXCircle, LucideMinusCircle, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown],
   templateUrl: './ttaip-resolver.component.html', styleUrl: './ttaip-resolver.component.css', changeDetection: ChangeDetectionStrategy.OnPush

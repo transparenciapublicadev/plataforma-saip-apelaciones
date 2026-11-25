@@ -57,7 +57,7 @@
         <button type="submit" class="btn-brand" [disabled]="guardando() || incierto()">Consultar periodo</button>
       }
     </form>
-    @if (estado() === 'carga') { <div class="form-shell reportes-state" role="status">Consultando el reporte institucional…</div> }
+    @if (estado() === 'carga') { <app-yaiku-cargando mensaje="Consultando el reporte institucional…" /> }
     @else if (estado() === 'error') { <div class="form-shell reportes-state" role="alert"><svg lucideAlertTriangle class="w-6 h-6" aria-hidden="true"></svg><p>{{ error() }}</p><button type="button" class="btn-ghost-brand" (click)="cargar()">Reintentar consulta</button></div> }
     @else if (resumen(); as r) {
       <div class="reportes-tabs" role="tablist" aria-label="Secciones del reporte">

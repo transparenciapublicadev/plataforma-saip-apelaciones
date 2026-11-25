@@ -1,6 +1,6 @@
 <div class="second-page min-h-screen bg-background">
   @if (loadingApelacion()) {
-    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10"><div class="form-shell p-10 md:p-16 text-center" role="status" aria-live="polite"><div class="spinner mx-auto" aria-hidden="true"></div><p class="mt-4 text-muted-foreground">Cargando apelación y actuaciones…</p></div></div>
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10"><app-yaiku-cargando mensaje="Cargando apelación y actuaciones…" /></div>
   } @else if (loadError() || !contextoVigente() || !apelacion()) {
     <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10"><div class="form-shell p-6 text-center"><h1 class="font-display text-2xl">Segunda calificación no disponible</h1><p role="alert" class="text-sm text-muted-foreground mt-3">{{ loadError() || 'No se ha recuperado el expediente de la sesión actual.' }}</p><div class="flex flex-wrap gap-3 mt-4 justify-center"><button type="button" class="btn-brand" (click)="reintentarConsulta()">Consultar nuevamente</button><a routerLink="/ttaip" class="btn-ghost-brand">Volver al panel</a><a routerLink="/acceso-ttaip" class="btn-ghost-brand">Acceso interno TTAIP</a></div></div></div>
   } @else if (apelacion(); as ap) {

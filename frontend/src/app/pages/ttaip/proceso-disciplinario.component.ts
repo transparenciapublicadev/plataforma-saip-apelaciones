@@ -7,6 +7,7 @@ import { TtaipService } from '../../services/ttaip.service';
 import { AuthService } from '../../services/auth.service';
 import { Apelacion } from '../../models/apelacion.model';
 import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 
 type ProcessTab = 'resolucion' | 'notificacion' | 'descargos' | 'sancion';
 interface ResolucionConIndicador {
@@ -29,7 +30,7 @@ const positiveId = (value: unknown): value is number => typeof value === 'number
 
 @Component({
   selector: 'app-proceso-disciplinario',
-  imports: [CommonModule, RouterLink, LucideArrowLeft, LucideAlertTriangle, LucideFileText, LucideMail, LucideGavel, LucideScale, LucideFolderOpen, LucideInbox],
+  imports: [CommonModule, RouterLink, YaikuCargandoComponent, LucideArrowLeft, LucideAlertTriangle, LucideFileText, LucideMail, LucideGavel, LucideScale, LucideFolderOpen, LucideInbox],
   templateUrl: './proceso-disciplinario.component.html',
   styleUrl: './proceso-disciplinario.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush

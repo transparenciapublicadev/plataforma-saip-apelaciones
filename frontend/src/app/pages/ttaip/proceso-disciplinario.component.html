@@ -19,7 +19,7 @@
       </div>
     </section>
     @if (loading()) {
-      <div class="form-shell p-12 text-center text-sm text-muted-foreground" role="status" aria-live="polite">Cargando antecedentes de resoluciones…</div>
+      <app-yaiku-cargando mensaje="Cargando antecedentes de resoluciones…" />
     } @else if (error()) {
       <div class="form-shell p-6 text-sm" role="alert"><p>{{ error() }}</p>@if (reintentable()) { <button type="button" class="btn-ghost-brand mt-3" (click)="cargarProcesos()">Reintentar consulta de antecedentes</button> }</div>
     } @else {

@@ -8,6 +8,7 @@ import { ApelacionService } from '../../services/apelacion.service';
 import { SolicitudService } from '../../services/solicitud.service';
 import { TtaipService } from '../../services/ttaip.service';
 import { AuthService } from '../../services/auth.service';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { Apelacion } from '../../models/apelacion.model';
 import { Solicitud } from '../../models/solicitud.model';
 import { DocumentoMetadata, DocumentoRelation } from '../../models/documento.model';
@@ -26,7 +27,7 @@ import { LucideEye, LucideEyeOff, LucideXCircle, LucideCheckCircle2, LucideAlert
 interface DocumentGroup { label: string; relation: DocumentoRelation; documents: DocumentoMetadata[]; }
 @Component({
   selector: 'app-ttaip-calificar',
-  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
+  imports: [CommonModule, FormsModule, RouterLink, YaikuCargandoComponent, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
     InformacionComplementariaComponent, OfficialDocsSectionComponent, OfficialPreviewComponent, DocumentPreviewModalComponent, LucideEye, LucideEyeOff,
     LucideXCircle, LucideCheckCircle2, LucideAlertCircle, LucideArrowLeft, LucideFileText, LucideDownload, LucideSend, LucideSearch, LucideChevronDown],
   templateUrl: './ttaip-calificar.component.html', styleUrl: './ttaip-calificar.component.css',

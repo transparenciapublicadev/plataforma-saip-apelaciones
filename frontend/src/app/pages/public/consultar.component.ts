@@ -8,6 +8,7 @@ import {
 } from '@lucide/angular';
 import { ConsultaPublicaSolicitud, SolicitudService } from '../../services/solicitud.service';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { TimelineComponent, TimelineEvent } from '../../shared/timeline.component';
 import { CaptchaPoWComponent } from '../../shared/captcha-pow.component';
 import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
@@ -42,7 +43,7 @@ interface ConsultaResultado {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, LucideAlertTriangle, LucideArchive, LucideArrowLeft, LucideArrowRight,
     LucideBuilding2, LucideCalendar, LucideCheckCircle2, LucideClock, LucideEye,
-    LucideFileText, LucideSearch, LucideShield, LucideXCircle, StatusBadgeComponent, TimelineComponent, CaptchaPoWComponent],
+    LucideFileText, LucideSearch, LucideShield, LucideXCircle, StatusBadgeComponent, TimelineComponent, CaptchaPoWComponent, YaikuCargandoComponent],
   templateUrl: './consultar.component.html',
   styleUrl: './consultar.component.css',
 })

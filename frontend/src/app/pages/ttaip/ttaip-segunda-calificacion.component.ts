@@ -7,6 +7,7 @@ import { Subscription, forkJoin } from 'rxjs';
 import { ApelacionService } from '../../services/apelacion.service';
 import { TtaipService } from '../../services/ttaip.service';
 import { AuthService } from '../../services/auth.service';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { DocumentoService } from '../../services/documento.service';
 import { Apelacion } from '../../models/apelacion.model';
 import { DocumentoMetadata, DocumentoRelation } from '../../models/documento.model';
@@ -27,7 +28,7 @@ import { LucideArrowLeft, LucideCheckCircle2, LucideFileText, LucideXCircle, Luc
 interface DocumentGroup { label: string; relation: DocumentoRelation; documents: DocumentoMetadata[]; }
 @Component({
   selector: 'app-ttaip-segunda-calificacion',
-  imports: [CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
+  imports: [CommonModule, FormsModule, RouterLink, YaikuCargandoComponent, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
     InformacionComplementariaComponent, OfficialDocsSectionComponent, OfficialPreviewComponent, DocumentPreviewModalComponent, RecepcionInstitucionalComponent, LucideArrowLeft,
     LucideCheckCircle2, LucideFileText, LucideXCircle, LucideInfo, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown, LucideSend],
   templateUrl: './ttaip-segunda-calificacion.component.html', styleUrl: './ttaip-segunda-calificacion.component.css',

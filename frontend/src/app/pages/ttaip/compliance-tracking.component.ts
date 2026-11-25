@@ -12,6 +12,7 @@ import {
 import { TtaipService } from '../../services/ttaip.service';
 import { AuthService } from '../../services/auth.service';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { Apelacion } from '../../models/apelacion.model';
 import { CumplimientoResolucionTtaip } from '../../models/resolucion.model';
 import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
@@ -54,7 +55,7 @@ interface AccionTribunal {
 @Component({
   selector: 'app-compliance-tracking',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent, LucideArrowLeft,
+  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent, YaikuCargandoComponent, LucideArrowLeft,
     LucideClock, LucideCheckCircle2, LucideAlertTriangle, LucideInbox, LucideShieldCheck,
     LucideRefreshCw, LucideXCircle, LucideEye],
   templateUrl: './compliance-tracking.component.html',

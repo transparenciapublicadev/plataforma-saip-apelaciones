@@ -16,7 +16,7 @@
     </div><div class="brand-divider"></div></div>
   }
   <div class="mx-auto px-6 md:px-10 py-10 space-y-7" [ngClass]="modoSeleccion() ? 'max-w-4xl' : 'max-w-5xl md:py-12'" [attr.aria-busy]="loadingSolicitud() || loading()">
-    @if (loadingSolicitud()) { <div role="status" class="form-shell p-12 text-center"><p class="text-muted-foreground">Consultando el recurso autorizado…</p></div> }
+    @if (loadingSolicitud()) { <app-yaiku-cargando mensaje="Consultando el recurso autorizado…" /> }
     @if (errorConsulta()) { <div role="alert" class="appeal-alert"><p>{{ errorConsulta() }}</p>@if (reintentarConsulta()) { <button type="button" class="btn-ghost-brand mt-2" (click)="reintentarFuente()">Reintentar consulta</button> }</div> }
     @if (error()) { <div id="apelacion-errores" tabindex="-1" role="alert" class="appeal-alert"><p>{{ error() }}</p><ul class="list-disc pl-5 mt-2">@for (item of errores() | keyvalue; track item.key) { <li>{{ item.value }}</li> }</ul></div> }
     @if (documentoError()) { <p role="alert" class="appeal-alert">{{ documentoError() }}</p> }

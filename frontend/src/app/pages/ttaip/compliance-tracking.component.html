@@ -91,9 +91,7 @@
     }
     <!-- Estado de Carga -->
     @if (cargando()) {
-      <div class="form-shell p-12 text-center text-sm text-muted-foreground" role="status" aria-live="polite">
-        Cargando el seguimiento de cumplimiento…
-      </div>
+      <app-yaiku-cargando mensaje="Cargando el seguimiento de cumplimiento…" />
     } @else if (mensajeConsulta()) {
       <div class="form-shell p-6 text-sm" role="alert">
         <p>{{ mensajeConsulta() }}</p>

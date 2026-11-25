@@ -4,10 +4,11 @@ import { Subscription } from 'rxjs';
 import { LucideArrowLeft, LucideFileText, LucideTrash2 } from '@lucide/angular';
 import { AuthService } from '../../services/auth.service';
 import { BorradorSaip, BorradorSaipService } from '../../services/borrador-saip.service';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 
 @Component({
   selector: 'app-borradores-saip',
-  imports: [RouterLink, LucideArrowLeft, LucideFileText, LucideTrash2],
+  imports: [RouterLink, LucideArrowLeft, LucideFileText, LucideTrash2, YaikuCargandoComponent],
   templateUrl: './borradores-saip.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
