@@ -241,6 +241,23 @@ describe('Campana: regresiones V3', () => {
     f.componentInstance.cerrar(); expect(write).not.toHaveBeenCalled();
   });
 
+  it('ofrece primero otro expediente cuando el abierto ya está en pantalla', () => {
+    panelApelaciones.mockReturnValue(of({ contenido: [
+      { id: 4, expediente: '00004-2026-JUS/TTAIP', estado: 'EN_CALIFICACION_1', ciudadanoNombre: 'Persona sintética' },
+      { id: 5, expediente: '01560-2026-JUS/TTAIP', estado: 'EN_RESOLUCION', ciudadanoNombre: 'Otra persona' },
+    ] }));
+    session.tipoUsuario = 'TTAIP';
+    const f = open('TTAIP');
+    (f.componentInstance as unknown as { rutaActual: { set(valor: string): void } })
+      .rutaActual.set('/ttaip/calificar/00004-2026-JUS%2FTTAIP');
+    f.detectChanges();
+    const enlaces = Array.from(f.nativeElement.querySelectorAll('a')).map((a: any) => a.getAttribute('href'));
+    expect(enlaces[0]).toBe('/ttaip/resolver/01560-2026-JUS%2FTTAIP');
+    expect(enlaces).not.toContain('/ttaip/calificar/00004-2026-JUS%2FTTAIP');
+    expect(f.nativeElement.textContent).toContain('En esta pantalla');
+    expect(f.componentInstance.noLeidos()).toBe(2);
+  });
+
   it('abre la precisión pendiente y recuerda solo su identificador', () => {
     panelSolicitudes.mockReturnValue(of({ contenido: [{
       id: 2, expediente: 'SAIP-TEST-2', estado: 'PENDIENTE_INFORMACION', entidadNombre: 'Entidad sintética',

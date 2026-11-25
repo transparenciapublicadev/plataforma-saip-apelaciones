@@ -52,6 +52,49 @@ describe('avisos del actor', () => {
     expect(avisosDelActor('CIUDADANO', solicitudes, [])).toHaveLength(12);
   });
 
+  it('cubre el trámite de los tres actores y no calcula un plazo', () => {
+    const ciudadano = avisosDelActor('CIUDADANO', [], [
+      { id: 1, expediente: '00021-2026-JUS/TTAIP', estado: 'RESUELTO_FUNDADO', resuelta: true, solicitudExpediente: 'SAIP-TEST-9' },
+      { id: 2, expediente: '00022-2026-JUS/TTAIP', estado: 'EN_CALIFICACION_1', solicitudExpediente: 'SAIP-TEST-8' },
+    ]);
+    expect(ciudadano.map(aviso => aviso.ruta)).toEqual([
+      '/ciudadano/solicitud/SAIP-TEST-9',
+      '/ciudadano/solicitud/SAIP-TEST-8',
+    ]);
+
+    const funcionario = avisosDelActor('FUNCIONARIO', [], [
+      { id: 3, expediente: '00023-2026-JUS/TTAIP', estado: 'EN_CUMPLIMIENTO' },
+      { id: 4, expediente: '00024-2026-JUS/TTAIP', estado: 'EN_RESOLUCION', descargosPendientes: true },
+    ]);
+    expect(funcionario.map(aviso => [aviso.titulo, aviso.ruta])).toEqual([
+      ['Cumplimiento de la resolución', '/funcionario/apelaciones/00023-2026-JUS%2FTTAIP'],
+      ['Descargos por presentar', '/funcionario/apelaciones/00024-2026-JUS%2FTTAIP'],
+    ]);
+
+    const tribunal = avisosDelActor('TTAIP', [], [
+      { id: 5, expediente: '00025-2026-JUS/TTAIP', estado: 'EN_CUMPLIMIENTO' },
+      { id: 6, expediente: '00026-2026-JUS/TTAIP', estado: 'EN_CALIFICACION_2' },
+      { id: 7, expediente: '00027-2026-JUS/TTAIP', estado: 'NOTIFICACION_RESOLUCION_FINAL' },
+    ]);
+    expect(tribunal.map(aviso => aviso.segmentos[0])).toEqual([
+      '/ttaip/segunda-calificacion',
+      '/ttaip/apelacion',
+      '/ttaip/apelacion',
+    ]);
+    expect(JSON.stringify(tribunal)).not.toMatch(/2 días|hábil/);
+  });
+
+  it('coloca primero el aviso más reciente', () => {
+    const avisos = avisosDelActor('CIUDADANO', [], [
+      { id: 1, expediente: '00001-2026-JUS/TTAIP', estado: 'EN_CALIFICACION_1', solicitudExpediente: 'SAIP-A', fechaApelacion: '2026-01-02' },
+      { id: 2, expediente: '00002-2026-JUS/TTAIP', estado: 'EN_CALIFICACION_1', solicitudExpediente: 'SAIP-B', fechaApelacion: '2026-11-20' },
+    ]);
+    expect(avisos.map(aviso => aviso.detalle)).toEqual([
+      'Tribunal · 00002-2026-JUS/TTAIP',
+      'Tribunal · 00001-2026-JUS/TTAIP',
+    ]);
+  });
+
   it('no repite la misma apelación', () => {
     const apelacion = { id: 1, expediente: '00001-2026-JUS/TTAIP', estado: 'EN_SUBSANACION' as const };
     const avisos = avisosDelActor('CIUDADANO', [], [apelacion, apelacion]);

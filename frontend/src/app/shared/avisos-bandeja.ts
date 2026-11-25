@@ -1,5 +1,7 @@
 import { PanelApelacion, PanelSolicitud } from '../models/panel-query.model';
 
+export type IconoAviso = 'alerta' | 'bandeja' | 'balanza' | 'mazo' | 'reloj' | 'ok';
+
 export interface Aviso {
   id: string;
   titulo: string;
@@ -7,6 +9,9 @@ export interface Aviso {
   ruta: string;
   segmentos: string[];
   urgente: boolean;
+  icono: IconoAviso;
+  expediente?: string;
+  cuando?: string;
 }
 
 const TOPE = 12;
@@ -25,7 +30,7 @@ export function avisosDelActor(
   const vistos = new Set<string>();
   return items
     .filter((aviso): aviso is Aviso => !!aviso && !vistos.has(aviso.id) && !!vistos.add(aviso.id))
-    .sort((a, b) => Number(b.urgente) - Number(a.urgente))
+    .sort((a, b) => (b.cuando ?? '').localeCompare(a.cuando ?? '') || Number(b.urgente) - Number(a.urgente))
     .slice(0, TOPE);
 }
 
@@ -70,8 +75,20 @@ function avisoCiudadano(solicitud: PanelSolicitud): Aviso | null {
 
 function avisoApelacionCiudadano(apelacion: PanelApelacion): Aviso | null {
   const expediente = texto(apelacion.expediente);
-  if (!expediente || apelacion.estado !== 'EN_SUBSANACION') return null;
-  return aviso(`apel:${expediente}:subsanar`, 'Subsanación ante el Tribunal', linea(texto(apelacion.entidadNombre) || 'Tribunal', expediente), ['/ciudadano/subsanacion', expediente], true);
+  if (!expediente) return null;
+  const detalle = linea(texto(apelacion.entidadNombre) || 'Tribunal', expediente);
+  if (apelacion.estado === 'EN_SUBSANACION') {
+    return aviso(`apel:${expediente}:subsanar`, 'Subsanación ante el Tribunal', detalle, ['/ciudadano/subsanacion', expediente], true, 'alerta', apelacion.fechaApelacion);
+  }
+  const saip = texto(apelacion.solicitudExpediente);
+  if (!saip) return null;
+  if (apelacion.resuelta || apelacion.estado?.startsWith('RESUELTO')) {
+    return aviso(`apel:${expediente}:resuelta`, 'Resolución del Tribunal', detalle, ['/ciudadano/solicitud', saip], false, 'ok', apelacion.fechaApelacion);
+  }
+  if (apelacion.estado) {
+    return aviso(`apel:${expediente}:tramite`, 'Su apelación sigue en el Tribunal', detalle, ['/ciudadano/solicitud', saip], false, 'balanza', apelacion.fechaApelacion);
+  }
+  return null;
 }
 
 function avisoFuncionario(solicitud: PanelSolicitud): Aviso | null {
@@ -95,8 +112,25 @@ function avisoFuncionario(solicitud: PanelSolicitud): Aviso | null {
 
 function avisoApelacionFuncionario(apelacion: PanelApelacion): Aviso | null {
   const expediente = texto(apelacion.expediente);
-  if (!expediente || apelacion.estado !== 'PENDIENTE_ELEVACION') return null;
-  return aviso(`apel:${expediente}:elevar`, 'Apelación por elevar', linea(texto(apelacion.ciudadanoNombre) || 'Administrado', expediente), ['/funcionario/apelaciones', expediente], true);
+  if (!expediente) return null;
+  const detalle = linea(texto(apelacion.ciudadanoNombre) || 'Administrado', expediente);
+  const ruta = ['/funcionario/apelaciones', expediente];
+  if (apelacion.estado === 'PENDIENTE_ELEVACION') {
+    return aviso(`apel:${expediente}:elevar`, 'Apelación por elevar', detalle, ruta, true, 'bandeja', apelacion.fechaApelacion);
+  }
+  if (apelacion.estado === 'EN_CUMPLIMIENTO' || apelacion.plazoCumplimiento) {
+    return aviso(`apel:${expediente}:cumplir`, 'Cumplimiento de la resolución', detalle, ruta, true, 'reloj', apelacion.plazoCumplimiento?.fechaLimite);
+  }
+  if (apelacion.descargosPendientes) {
+    return aviso(`apel:${expediente}:descargos`, 'Descargos por presentar', detalle, ruta, true, 'alerta', apelacion.fechaApelacion);
+  }
+  if (apelacion.informacionComplementariaPendiente) {
+    return aviso(`apel:${expediente}:complemento`, 'Información complementaria pendiente', detalle, ruta, true, 'alerta', apelacion.fechaApelacion);
+  }
+  if (apelacion.resuelta || apelacion.estado?.startsWith('RESUELTO') || apelacion.estado === 'NOTIFICACION_RESOLUCION_FINAL') {
+    return aviso(`apel:${expediente}:resuelta`, 'Resolución del Tribunal registrada', detalle, ruta, false, 'ok', apelacion.fechaApelacion);
+  }
+  return null;
 }
 
 function avisoTtaip(apelacion: PanelApelacion): Aviso | null {
@@ -104,22 +138,31 @@ function avisoTtaip(apelacion: PanelApelacion): Aviso | null {
   if (!expediente) return null;
   const detalle = linea(texto(apelacion.ciudadanoNombre) || 'Administrado', expediente);
   const ruta = (segmento: string) => ['/ttaip/' + segmento, expediente];
+  const cuando = apelacion.fechaApelacion;
   switch (apelacion.estado) {
     case 'EN_CALIFICACION_1':
-      return aviso(`apel:${expediente}:calificar`, 'Calificación pendiente', detalle, ruta('calificar'), true);
+      return apelacion.calificacionPrimera
+        ? aviso(`apel:${expediente}:calificada`, 'Primera calificación registrada', detalle, ruta('apelacion'), false, 'balanza', cuando)
+        : aviso(`apel:${expediente}:calificar`, 'Calificación pendiente', detalle, ruta('calificar'), true, 'balanza', cuando);
     case 'EN_SUBSANACION':
-      return aviso(`apel:${expediente}:subsanacion`, 'En subsanación del administrado', detalle, ruta('apelacion'), false);
+      return aviso(`apel:${expediente}:subsanacion`, 'En subsanación del administrado', detalle, ruta('apelacion'), false, 'reloj', cuando);
     case 'EN_CALIFICACION_2':
-      return aviso(`apel:${expediente}:segunda`, 'Segunda calificación pendiente', detalle, ruta('segunda-calificacion'), true);
+      return aviso(`apel:${expediente}:segunda`, 'Segunda calificación pendiente', detalle, ruta('segunda-calificacion'), true, 'balanza', cuando);
     case 'NOTIFICACION_SEGUNDA_CALIFICACION':
-      return aviso(`apel:${expediente}:segunda-registrada`, 'Segunda calificación registrada', detalle, ruta('resolver'), true);
+      return aviso(`apel:${expediente}:segunda-registrada`, 'Segunda calificación registrada', detalle, ruta('resolver'), true, 'mazo', cuando);
     case 'EN_RESOLUCION':
-      return aviso(`apel:${expediente}:resolver`, 'Resolución pendiente', detalle, ruta('resolver'), true);
+      return apelacion.actosNotificacionPendientes
+        ? aviso(`apel:${expediente}:actos`, 'Actos de notificación pendientes', detalle, ruta('apelacion'), true, 'alerta', cuando)
+        : aviso(`apel:${expediente}:resolver`, 'Resolución pendiente', detalle, ruta('resolver'), true, 'mazo', cuando);
+    case 'EN_CUMPLIMIENTO':
+      return aviso(`apel:${expediente}:cumplimiento`, 'Cumplimiento pendiente de la entidad', detalle, ruta('apelacion'), false, 'reloj', cuando);
+    case 'NOTIFICACION_RESOLUCION_FINAL':
+      return aviso(`apel:${expediente}:actos-final`, 'Actos de la resolución final', detalle, ruta('apelacion'), true, 'alerta', cuando);
     case 'PENDIENTE_ELEVACION':
-      return aviso(`apel:${expediente}:elevacion`, 'Pendiente de elevación de la entidad', detalle, ruta('apelacion'), false);
+      return aviso(`apel:${expediente}:elevacion`, 'Pendiente de elevación de la entidad', detalle, ruta('apelacion'), false, 'bandeja', cuando);
     default:
       return apelacion.actosNotificacionPendientes
-        ? aviso(`apel:${expediente}:actos`, 'Actos de notificación pendientes', detalle, ruta('apelacion'), true)
+        ? aviso(`apel:${expediente}:actos`, 'Actos de notificación pendientes', detalle, ruta('apelacion'), true, 'alerta', cuando)
         : null;
   }
 }
@@ -130,9 +173,14 @@ function tituloRespuesta(tipo?: string): string {
   return 'Respuesta registrada';
 }
 
-function aviso(id: string, titulo: string, detalle: string, segmentos: string[], urgente: boolean): Aviso {
+function aviso(
+  id: string, titulo: string, detalle: string, segmentos: string[], urgente: boolean,
+  icono: IconoAviso = urgente ? 'alerta' : 'bandeja', cuando?: string | null,
+): Aviso {
   const ruta = segmentos.length === 2 ? `${segmentos[0]}/${encodeURIComponent(segmentos[1])}` : segmentos[0];
-  return { id, titulo, detalle, ruta, segmentos, urgente };
+  const expediente = segmentos.length === 2 ? segmentos[1] : undefined;
+  const fecha = cuando && /^\d{4}-\d{2}-\d{2}/.test(cuando) ? cuando.slice(0, 10) : undefined;
+  return { id, titulo, detalle, ruta, segmentos, urgente, icono, expediente, cuando: fecha };
 }
 
 function linea(quien: string, expediente: string, fechaLimite?: string | null): string {
