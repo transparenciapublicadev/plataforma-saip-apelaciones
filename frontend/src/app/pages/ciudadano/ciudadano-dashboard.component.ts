@@ -1,4 +1,3 @@
-import { BandejaTribunalComponent } from '../ttaip/shared/bandeja-tribunal.component';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, signal, inject, computed, effect, untracked, ElementRef, HostListener } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -13,7 +12,7 @@ import { TourStep } from '../../core/guided-tour/guided-tour.model';
 import { AuthService } from '../../services/auth.service';
 import { ProfileDialogService } from '../../services/profile-dialog.service';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
-import { aISO, habilesEntre, hoyLima, sumarDias, sumarHabiles } from '../../models/calendario.model';
+import { aISO, habilesEntre, hoyLima, PLAZO_META_POR_CLAVE, recepcionEfectiva, sumarDias, sumarHabiles } from '../../models/calendario.model';
 import { parseISO } from 'date-fns';
 
 interface DashboardAction {
@@ -97,12 +96,13 @@ import {
 } from '@lucide/angular';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { PaginationComponent } from '../../shared/pagination.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 
 @Component({
   selector: 'app-ciudadano-dashboard',
-  imports: [BandejaTribunalComponent,
+  imports: [
     RouterLink, FormsModule, DatePipe,
-    StatusBadgeComponent, PaginationComponent,
+    StatusBadgeComponent, PaginationComponent, YaikuCargandoComponent,
     LucideScale, LucidePlus, LucideFileText, LucideClock, LucideCheckCircle2,
     LucideChevronRight,
     LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
@@ -629,6 +629,9 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     this.representanteDni.set(session?.representanteDni || '');
     this.representanteNombreCompleto.set(session?.representanteNombreCompleto || '');
     const citizen = this.ciudadanoId(), revision = this.sessionRevision, token = session?.token;
+    if (!token && this.authService.cerrandoSesion?.()) {
+      this.error.set(''); this.loading.set(true); this.queryLoading.set(false); return;
+    }
     if (!token || session?.tipoUsuario !== 'CIUDADANO' || !Number.isSafeInteger(citizen) || citizen <= 0) {
       this.nombreUsuario.set(''); this.nombreCompleto.set(''); this.ciudadanoId.set(0);
       this.dni.set(''); this.ruc.set(''); this.razonSocial.set(''); this.representanteDni.set(''); this.representanteNombreCompleto.set('');
@@ -655,7 +658,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
         if (this.scrollEtapaPendiente) { this.scrollEtapaPendiente = false; this.scrollToStageList(); }
       },
       error: failure => {
-        if (!current()) return;
+        if (!current() || this.authService.cerrandoSesion?.()) return;
         const status = failure?.status;
         this.errorTipo.set(status === 401 ? 'sesion' : status === 403 ? 'permiso' : status === 400 ? 'validacion' : status === 404 ? 'inexistente' : status === 0 ? 'red' : 'servidor');
         this.error.set(status === 401 ? 'Su sesión no es válida. Inicie sesión nuevamente.'
@@ -808,6 +811,9 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     if (this.esApelacionResuelta(s)) {
       return { label: 'Resuelto por el Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--success)', iconName: 'gavel' };
     }
+    if (estadoApelacion === 'EN_CALIFICACION_2') {
+      return { label: 'En segunda calificación', instancia: '2ª instancia · TTAIP', tone: 'var(--brand-700)', iconName: 'gavel' };
+    }
     if (this.tieneApelacionActiva(s) || s.apelacion?.expediente) {
       return { label: 'En manos del Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--brand-700)', iconName: 'scale' };
     }
@@ -876,6 +882,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
         tone: dias <= 1 ? 'var(--brand-700)' : dias <= 3 ? 'var(--warning)' : 'var(--info)'
       };
     }
+    if (estadoApelacion === 'EN_CALIFICACION_2') return this.indicadorSegundaCalificacion(s);
     if (this.tieneApelacionActiva(s)) return { value: 'En revisión', unit: 'por el Tribunal', tone: 'var(--info)' };
     if (this.enPrecision(s)) return this.indicadorPrecision(s);
     if (this.archivadaSinPrecision(s)) {
@@ -1036,6 +1043,28 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
         toneColor: 'var(--gold-dark)',
         toneBg: 'linear-gradient(135deg, rgba(176,136,66,0.12), var(--card) 70%)',
         toneSoft: 'rgba(176,136,66,0.30)',
+        expediente,
+        entidad,
+      };
+    }
+
+    if (estadoApelacion === 'EN_CALIFICACION_2') {
+      const plazo = this.indicadorSegundaCalificacion(solicitud);
+      const fecha = this.formatDate(solicitud.apelacion?.recepcionSubsanacion || undefined);
+      return {
+        eyebrow: 'Segunda calificación',
+        titulo: 'El Tribunal califica su subsanación',
+        detalle: fecha
+          ? `Su escrito quedó registrado el ${fecha}. El Tribunal vuelve a calificar el recurso.`
+          : 'Su escrito de subsanación quedó registrado. El Tribunal vuelve a calificar el recurso.',
+        metricValue: String(plazo.value),
+        metricUnit: plazo.unit,
+        ctaLabel: 'Ver expediente',
+        route: ['/ciudadano/solicitud', expediente],
+        icon: 'gavel',
+        toneColor: 'var(--brand-700)',
+        toneBg: 'linear-gradient(135deg, var(--brand-subtle), var(--card) 70%)',
+        toneSoft: 'var(--brand-200)',
         expediente,
         entidad,
       };
@@ -1330,17 +1359,33 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       }
     }
 
+    const recepcionSubsanacion = solicitud.apelacion?.recepcionSubsanacion || undefined;
+    const enSegunda = estadoApelacion === 'EN_CALIFICACION_2';
+    if (recepcionSubsanacion || enSegunda) {
+      steps.push({
+        key: 'subsanacion-ttaip',
+        label: 'Subsanación presentada',
+        date: this.formatDate(recepcionSubsanacion),
+        status: 'done',
+      });
+    }
+
     if (this.tieneApelacionActiva(solicitud)) {
       const elevacion = solicitud.apelacion?.elevacion;
       const pendienteElevacion = estadoApelacion === 'PENDIENTE_ELEVACION';
+      const plazoSegunda = enSegunda ? this.indicadorSegundaCalificacion(solicitud) : null;
       steps.push({
         key: 'tribunal',
         label: pendienteElevacion
           ? 'Pendiente de elevacion por la entidad'
-          : `Tribunal - ${this.formatoEstado(estadoApelacion)}`,
+          : enSegunda
+            ? 'Segunda calificación'
+            : `Tribunal - ${this.formatoEstado(estadoApelacion)}`,
         meta: pendienteElevacion
           ? `Vence ${this.formatDate(elevacion?.fechaLimiteElevacion) || 'por confirmar'}`
-          : solicitud.apelacion?.expediente || undefined,
+          : plazoSegunda
+            ? `${plazoSegunda.value} ${plazoSegunda.unit}`
+            : solicitud.apelacion?.expediente || undefined,
         status: 'active'
       });
       steps.push({ key: 'resolucion', label: 'Resolucion final', status: 'pending' });
@@ -1589,6 +1634,25 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
       value: dias,
       unit: dias === 1 ? 'día hábil para apelar' : 'días hábiles para apelar',
       tone: dias <= 3 ? 'var(--brand-700)' : 'var(--gold-dark)',
+    };
+  }
+
+  /** Plazo operativo de segunda calificación, contado desde el día siguiente a la recepción del escrito. */
+  private indicadorSegundaCalificacion(solicitud: Solicitud): IndicadorBandeja {
+    const inicio = (solicitud.apelacion?.recepcionSubsanacion || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(inicio)) {
+      return { value: 'En curso', unit: 'segunda calificación', tone: 'var(--info)' };
+    }
+    const dias = PLAZO_META_POR_CLAVE.TTAIP_CALIFICACION_2.porDefecto;
+    const limite = sumarHabiles(recepcionEfectiva(inicio), dias);
+    const hoy = hoyLima();
+    if (hoy > limite) return { value: 'Plazo vencido', unit: 'segunda calificación pendiente', tone: 'var(--warning)' };
+    const restantes = habilesEntre(hoy, limite);
+    if (restantes === 0) return { value: 'Último día', unit: 'de la segunda calificación', tone: 'var(--brand-700)' };
+    return {
+      value: restantes,
+      unit: restantes === 1 ? 'día hábil para la segunda calificación' : 'días hábiles para la segunda calificación',
+      tone: restantes <= 3 ? 'var(--warning)' : 'var(--info)',
     };
   }
 

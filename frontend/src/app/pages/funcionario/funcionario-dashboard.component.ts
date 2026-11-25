@@ -1,4 +1,3 @@
-import { BandejaTribunalComponent } from '../ttaip/shared/bandeja-tribunal.component';
 import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, signal, inject, computed, effect, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +13,7 @@ import { TourStep } from '../../core/guided-tour/guided-tour.model';
 
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 import { PaginationComponent } from '../../shared/pagination.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 
 interface BucketMeta {
   key: BucketKey;
@@ -34,9 +34,9 @@ import {
 
 @Component({
   selector: 'app-funcionario-dashboard',
-  imports: [BandejaTribunalComponent,
+  imports: [
     RouterLink, FormsModule, DatePipe,
-    StatusBadgeComponent, PaginationComponent,
+    StatusBadgeComponent, PaginationComponent, YaikuCargandoComponent,
     LucideBuilding2, LucideCompass, LucideShieldAlert,
     LucideArrowRight, LucideAlertTriangle, LucideFlame, LucideCalendar,
     LucideCheckCircle2, LucideInbox, LucideSearch, LucideUser,
@@ -239,6 +239,9 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
     if (changed) { this.nombreEntidad.set(''); this.nombreFuncionario.set(''); this.entidadId.set(0); this.resumen.set(null); this.busqueda.set(''); this.selectedBucket.set('todas'); this.paginaActual.set(1); }
     let session: ReturnType<AuthService['obtenerSesion']> = null;
     try { session = this.authService.obtenerSesion(); } catch { /* No query for malformed local session. */ }
+    if (!session?.token && this.authService.cerrandoSesion?.()) {
+      this.error.set(''); this.loading.set(true); this.queryLoading.set(false); return;
+    }
     if (!session?.token || session.tipoUsuario !== 'FUNCIONARIO' || !positiveId(session.funcionarioId)
       || !positiveId(session.usuarioId) || session.usuarioId !== session.funcionarioId) {
       this.error.set('Su sesión de funcionario está incompleta. Inicie sesión mediante el acceso interno.');
@@ -254,7 +257,7 @@ export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
       } catch { return false; }
     };
     const failure = (err: { status?: number }) => {
-      if (!current()) return;
+      if (!current() || this.authService.cerrandoSesion?.()) return;
       const messages: Record<number, string> = {
         400: 'La consulta institucional no es válida.', 422: 'Revise los datos de la consulta institucional.',
         401: 'La sesión no permite consultar. Inicie sesión nuevamente con el acceso interno.',

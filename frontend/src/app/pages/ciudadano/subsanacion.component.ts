@@ -22,6 +22,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { SubsanacionTtaipService, RecepcionSubsanacionTtaip, RequerimientoSubsanacionTtaip } from '../../services/subsanacion-ttaip.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 
 
 interface ObservacionSubsanacion {
@@ -41,7 +42,7 @@ import {
   imports: [
     CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
     LucideArrowLeft, LucideSend, LucideEye, LucideClock, LucideAlertCircle, LucideInfo,
-    LucideFileText, LucideUpload, LucideDownload, LucideCheckCircle2, DocumentPreviewModalComponent
+    LucideFileText, LucideUpload, LucideDownload, LucideCheckCircle2, DocumentPreviewModalComponent, YaikuCargandoComponent
   ],
   templateUrl: './subsanacion.component.html',
   styleUrl: './subsanacion.component.css',
@@ -86,7 +87,7 @@ export class SubsanacionComponent implements OnInit, OnDestroy {
     'Prepare los documentos complementarios que desee presentar.',
     'Describa claramente las correcciones realizadas.',
     'Los adjuntos son opcionales; todos los seleccionados se enviarán juntos.',
-    'Consulte el reloj del servidor y las condiciones de presentación.'
+    'Revise la notificación eficaz y la fecha límite antes de presentar.'
   ];
 
   readonly estadoConsulta = signal<EstadoConsulta>('cargando');
@@ -175,6 +176,7 @@ export class SubsanacionComponent implements OnInit, OnDestroy {
       return;
     }
     if (!token) {
+      if (this.authService.cerrandoSesion?.()) { this.loadingApelacion.set(true); return; }
       this.estadoConsulta.set('autenticacion');
       this.error.set('Su sesión no es válida. Inicie sesión nuevamente.');
       return;
@@ -193,7 +195,7 @@ export class SubsanacionComponent implements OnInit, OnDestroy {
         if (!this.idValido(data.id) || data.expediente !== expediente ||
           (data.ciudadanoId != null && data.ciudadanoId !== this.authService.obtenerSesion()?.usuarioId)) {
           this.estadoConsulta.set('error');
-          this.error.set('El servidor devolvió una apelación que no corresponde al expediente consultado.');
+          this.error.set('La apelación recibida no corresponde al expediente consultado.');
           this.puedeReintentarConsulta.set(true);
           return;
         }
@@ -318,6 +320,13 @@ export class SubsanacionComponent implements OnInit, OnDestroy {
     const dias = this.reloj()?.diasHabiles ?? this.requerimiento()?.diasSubsanacion;
     return this.idValido(dias) ? dias : null;
   }
+  etiquetaPlazo(estado?: string | null): string {
+    if (estado === 'EN_CURSO') return 'En curso';
+    if (estado === 'VENCIDO') return 'Vencido';
+    if (estado === 'PENDIENTE_INICIO') return 'Pendiente de inicio';
+    return 'No informado';
+  }
+
   getFechaNotificacion(): Date | null { return this.reloj()?.estado !== 'PENDIENTE_INICIO' && !this.relojIncompleto() ? this.fecha(this.reloj()?.fechaEficacia) : null; }
   getFechaLimite(): Date | null { return this.reloj()?.estado !== 'PENDIENTE_INICIO' && !this.relojIncompleto() ? this.fecha(this.reloj()?.fechaLimite) : null; }
   private fecha(value?: string | null): Date | null {
@@ -518,10 +527,10 @@ export class SubsanacionComponent implements OnInit, OnDestroy {
           this.estadoEnvio.set(intento.conflicto ? 'rechazada' : 'lista');
           this.congelado.set(!!intento.archivos);
           this.error.set(intento.conflicto
-            ? 'El servidor rechazó esta presentación por un conflicto de estado o contenido. Actualice la consulta antes de presentar nuevamente.'
+            ? 'Esta presentación no fue aceptada por un conflicto de estado o contenido. Actualice la consulta antes de presentar nuevamente.'
             : this.formularioDisponible() && this.requerimiento()?.admitePresentacion
               ? 'No hay recepción confirmada para esta operación. Puede reintentar con la misma clave y contenido original.'
-              : 'No se recuperó esta recepción y el servidor no habilita otra presentación. Consulte el expediente; no se repetirá el envío automáticamente.');
+              : 'No se recuperó esta recepción y no se habilita otra presentación. Consulte el expediente; no se repetirá el envío automáticamente.');
         } else {
           this.error.set('Resultado incierto: no se pudo comprobar la recepción. Compruebe de nuevo antes de reenviar.');
         }
@@ -542,7 +551,7 @@ export class SubsanacionComponent implements OnInit, OnDestroy {
           || !this.idValido(d.sizeBytes) || !/^[a-f0-9]{64}$/i.test(d.hashSha256 || ''))
         || intento.texto !== undefined && r.fundamentosAdicionales !== intento.texto) return false;
     this.recepcion.set(r); this.estadoEnvio.set('confirmada'); this.congelado.set(true);
-    this.mensaje.set(`Recepción ${r.id} registrada por el servidor el ${r.fechaRecepcion}.`);
+    this.mensaje.set(`El escrito quedó registrado el ${this.fechaLegible(r.fechaRecepcion)}.`);
     this.fundamentosAdicionales = r.fundamentosAdicionales;
     this.confirmModalAbierto.set(false); this.successModalAbierto.set(true);
     return true;
@@ -558,8 +567,8 @@ export class SubsanacionComponent implements OnInit, OnDestroy {
     const docValue = files.length > 0 ? `${files.length} documento(s) seleccionado(s)` : 'Ninguno';
     return [
       { label: 'Expediente', value: ap?.expediente || '—', mono: true },
-      { label: 'Requerimiento', value: String(this.requerimiento()?.requerimientoId ?? '—'), mono: true },
-      { label: 'Observaciones', value: 'Texto libre registrado por el Tribunal' },
+      { label: 'Resolución', value: this.requerimiento()?.numeroResolucion || 'Numeración no registrada', mono: true },
+      { label: 'Observaciones', value: this.textoObservaciones() },
       { label: 'Descripción', value: `${this.fundamentosAdicionales.trim().length} caracteres` },
       { label: 'Documentos', value: docValue }
     ];
@@ -568,21 +577,32 @@ export class SubsanacionComponent implements OnInit, OnDestroy {
   subsanacionWarning(): ReferenceConfirmWarning {
     return {
       label: 'Plazo de subsanación',
-      detail: this.plazoPendienteInicio() ? 'El servidor informa inicio pendiente de acreditación. Puede presentar si lo habilita; no se calcula una fecha sustituta.'
-        : !this.requerimiento()?.plazo || this.relojIncompleto() ? 'El reloj no está disponible o está incompleto. Se conservan las condiciones de recepción comprobadas por el servidor.'
-        : 'Las fechas y el estado del reloj proceden del servidor. La recepción no acredita por sí sola notificación eficaz, firma ni emisión formal.'
+      detail: this.plazoPendienteInicio() ? 'El plazo todavía no inicia: falta la notificación eficaz acreditada. Puede presentar si el trámite lo habilita. No se calcula otra fecha.'
+        : !this.requerimiento()?.plazo || this.relojIncompleto() ? 'El plazo no está disponible o está incompleto. La recepción se comprueba con el escrito y los archivos enviados.'
+        : 'Las fechas corresponden a la notificación eficaz registrada. Recibir el escrito no sustituye esa notificación, una firma ni una emisión formal.'
     };
   }
 
   subsanacionSuccessMetadata(): ReferenceSuccessMeta[] {
     const r = this.recepcion();
     return r ? [
-      { label: 'Recepción', value: String(r.id), mono: true },
-      { label: 'Requerimiento', value: String(r.requerimientoId), mono: true },
+      { label: 'Resolución', value: this.requerimiento()?.numeroResolucion || 'Numeración no registrada', mono: true },
       { label: 'Archivos registrados', value: String(r.documentos.length) },
-      { label: 'Fecha de recepción', value: r.fechaRecepcion },
-      { label: 'Clave de operación', value: r.claveOperacion, mono: true }
+      { label: 'Fecha de recepción', value: this.fechaLegible(r.fechaRecepcion) }
     ] : [];
+  }
+
+  private textoObservaciones(): string {
+    const items = this.observacionesTtaip();
+    if (!items.length) return 'Sin observaciones registradas';
+    const texto = items.map(item => `${item.numero}. ${item.descripcion}`).join(' ');
+    return texto.length > 400 ? `${texto.slice(0, 397)}…` : texto;
+  }
+
+  private fechaLegible(value?: string | null): string {
+    const iso = value?.slice(0, 10) ?? '';
+    const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    return partes ? `${partes[3]}/${partes[2]}/${partes[1]}` : 'No registrada';
   }
 
   observacionesTtaip(): ObservacionSubsanacion[] {
@@ -618,8 +638,8 @@ export class SubsanacionComponent implements OnInit, OnDestroy {
   }
 
   subsanacionNextSteps(): ReferenceSuccessNextStep[] {
-    return [{ label: 'Puede recuperar esta recepción y sus archivos desde esta pantalla.' },
-      { label: 'El registro no acredita entrega, notificación eficaz, firma ni emisión formal. Consulte el estado del trámite en su panel.' }];
+    return [{ label: 'El escrito quedó en el expediente. Puede volver a esta pantalla para consultar los archivos registrados.' },
+      { label: 'El Tribunal continúa con la segunda calificación. Consulte el estado en su panel.' }];
   }
 
   irPanelCiudadano(): void {
@@ -648,12 +668,12 @@ export class SubsanacionComponent implements OnInit, OnDestroy {
   private validarSubsanacion(): boolean {
     this.fundamentosError.set('');
     if (!this.detalleActual() || !this.formularioDisponible() || !this.requerimiento()?.admitePresentacion && !this.intentoActual()) {
-      this.error.set('No hay un requerimiento vigente habilitado por el servidor para presentar.');
+      this.error.set('No hay un requerimiento vigente habilitado para presentar.');
       return false;
     }
 
     if (this.esSubsanacionVencida() && !this.intento) {
-      this.error.set('El servidor informa que el plazo de subsanación ha vencido. No se ha registrado otra presentación.');
+      this.error.set('El plazo de subsanación ha vencido. No se ha registrado otra presentación.');
       return false;
     }
 

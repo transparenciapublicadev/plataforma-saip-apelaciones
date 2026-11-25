@@ -48,6 +48,10 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client
   },
   {
+    path: 'ciudadano/tribunal',
+    renderMode: RenderMode.Client
+  },
+  {
     path: 'ciudadano/solicitud/:expediente',
     renderMode: RenderMode.Client
   },
@@ -86,6 +90,10 @@ export const serverRoutes: ServerRoute[] = [
   },
   {
     path: 'funcionario/apelaciones/:expediente',
+    renderMode: RenderMode.Client
+  },
+  {
+    path: 'funcionario/tribunal',
     renderMode: RenderMode.Client
   },
   {

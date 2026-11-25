@@ -61,10 +61,7 @@
   <!-- ── BODY ────────────────────────────────────────────────────────── -->
   <div class="max-w-7xl mx-auto px-6 md:px-10 py-10">
     @if (loading()) {
-      <div role="status" class="text-center py-16">
-        <div aria-hidden="true" class="spinner spinner-lg mx-auto"></div>
-        <p class="mt-4 text-[var(--niebla)] text-sm">Cargando solicitudes...</p>
-      </div>
+      <app-yaiku-cargando mensaje="Cargando solicitudes..." />
     } @else if (error()) {
       <div role="alert" class="alert alert-error p-6 text-center">
         <p>{{ error() }}</p>
@@ -72,8 +69,6 @@
       </div>
     } @else {
       <div class="space-y-8">
-        <app-bandeja-tribunal />
-
         <!-- ── PIPELINE: Mis solicitudes de un vistazo ──────────────── -->
         <section data-tour="resumen">
           <div class="flex items-baseline justify-between mb-3">
@@ -499,8 +494,7 @@
         }
 
         <!-- ── ETAPA ENFOCADA (STAGE-FILTERED LIST) ─────────────────── -->
-        @if (stageAll().length > 0 || stageFiltered().length > 0) {
-          <section id="seccion-etapa-enfocada" data-section="stage-list" data-tour="cola" class="form-shell" style="scroll-margin-top: 7rem">
+        <section id="seccion-etapa-enfocada" data-section="stage-list" data-tour="cola" class="form-shell" style="scroll-margin-top: 7rem">
             <div class="form-section-header flex items-center gap-3 flex-wrap">
               <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                 @switch (selectedStageMeta().iconName) {
@@ -665,7 +659,6 @@
               </div>
             }
           </section>
-        }
 
 
         <!-- ── EMPTY STATE ──────────────────────────────────────────── -->

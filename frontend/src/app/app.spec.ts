@@ -163,6 +163,53 @@ describe('App', () => {
     expect(mobileReportes?.textContent).toContain('Reportes ANTAIP');
   });
 
+  it.each([
+    ['CIUDADANO', '/ciudadano/tribunal'],
+    ['FUNCIONARIO', '/funcionario/tribunal']
+  ] as const)('renders Actuaciones for %s in desktop nav, user menu, and mobile nav', (tipoUsuario, ruta) => {
+    TestBed.inject(AuthService).guardarSesion({
+      success: true,
+      token: 'synthetic-tribunal',
+      usuarioId: 11,
+      tipoUsuario,
+      funcionarioId: tipoUsuario === 'FUNCIONARIO' ? 11 : undefined,
+      entidadId: tipoUsuario === 'FUNCIONARIO' ? 1 : undefined,
+      entidadNombre: tipoUsuario === 'FUNCIONARIO' ? 'MINJUS' : undefined
+    });
+    const fixture = TestBed.createComponent(App);
+    fixture.componentInstance.menuAbierto.set(true);
+    fixture.componentInstance.mobileMenuAbierto.set(true);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    const desktop = Array.from(compiled.querySelectorAll('nav a[routerLink]'))
+      .find(a => a.getAttribute('routerLink') === ruta);
+    const menu = Array.from(compiled.querySelectorAll('#desktop-user-menu a[routerLink]'))
+      .find(a => a.getAttribute('routerLink') === ruta);
+    const mobile = Array.from(compiled.querySelectorAll('#mobile-navigation-panel a[routerLink]'))
+      .find(a => a.getAttribute('routerLink') === ruta);
+
+    expect(desktop?.textContent).toContain('Actuaciones');
+    expect(menu?.textContent).toContain('Actuaciones');
+    expect(mobile?.textContent).toContain('Actuaciones');
+  });
+
+  it.each(['TTAIP', 'ADMINISTRADOR'])('does not render Actuaciones for %s', tipoUsuario => {
+    TestBed.inject(AuthService).guardarSesion({
+      success: true,
+      token: 'synthetic-other-tribunal',
+      usuarioId: 12,
+      tipoUsuario
+    });
+    const fixture = TestBed.createComponent(App);
+    fixture.componentInstance.menuAbierto.set(true);
+    fixture.componentInstance.mobileMenuAbierto.set(true);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+    const links = Array.from(compiled.querySelectorAll('a[routerLink]'));
+    expect(links.some(a => (a.textContent ?? '').includes('Actuaciones'))).toBe(false);
+  });
+
   it.each(['CIUDADANO', 'ADMINISTRADOR'])('does not render Reportes ANTAIP link for %s', tipoUsuario => {
     TestBed.inject(AuthService).guardarSesion({
       success: true,

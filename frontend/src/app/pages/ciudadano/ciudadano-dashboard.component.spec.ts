@@ -13,7 +13,7 @@ import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { PanelSolicitud as Solicitud, PanelPage, PanelQuery } from '../../models/panel-query.model';
-import { esHabil, hoyLima, sumarDias } from '../../models/calendario.model';
+import { esHabil, hoyLima, PLAZO_META_POR_CLAVE, sumarDias } from '../../models/calendario.model';
 
 try {
   getTestBed().initTestEnvironment(BrowserTestingModule, platformBrowserTesting());
@@ -113,6 +113,27 @@ describe('Panel ciudadano — inicio acreditado de subsanación TTAIP', () => {
     c.todasSolicitudes.set([vencida]);
     expect(c.subsanacionPrincipal()?.vencido).toBe(true); expect(c.accionPrincipal()).toBeNull();
     expect(c.filaUrgencia(vencida)?.value).toBe('Vencido');
+  });
+
+  it('informa la subsanación registrada y el plazo de la segunda calificación', () => {
+    const c = TestBed.createComponent(CiudadanoDashboardComponent).componentInstance;
+    const segunda = {
+      id: 4, expediente: 'SAIP-2026-10008', estado: 'DENEGADA', entidadNombre: 'Entidad sintética',
+      asunto: 'Solicitud sintética', fechaPresentacion: '2026-11-01',
+      apelacion: { id: 8, expediente: '00004-2026-JUS/TTAIP', estado: 'EN_CALIFICACION_2', recepcionSubsanacion: hoyLima() },
+    } as unknown as Solicitud;
+    c.todasSolicitudes.set([segunda]);
+    c.selectedSolicitudId.set(4);
+    expect(c.ubicacionTramite(segunda).label).toBe('En segunda calificación');
+    expect(c.filaUrgencia(segunda)).toMatchObject({
+      value: PLAZO_META_POR_CLAVE.TTAIP_CALIFICACION_2.porDefecto,
+      unit: 'días hábiles para la segunda calificación',
+    });
+    expect(c.accionPrincipal()?.titulo).toBe('El Tribunal califica su subsanación');
+    expect(c.timelinePrincipal().map(paso => paso.label)).toEqual(expect.arrayContaining(['Subsanación presentada', 'Segunda calificación']));
+    const sinFecha = { ...segunda, apelacion: { ...segunda.apelacion!, recepcionSubsanacion: null } } as Solicitud;
+    expect(c.filaUrgencia(sinFecha)).toMatchObject({ value: 'En curso', unit: 'segunda calificación' });
+    expect(c.timelinePrincipal().map(paso => paso.label)).not.toContain('Tribunal - En Calificacion 2');
   });
 });
 

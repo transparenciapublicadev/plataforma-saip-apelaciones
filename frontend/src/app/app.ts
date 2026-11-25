@@ -10,7 +10,7 @@ import {
   LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
   LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
   LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu, LucideUserPen,
-  LucideBarChart3
+  LucideBarChart3, LucideGavel
 } from '@lucide/angular';
 
 import { GuidedTourComponent } from './core/guided-tour/guided-tour.component';
@@ -21,17 +21,18 @@ import { LandingFooterComponent } from './pages/home/landing-footer.component';
 import { ProfileDialogComponent } from './shared/profile-dialog.component';
 import { ProfileDialogService } from './services/profile-dialog.service';
 import { YaikuLogoComponent } from './shared/yaiku-logo.component';
+import { YaikuCargandoComponent } from './shared/yaiku-cargando.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [
     CommonModule, RouterOutlet, RouterLink, RouterLinkActive,
-    GuidedTourComponent, NotificationBellComponent, LandingFooterComponent, ProfileDialogComponent, YaikuLogoComponent,
+    GuidedTourComponent, NotificationBellComponent, LandingFooterComponent, ProfileDialogComponent, YaikuLogoComponent, YaikuCargandoComponent,
     LucideSun, LucideMoon, LucideLayoutDashboard, LucidePlus,
     LucideScale, LucideSettings, LucideLogOut, LucideChevronDown,
     LucideHome, LucideSearch, LucideHelpCircle, LucideX, LucideMenu, LucideUserPen,
-    LucideBarChart3
+    LucideBarChart3, LucideGavel
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
@@ -39,6 +40,7 @@ import { YaikuLogoComponent } from './shared/yaiku-logo.component';
 })
 export class App {
   private readonly authService = inject(AuthService);
+  readonly cerrandoSesion = this.authService.cerrandoSesion;
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeService);
   private readonly motionService = inject(UxMotionService);
@@ -202,10 +204,10 @@ export class App {
   }
 
   logout(): void {
-    void this.authService.cerrarSesion();
     this.menuAbierto.set(false);
     this.mobileMenuAbierto.set(false);
-    this.router.navigate(['/']);
+    void this.authService.cerrarSesion();
+    void this.router.navigate(['/']).finally(() => this.authService.terminarCierreVisual());
   }
 
   isAuthRoute(): boolean {

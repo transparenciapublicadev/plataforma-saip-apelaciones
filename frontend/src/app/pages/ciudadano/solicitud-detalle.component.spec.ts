@@ -493,6 +493,25 @@ describe('SolicitudDetalleComponent — HTTP autorizado sin sustitutos', () => {
       .toEqual(['Liquidación registrada', 'Respuesta de la entidad', 'Solicitud presentada']);
   });
 
+  it('la línea de tiempo registra la subsanación recibida sin identificadores internos', () => {
+    const f = pagina();
+    responder(f, solicitud);
+    f.componentInstance.apelacionDetalle.set({
+      id: 9, estado: 'EN_CALIFICACION_2', fechaSubsanacion: null,
+      expedienteTtaip: { id: 3, numeroExpediente: '00004-2026-JUS/TTAIP', historial: [
+        { id: 4, tipoEvento: 'SUBSANACION', descripcion: 'Subsanación recibida para requerimiento 6', referencia: '7255912e-432f-4fec-a6d4-b4457a7f3c9b', fechaEvento: '2026-11-24T23:28:10' },
+      ] },
+    } as never);
+    const titulos = f.componentInstance.buildCitizenTimeline({
+      ...solicitud,
+      apelacion: { id: 9, expediente: '00004-2026-JUS/TTAIP', estado: 'EN_CALIFICACION_2', fechaApelacion: '2026-11-01' },
+    } as never);
+    const paso = titulos.find(evento => evento.title === 'Subsanación presentada');
+    expect(paso?.description).toBe('El Tribunal recibió el escrito de subsanación.');
+    expect(paso?.description).not.toContain('requerimiento');
+    expect(paso?.description).not.toContain('7255912e');
+  });
+
   it('la precisión navega al caso de uso existente con el expediente exacto sin otro formulario inline', () => {
     const f = pagina(); responder(f, { ...solicitud, estado: 'PENDIENTE_INFORMACION', observaciones: [
       { id: 7, estado: 'PENDIENTE_SUBSANACION', motivoObservacion: 'Precise el asunto' }] });

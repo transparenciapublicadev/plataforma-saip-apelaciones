@@ -96,6 +96,10 @@ describe('SubsanacionComponent — HTTP autorizado sin sustitutos', () => {
     f.componentInstance.fundamentosAdicionales = 'Correcciones sintéticas';
     f.componentInstance.enviarSubsanacion(); const { req, clave } = envio(); req.flush(recibo(clave));
     expect(f.componentInstance.estadoEnvio()).toBe('confirmada');
+    const metadatos = f.componentInstance.subsanacionSuccessMetadata();
+    expect(metadatos.map(item => item.label)).toEqual(['Resolución', 'Archivos registrados', 'Fecha de recepción']);
+    expect(JSON.stringify(metadatos)).not.toContain(clave);
+    expect(f.componentInstance.mensaje()).not.toContain('servidor');
   });
 
   it('usa el plazo del requerimiento recibido del servidor y no el reloj local', () => {
@@ -119,6 +123,13 @@ describe('SubsanacionComponent — HTTP autorizado sin sustitutos', () => {
     expect(f.componentInstance.documentosOriginales()).toEqual([documento]);
     expect(f.nativeElement.textContent).toContain('Aclarar el periodo solicitado');
     expect(f.nativeElement.textContent).toContain(expediente);
+    expect(f.nativeElement.textContent).not.toContain('Requerimiento 71');
+    expect(f.nativeElement.textContent).not.toContain('servidor');
+    f.componentInstance.fundamentosAdicionales = 'Corrección registrada';
+    const resumen = f.componentInstance.subsanacionConfirmSummary().map(item => `${item.label}: ${item.value}`).join(' | ');
+    expect(resumen).toContain('Aclarar el periodo solicitado');
+    expect(resumen).not.toContain('Texto libre');
+    expect(resumen).not.toContain('Requerimiento');
   });
 
   it.each([[400, 'validacion'], [422, 'validacion'], [401, 'autenticacion'], [403, 'autorizacion'],
@@ -143,7 +154,7 @@ describe('SubsanacionComponent — HTTP autorizado sin sustitutos', () => {
     const f = pagina(); responder(f, null);
     expect(f.componentInstance.estadoConsulta()).toBe('vacio');
     expect(f.componentInstance.error()).toBe('');
-    expect(f.nativeElement.textContent).toContain('no devolvió datos');
+    expect(f.nativeElement.textContent).toContain('No hay datos de esta apelación');
     f.componentInstance.reintentarConsulta(); responder(f);
     expect(f.componentInstance.apelacion()?.id).toBe(145);
   });
@@ -415,7 +426,7 @@ describe('SubsanacionComponent — HTTP autorizado sin sustitutos', () => {
   it('un reloj ausente no se presenta como un inicio pendiente acreditado', () => {
     const f = preparar(); f.detectChanges();
     expect(f.componentInstance.plazoPendienteInicio()).toBe(false);
-    expect(f.nativeElement.textContent).toContain('Reloj no disponible');
+    expect(f.nativeElement.textContent).toContain('Plazo no disponible');
     expect(f.nativeElement.textContent).not.toContain('Plazo pendiente de inicio');
   });
 
@@ -440,7 +451,7 @@ describe('SubsanacionComponent — HTTP autorizado sin sustitutos', () => {
         diasHabilesRestantes: 1, fechaEficacia: '2026-10-21T10:00:00', fechaLimite: '2026-10-23' } }); f.detectChanges();
     expect(f.componentInstance.getFechaNotificacion()).toBeNull();
     expect(f.componentInstance.calcularDiasRestantes()).toBeNull();
-    expect(f.nativeElement.textContent).toContain('información del reloj está incompleta');
+    expect(f.nativeElement.textContent).toContain('información del plazo está incompleta');
   });
 
   it('una revisión de sesión con el mismo token descarta la consulta de la cuenta anterior', () => {
@@ -495,7 +506,7 @@ describe('SubsanacionComponent — HTTP autorizado sin sustitutos', () => {
     expect(f.componentInstance.calcularDiasRestantes()).toBe(dias);
     expect(f.componentInstance.getPlazoSubsanacionDias()).toBe(4);
     expect(f.componentInstance.esSubsanacionVencida()).toBe(estado === 'VENCIDO');
-    if (estado === 'EN_CURSO' && dias === 0) expect(f.nativeElement.textContent).toContain('Último día permitido');
+    if (estado === 'EN_CURSO' && dias === 0) expect(f.nativeElement.textContent).toContain('Último día del plazo registrado');
     f.componentInstance.fundamentosAdicionales = 'Correcciones sintéticas'; f.componentInstance.enviarSubsanacion();
     if (admite) { const { req, clave } = envio(); req.flush(recibo(clave)); }
     else http.expectNone(recepcionUrl);
@@ -516,7 +527,7 @@ describe('SubsanacionComponent — HTTP autorizado sin sustitutos', () => {
       plazo: { requerimientoId: 71, estado: 'EN_CURSO', diasHabiles: 2, diasHabilesRestantes: 1 } }); f.detectChanges();
     expect(f.componentInstance.relojIncompleto()).toBe(true);
     expect(f.componentInstance.getFechaNotificacion()).toBeNull(); expect(f.componentInstance.getFechaLimite()).toBeNull();
-    expect(f.nativeElement.textContent).toContain('información del reloj está incompleta');
+    expect(f.nativeElement.textContent).toContain('información del plazo está incompleta');
   });
 
   it('no sustituye una duración ausente por la de la apelación ni por dos días', () => {

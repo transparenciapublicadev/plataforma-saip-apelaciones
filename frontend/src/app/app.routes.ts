@@ -83,6 +83,12 @@ export const routes: Routes = [
     canActivate: [tipoUsuarioGuard('CIUDADANO')]
   },
   {
+    path: 'ciudadano/tribunal',
+    title: 'Actuaciones del Tribunal | Yaiku',
+    loadComponent: () => import('./pages/tribunal/comunicaciones-tribunal.component').then(m => m.ComunicacionesTribunalComponent),
+    canActivate: [tipoUsuarioGuard('CIUDADANO')]
+  },
+  {
     path: 'ciudadano/nueva-apelacion',
     title: 'Nueva apelación TTAIP | Yaiku',
     loadComponent: () => import('./pages/ciudadano/nueva-apelacion.component').then(m => m.NuevaApelacionComponent),
@@ -141,6 +147,13 @@ export const routes: Routes = [
     title: 'Expediente de apelación | Yaiku Funcionario',
     loadComponent: () => import('./pages/ttaip/ttaip-resolucion-detalle.component').then(m => m.TtaipResolucionDetalleComponent),
     canActivate: [tipoUsuarioGuard('FUNCIONARIO')]
+  },
+  {
+    path: 'funcionario/tribunal',
+    title: 'Actuaciones del Tribunal | Yaiku Funcionario',
+    loadComponent: () => import('./pages/tribunal/comunicaciones-tribunal.component').then(m => m.ComunicacionesTribunalComponent),
+    canActivate: [tipoUsuarioGuard('FUNCIONARIO')],
+    data: { entidad: true }
   },
   {
     path: 'funcionario/reportes',

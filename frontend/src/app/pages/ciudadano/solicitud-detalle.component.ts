@@ -17,6 +17,7 @@ import { ampliacionPermiteApelar, AmpliacionPlazoSolicitud, DECISIONES_ENTREGA, 
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
 import { DocumentoRelation, DocumentoListItem, DOCUMENTO_RELATION_KEYS, getDocumentoRelationEntry } from '../../models/documento.model';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { TimelineComponent, TimelineEvent } from '../../shared/timeline.component';
 import { DocumentListComponent } from '../../shared/document-list.component';
 import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
@@ -82,6 +83,7 @@ export interface NotifStageItem {
     CumplimientoDocumentalComponent,
     RouterLink,
     StatusBadgeComponent,
+    YaikuCargandoComponent,
     TimelineComponent,
     LucideAlertCircle,
     LucideArrowLeft,
@@ -396,6 +398,7 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
     }
     if (!token) {
       this.estadoConsulta.set('autenticacion');
+      if (this.authService.cerrandoSesion?.()) { this.loading.set(true); return; }
       this.error.set('Su sesión no es válida. Inicie sesión nuevamente.');
       return;
     }
@@ -877,6 +880,16 @@ export class SolicitudDetalleComponent implements OnInit, OnDestroy {
           if (!res || !this.idValido(res.id) || vistos.has(res.id)) continue;
           vistos.add(res.id);
           add(this.getEstadoDisplay(res.tipoResolucion), res.decision ? this.getEstadoDisplay(res.decision) : 'Decisión no registrada.', res.fechaResolucion, 'scale', 110, 2);
+        }
+        let subsanacionRegistrada = false;
+        for (const evento of detalle.expedienteTtaip?.historial ?? []) {
+          if (evento?.tipoEvento !== 'SUBSANACION' || !this.idValido(evento.id)) continue;
+          subsanacionRegistrada = true;
+          add('Subsanación presentada', 'El Tribunal recibió el escrito de subsanación.', evento.fechaEvento, 'filecheck', 115, 2);
+        }
+        const estadoApelacion = (detalle.estado || ap?.estado || '').toUpperCase();
+        if (!subsanacionRegistrada && estadoApelacion === 'EN_CALIFICACION_2') {
+          add('Subsanación presentada', 'El Tribunal recibió el escrito de subsanación.', detalle.fechaSubsanacion, 'filecheck', 115, 2);
         }
         const cumplimiento = detalle.expedienteTtaip?.cumplimientoDocumental;
         if (cumplimiento?.fechaEntrega) {

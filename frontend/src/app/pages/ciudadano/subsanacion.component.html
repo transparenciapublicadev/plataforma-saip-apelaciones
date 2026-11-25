@@ -18,16 +18,13 @@
 
   <div class="max-w-6xl mx-auto px-6 md:px-10 py-10 space-y-6" [attr.aria-busy]="loadingApelacion() || loadingRequerimiento()">
     @if (loadingApelacion()) {
-      <div role="status" aria-live="polite" class="form-shell p-16 text-center">
-        <div class="w-8 h-8 border-2 border-[var(--brand-700)] border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p class="mt-4 text-muted-foreground">Cargando apelación...</p>
-      </div>
+      <app-yaiku-cargando mensaje="Cargando apelación..." />
     } @else if (apelacion(); as ap) {
       <section class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)" aria-label="Contexto de la apelación">
         <span class="eyebrow">Apelación consultada</span>
         <p class="text-sm font-medium mt-1">{{ ap.entidadNombre || 'Entidad no registrada' }}</p>
         <p class="text-sm text-muted-foreground mt-1">{{ ap.solicitudAsunto || ap.resumenSolicitudOriginal || 'Asunto no registrado' }}</p>
-        @if (requerimiento(); as r) { <p class="font-mono text-xs text-muted-foreground mt-2">Requerimiento {{ r.requerimientoId }} · {{ r.numeroResolucion || 'Numeración no registrada' }}</p> }
+        @if (requerimiento(); as r) { <p class="font-mono text-xs text-muted-foreground mt-2">{{ r.numeroResolucion || 'Numeración no registrada' }}</p> }
       </section>
       @if (documentoError()) {
         <div role="alert" class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">{{ documentoError() }}</div>
@@ -36,7 +33,7 @@
         <p role="status" class="text-sm text-muted-foreground">Comprobando el requerimiento vigente...</p>
       } @else if (!requerimiento()) {
         @if (estadoRequerimiento() === 'vacio') {
-          <p role="status" class="form-shell p-5 text-sm text-muted-foreground">El servidor no devolvió el requerimiento. No se acredita ausencia de observaciones ni se habilita el envío.</p>
+          <p role="status" class="form-shell p-5 text-sm text-muted-foreground">No se recuperó el requerimiento. No se acredita la ausencia de observaciones ni se habilita el envío.</p>
         }
         @if (puedeReintentarRequerimiento()) {
         <button type="button" class="btn-ghost-brand" (click)="cargarRequerimiento()">Reintentar requerimiento</button>
@@ -50,14 +47,14 @@
       }
       @if (recepcion(); as recibida) {
         <section id="subsanacion-recepcion" tabindex="-1" class="form-shell p-5" aria-label="Recepción confirmada">
-          <p role="status" class="text-sm">Recepción {{ recibida.id }} · requerimiento {{ recibida.requerimientoId }} · {{ recibida.fechaRecepcion | date:'dd/MM/yyyy HH:mm:ss' }}</p>
+          <p role="status" class="text-sm">Escrito registrado el {{ recibida.fechaRecepcion | date:'dd/MM/yyyy HH:mm' }}</p>
           @for (doc of recibida.documentos; track doc.id) {
             <div class="subsanacion-file-row flex items-center justify-between gap-3 mt-3">
-              <span class="text-sm">Documento {{ doc.id }} · {{ doc.nombreOriginal }}</span>
+              <span class="text-sm">{{ doc.nombreOriginal }}</span>
               <button type="button" class="btn-ghost-brand" (click)="descargarDocumento({ id: doc.id, nombreArchivo: doc.nombreOriginal, tipoArchivo: doc.contentType })">Descargar archivo registrado</button>
             </div>
           }
-          <p class="text-xs text-muted-foreground mt-3">El registro acredita la recepción de este requerimiento y sus archivos; no entrega, notificación eficaz, firma o emisión formal.</p>
+          <p class="text-xs text-muted-foreground mt-3">Quedó registrada la recepción del escrito y de los archivos enviados.</p>
         </section>
       }
       @if (requerimiento()) {
@@ -68,7 +65,7 @@
         <div class="flex-1">
           <span class="eyebrow" style="color: var(--warning)">Duración registrada · {{ getPlazoSubsanacionDias() !== null ? getPlazoSubsanacionDias() + ' días hábiles' : 'No disponible' }}</span>
           <p class="text-sm text-foreground/85 mt-1.5 leading-relaxed">
-            El requerimiento y las condiciones de presentación se consultan al servidor. El plazo comienza desde la notificación eficaz acreditada del requerimiento al recurrente. La creación, el envío técnico o un archivo no acreditan ese inicio.
+            El plazo se cuenta desde la notificación eficaz acreditada. Si esa fecha no está registrada, no se calcula otra.
           </p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
@@ -93,14 +90,14 @@
             </div>
           </div>
           @if (!requerimiento()?.plazo) {
-            <p role="status" class="text-xs text-muted-foreground mt-2">Reloj no disponible: la consulta no aporta un estado temporal explícito. No se deduce inicio ni vencimiento; el servidor comprueba las condiciones al recibir.</p>
+            <p role="status" class="text-xs text-muted-foreground mt-2">Plazo no disponible: la consulta no aporta un estado temporal. No se deduce inicio ni vencimiento.</p>
           } @else if (relojIncompleto()) {
-            <p role="status" class="text-xs text-muted-foreground mt-2">La información del reloj está incompleta o no corresponde a este requerimiento. No se sustituyen fechas ni se calculan días.</p>
+            <p role="status" class="text-xs text-muted-foreground mt-2">La información del plazo está incompleta o no corresponde a esta resolución. No se sustituyen fechas ni se calculan días.</p>
           } @else if (plazoPendienteInicio()) {
-            <p role="status" class="text-xs text-muted-foreground mt-2">Plazo pendiente de inicio: no hay una fecha de notificación eficaz acreditada para este requerimiento y recurrente. Puede presentar si el servidor lo habilita.</p>
+            <p role="status" class="text-xs text-muted-foreground mt-2">Plazo pendiente de inicio: no hay una fecha de notificación eficaz acreditada. Puede presentar el escrito mientras el trámite lo habilite.</p>
           } @else {
-            <p class="text-xs text-muted-foreground mt-2">Estado del reloj: <span class="font-semibold">{{ requerimiento()?.plazo?.estado }}</span> · Días hábiles restantes: <span class="font-semibold">{{ calcularDiasRestantes() }}</span></p>
-            @if (requerimiento()?.plazo?.estado === 'EN_CURSO' && calcularDiasRestantes() === 0) { <p role="status" class="text-xs text-muted-foreground mt-2">Último día permitido según el servidor. El saldo cero no se interpreta como vencimiento.</p> }
+            <p class="text-xs text-muted-foreground mt-2">Estado del plazo: <span class="font-semibold">{{ etiquetaPlazo(requerimiento()?.plazo?.estado) }}</span> · Días hábiles restantes: <span class="font-semibold">{{ calcularDiasRestantes() }}</span></p>
+            @if (requerimiento()?.plazo?.estado === 'EN_CURSO' && calcularDiasRestantes() === 0) { <p role="status" class="text-xs text-muted-foreground mt-2">Último día del plazo registrado. El saldo en cero no significa que el plazo ya venció.</p> }
           }
         </div>
       </div>
@@ -114,7 +111,7 @@
           </div>
           <div class="flex-1">
             <span class="eyebrow" style="color: var(--destructive)">Subsanación Vencida</span>
-            <p class="text-sm font-semibold text-foreground/90 mt-1">El servidor informa que el plazo de subsanación ha vencido. No se ha confirmado otra presentación.</p>
+            <p class="text-sm font-semibold text-foreground/90 mt-1">El plazo de subsanación ha vencido. No se ha confirmado otra presentación.</p>
             <p class="text-xs text-muted-foreground mt-1">El vencimiento no equivale al registro de una resolución de tener por no presentado. Consulte las actuaciones del expediente.</p>
           </div>
         </div>
@@ -315,7 +312,7 @@
               }
             </button>
 
-            <p id="subsanacion-memoria" role="note" class="text-xs text-muted-foreground">Los fundamentos y los archivos seleccionados se conservan solo en memoria. Al recargar, cambiar de recurso o sesión, o salir, deberán introducirse nuevamente si no hay recepción confirmada. En esta pestaña solo se guardan la clave y el número de archivos para comprobar la recepción; un reintento debe conservar texto, bytes y orden originales.</p>
+            <p id="subsanacion-memoria" role="note" class="text-xs text-muted-foreground">Los fundamentos y los archivos seleccionados se conservan solo en memoria. Al recargar, cambiar de recurso o sesión, o salir, deberán introducirse nuevamente si no hay recepción confirmada. En esta pestaña solo se guarda lo necesario para comprobar la recepción; un reintento debe conservar el mismo texto, los mismos archivos y el mismo orden.</p>
             <p class="text-xs text-center text-muted-foreground">Se confirmará únicamente la recepción persistida. El registro no acredita entrega, notificación eficaz, firma ni emisión formal.</p>
           </div>
         </div>
@@ -327,7 +324,7 @@
         @if (error()) {
           <p role="alert" class="text-sm text-muted-foreground">{{ error() }}</p>
         } @else {
-          <p role="status" class="text-sm text-muted-foreground">El servidor no devolvió datos para esta apelación.</p>
+          <p role="status" class="text-sm text-muted-foreground">No hay datos de esta apelación en la consulta.</p>
         }
         @if (puedeReintentarConsulta()) {
           <button type="button" class="btn-ghost-brand mt-3" (click)="reintentarConsulta()">Reintentar consulta</button>
@@ -361,9 +358,9 @@
     tone="success"
     eyebrow="Subsanación recibida"
     title="Subsanación registrada"
-    description="El servidor confirmó la recepción del escrito y de todos los adjuntos seleccionados."
+    description="Se registró la recepción del escrito y de los archivos seleccionados."
     [expediente]="apelacion()?.expediente || ''"
-    expedienteHint="Recepción persistida"
+    expedienteHint="Escrito registrado"
     [metadata]="subsanacionSuccessMetadata()"
     [nextSteps]="subsanacionNextSteps()"
     primaryLabel="Ir a mi panel"

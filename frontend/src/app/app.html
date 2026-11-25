@@ -48,11 +48,19 @@
                 <svg lucideScale class="w-4 h-4 opacity-70"></svg>
                 Apelar
               </a>
+              <a routerLink="/ciudadano/tribunal" routerLinkActive="active" class="nav-link-desktop" title="Actuaciones del Tribunal">
+                <svg lucideGavel class="w-4 h-4 opacity-70"></svg>
+                Actuaciones
+              </a>
             }
             @case ('FUNCIONARIO') {
               <a routerLink="/funcionario" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-link-desktop">
                 <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
                 Mi panel
+              </a>
+              <a routerLink="/funcionario/tribunal" routerLinkActive="active" class="nav-link-desktop" title="Actuaciones del Tribunal">
+                <svg lucideGavel class="w-4 h-4 opacity-70"></svg>
+                Actuaciones
               </a>
               <a routerLink="/funcionario/reportes" routerLinkActive="active" class="nav-link-desktop">
                 <svg lucideBarChart3 size="16" color="currentColor" aria-hidden="true"></svg>
@@ -130,11 +138,19 @@
                         <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
                         Mi panel
                       </a>
+                      <a routerLink="/ciudadano/tribunal" (click)="toggleMenu()" class="dropdown-item" role="menuitem" title="Actuaciones del Tribunal">
+                        <svg lucideGavel class="w-4 h-4 opacity-70"></svg>
+                        Actuaciones
+                      </a>
                     }
                     @case ('FUNCIONARIO') {
                       <a routerLink="/funcionario" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
                         <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
                         Mi panel
+                      </a>
+                      <a routerLink="/funcionario/tribunal" (click)="toggleMenu()" class="dropdown-item" role="menuitem" title="Actuaciones del Tribunal">
+                        <svg lucideGavel class="w-4 h-4 opacity-70"></svg>
+                        Actuaciones
                       </a>
                       <a routerLink="/funcionario/reportes" (click)="toggleMenu()" class="dropdown-item" role="menuitem">
                         <svg lucideBarChart3 size="16" color="currentColor" aria-hidden="true"></svg>
@@ -267,11 +283,19 @@
                 <svg lucideScale class="w-4 h-4 text-muted-foreground"></svg>
                 Apelar
               </a>
+              <a routerLink="/ciudadano/tribunal" (click)="toggleMobileMenu()" class="mobile-nav-item" title="Actuaciones del Tribunal">
+                <svg lucideGavel class="w-4 h-4 text-muted-foreground"></svg>
+                Actuaciones
+              </a>
             }
             @case ('FUNCIONARIO') {
               <a routerLink="/funcionario" (click)="toggleMobileMenu()" class="mobile-nav-item">
                 <svg lucideLayoutDashboard class="w-4 h-4 opacity-70"></svg>
                 Mi panel
+              </a>
+              <a routerLink="/funcionario/tribunal" (click)="toggleMobileMenu()" class="mobile-nav-item" title="Actuaciones del Tribunal">
+                <svg lucideGavel class="w-4 h-4 text-muted-foreground"></svg>
+                Actuaciones
               </a>
               <a routerLink="/funcionario/reportes" (click)="toggleMobileMenu()" class="mobile-nav-item">
                 <svg lucideBarChart3 size="16" color="currentColor" aria-hidden="true"></svg>
@@ -336,6 +360,12 @@
 <main id="main-content" #mainContent class="saip-main-shell" [class.auth-main-shell]="isAuthRoute()" [class.landing-main-shell]="isLandingRoute()" tabindex="-1">
   <router-outlet></router-outlet>
 </main>
+
+@if (cerrandoSesion()) {
+  <div class="fixed inset-0 z-[80] flex items-center justify-center bg-background">
+    <app-yaiku-cargando mensaje="Cerrando sesión…" />
+  </div>
+}
 
 <app-landing-footer />
 
