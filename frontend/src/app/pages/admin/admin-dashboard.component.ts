@@ -4,8 +4,10 @@ import { Component, ChangeDetectionStrategy, DestroyRef, OnInit, OnDestroy, comp
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, Subscription, finalize } from 'rxjs';
 import { ModalFocusDirective } from '../../shared/modal-focus.directive';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, DecimalPipe } from '@angular/common';
+import { AuthService } from '../../services/auth.service';
 import { EntidadService } from '../../services/entidad.service';
 import { SolicitudService } from '../../services/solicitud.service';
 import { ApelacionService } from '../../services/apelacion.service';
@@ -140,7 +142,7 @@ function hasNumbers(value: unknown, keys: string[]): boolean {
   selector: 'app-admin-dashboard',
   standalone: true,
   imports: [
-    AdminUserCreateFormComponent, AdminPlazosCalendarioComponent, CommonModule, FormsModule, DecimalPipe, PaginationComponent, ModalFocusDirective,
+    AdminUserCreateFormComponent, AdminPlazosCalendarioComponent, CommonModule, FormsModule, DecimalPipe, PaginationComponent, ModalFocusDirective, YaikuCargandoComponent,
     LucideShield, LucideFileText, LucideUsers, LucideBuilding2, LucideAward,
     LucideClock, LucideCheckCircle, LucideAlertTriangle,
     LucideScale, LucideBarChart3, LucideDownload, LucideSettings,
@@ -155,6 +157,7 @@ function hasNumbers(value: unknown, keys: string[]): boolean {
 })
 export class AdminDashboardComponent implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
   private readonly entidadService = inject(EntidadService);
   private readonly solicitudService = inject(SolicitudService);
   private readonly apelacionService = inject(ApelacionService);
@@ -211,7 +214,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         else this.loadErrors.update(errors => ({ ...errors, [key]: 'Información incompleta o no disponible en la respuesta del servidor.' }));
       },
       error: error => {
-        if (generation !== this.generation) return;
+        if (generation !== this.generation || this.auth.cerrandoSesion?.()) return;
         this.resourceStates.update(states => ({ ...states, [key]: 'error' }));
         this.loadErrors.update(errors => ({ ...errors, [key]: this.failureMessage(error) }));
       },

@@ -87,6 +87,7 @@ export class LoginComponent implements OnInit {
   }
 
   login(): void {
+    if (this.loading()) return;
     if (!this.email || !this.password) {
       this.error.set('Por favor complete todos los campos');
       return;
@@ -103,24 +104,26 @@ export class LoginComponent implements OnInit {
 
     this.authService.login(credentials).subscribe({
       next: (response) => {
-        this.loading.set(false);
         if (response.success) {
           const userRole = this.toTipoUsuario(response.tipoUsuario);
           if (!userRole) {
+            this.loading.set(false);
             this.error.set('No se pudo validar su tipo de usuario. Intente nuevamente.');
             return;
           }
 
           if (!this.canAccessPortal(userRole)) {
+            this.loading.set(false);
             this.error.set(this.getPortalAccessError(userRole));
             return;
           }
 
           this.authService.guardarSesion(response);
           this.redirigirSegunTipo();
-        } else {
-          this.error.set(response.mensaje || 'Error al iniciar sesión');
+          return;
         }
+        this.loading.set(false);
+        this.error.set(response.mensaje || 'Error al iniciar sesión');
       },
       error: (err) => {
         this.loading.set(false);

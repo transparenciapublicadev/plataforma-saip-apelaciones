@@ -47,7 +47,7 @@
         <div class="field">
           <label class="field-label" for="login-email">{{ identifierLabel() }} <span class="req" aria-hidden="true">*</span></label>
           <input id="login-email" type="text" [(ngModel)]="email" name="email" class="field-input"
-            [placeholder]="identifierPlaceholder()" autocomplete="username" aria-required="true"
+            [placeholder]="identifierPlaceholder()" autocomplete="username" aria-required="true" [disabled]="loading()"
             [attr.aria-invalid]="error() ? 'true' : null"
             [attr.aria-describedby]="error() ? 'login-portal-context login-error' : 'login-portal-context'" />
           @if (isCitizenPortal()) { <span class="field-hint">Los ciudadanos usan su DNI y las empresas su RUC. También puede utilizar su correo.</span> }
@@ -56,7 +56,7 @@
           <label class="field-label" for="login-password">Contraseña <span class="req" aria-hidden="true">*</span></label>
           <div class="relative">
             <input id="login-password" [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" name="password"
-              class="field-input pr-11" placeholder="Ingrese su contraseña" autocomplete="current-password" aria-required="true"
+              class="field-input pr-11" placeholder="Ingrese su contraseña" autocomplete="current-password" aria-required="true" [disabled]="loading()"
               [attr.aria-invalid]="error() ? 'true' : null" [attr.aria-describedby]="error() ? 'login-error' : null" />
             <button type="button" (click)="togglePasswordVisibility()" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
               [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="showPassword()">
@@ -75,7 +75,7 @@
           <button type="button" disabled aria-describedby="login-unavailable" class="font-medium disabled:cursor-not-allowed">¿Olvidó su contraseña?</button>
         </div>
         <p id="login-unavailable" class="field-hint">La opción Recordarme y la recuperación de contraseña no están disponibles.</p>
-        <button type="submit" [disabled]="loading()" class="btn-brand w-full !py-3 disabled:opacity-50 disabled:cursor-not-allowed">
+        <button type="submit" [disabled]="loading()" [attr.aria-disabled]="loading()" class="btn-brand w-full !py-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none">
           @if (loading()) { <svg lucideLoaderCircle class="w-4 h-4 animate-spin" aria-hidden="true"></svg><span role="status">Iniciando sesión…</span> }
           @else { <svg lucideLogIn class="w-4 h-4" aria-hidden="true"></svg> Iniciar sesión <svg lucideArrowRight class="w-4 h-4 ml-1" aria-hidden="true"></svg> }
         </button>

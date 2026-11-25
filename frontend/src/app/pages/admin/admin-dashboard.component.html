@@ -48,7 +48,7 @@
     @if (saving()) { <p role="status" class="text-sm text-muted-foreground mb-5">Guardando cambios en el servidor…</p> }
     @if (exporting()) { <p role="status" class="text-sm text-muted-foreground mb-5">Consultando el reporte en el servidor…</p> }
     @if (loading()) {
-      <p role="status" class="text-sm text-muted-foreground mb-5">Cargando datos del servidor…</p>
+      <app-yaiku-cargando mensaje="Cargando el panel…" />
     }
     @if (!loading() && (loadErrors() | keyvalue).length) {
       <div role="alert" class="alert alert-error mb-5">
@@ -235,8 +235,8 @@
       <!-- =================================================================== -->
       <!-- PESTAÑA 1: RESUMEN (OVERVIEW)                                      -->
       <!-- =================================================================== -->
-      @if (activeTab() === 'overview' && !overviewReady()) {
-        <p role="status" class="form-shell p-6">{{ loading() ? 'Cargando…' : 'Información no disponible. Reintente la consulta.' }}</p>
+      @if (activeTab() === 'overview' && !overviewReady() && !loading()) {
+        <p role="status" class="form-shell p-6">Información no disponible. Reintente la consulta.</p>
       }
       @if (activeTab() === 'overview' && overviewReady()) {
         <div data-tour="a-overview" class="space-y-5 animate-fade-in">
@@ -515,8 +515,8 @@
       <!-- =================================================================== -->
       <!-- PESTAÑA 2: ENTIDADES (ENTITIES)                                    -->
       <!-- =================================================================== -->
-      @if (activeTab() === 'entities' && !ready('entidades', 'solicitudes')) {
-        <p role="status" class="form-shell p-6">{{ loading() ? 'Cargando…' : 'Información no disponible. Reintente la consulta.' }}</p>
+      @if (activeTab() === 'entities' && !ready('entidades', 'solicitudes') && !loading()) {
+        <p role="status" class="form-shell p-6">Información no disponible. Reintente la consulta.</p>
       }
       @if (activeTab() === 'entities' && ready('entidades', 'solicitudes')) {
         <div data-tour="a-entities" class="form-shell overflow-hidden animate-fade-in">
@@ -644,8 +644,8 @@
       <!-- =================================================================== -->
       <!-- PESTAÑA 3: USUARIOS (USERS)                                        -->
       <!-- =================================================================== -->
-      @if (activeTab() === 'users' && !ready('usuarios')) {
-        <p role="status" class="form-shell p-6">{{ loading() ? 'Cargando…' : 'Información no disponible. Reintente la consulta.' }}</p>
+      @if (activeTab() === 'users' && !ready('usuarios') && !loading()) {
+        <p role="status" class="form-shell p-6">Información no disponible. Reintente la consulta.</p>
       }
       @if (activeTab() === 'users' && ready('usuarios')) {
         <div data-tour="a-users" class="form-shell overflow-hidden animate-fade-in">
@@ -1067,10 +1067,12 @@
       <!-- =================================================================== -->
       <!-- PESTAÑA 5: CONFIGURACIÓN (SETTINGS)                                -->
       <!-- =================================================================== -->
-      @if (activeTab() === 'settings' && configService.loadState() !== 'ready') {
+      @if (activeTab() === 'settings' && configService.loadState() === 'loading') {
+        <app-yaiku-cargando mensaje="Cargando configuración…" />
+      } @else if (activeTab() === 'settings' && configService.loadState() !== 'ready') {
         <div role="status" class="form-shell p-6">
-          <p>{{ configService.loadState() === 'loading' ? 'Cargando configuración…' : 'Configuración del servidor no disponible. Los valores locales no acreditan la configuración vigente.' }}</p>
-          <button type="button" class="btn-ghost-brand mt-3" [disabled]="configService.loadState() === 'loading'" (click)="configService.cargarDesdeBackend()">Reintentar configuración</button>
+          <p>Configuración no disponible. Los valores locales no acreditan la configuración vigente.</p>
+          <button type="button" class="btn-ghost-brand mt-3" (click)="configService.cargarDesdeBackend()">Reintentar configuración</button>
         </div>
       }
       @if (activeTab() === 'settings' && configService.loadState() === 'ready') {

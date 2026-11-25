@@ -18,6 +18,8 @@ export class AuthService {
   private cierreEnCurso = 0;
   private readonly avisoCierre = signal<string | null>(null);
   readonly avisoCierreSesion = this.avisoCierre.asReadonly();
+  private readonly cerrando = signal(false);
+  readonly cerrandoSesion = this.cerrando.asReadonly();
   private readonly cambioSesion = signal(0);
   readonly cambiosSesion = this.cambioSesion.asReadonly();
 
@@ -33,6 +35,10 @@ export class AuthService {
 
   private notificarCambioSesion(): void {
     this.cambioSesion.update(value => value + 1);
+  }
+
+  terminarCierreVisual(): void {
+    this.cerrando.set(false);
   }
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
@@ -63,6 +69,7 @@ export class AuthService {
     if (this.isBrowser && typeof localStorage !== 'undefined') {
       localStorage.setItem('usuario', JSON.stringify(data));
       this.avisoCierre.set(null);
+      this.cerrando.set(false);
       this.notificarCambioSesion();
     }
   }
@@ -82,9 +89,10 @@ export class AuthService {
       return 'sin-sesion';
     }
     // Clear immediately so guards stop admitting this session, even when offline.
+    this.cerrando.set(true);
+    this.avisoCierre.set(null);
     localStorage.removeItem('usuario');
     this.notificarCambioSesion();
-    this.avisoCierre.set(null);
     if (!token) return 'sin-sesion';
 
     let resultado: ResultadoCierreSesion;
@@ -97,11 +105,9 @@ export class AuthService {
     } catch {
       resultado = 'local';
     }
-    // Never clear storage or navigate after the response: a new login may already exist.
-    // A confirmed logout needs no banner; it was appearing on every module until the next login.
-    if (cierre === this.cierreEnCurso && !this.getToken() && resultado !== 'confirmado') {
-      this.avisoCierre.set('Sesión cerrada en este navegador. No se pudo confirmar la invalidación en el servidor.');
-    }
+    // The browser session is already closed. A failed server confirmation must not
+    // raise a warning over the page the person is leaving.
+    if (cierre === this.cierreEnCurso && this.getToken()) this.cerrando.set(false);
     return resultado;
   }
 

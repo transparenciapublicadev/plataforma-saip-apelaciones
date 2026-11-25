@@ -135,7 +135,7 @@ describe('AuthService', () => {
     expect(await result).toBe('local');
     expect(service.getToken()).toBeNull();
     expect(guard()).toBe(false);
-    expect(service.avisoCierreSesion()).toContain('No se pudo confirmar');
+    expect(service.avisoCierreSesion()).toBeNull();
   });
 
   it('a confirmed logout leaves no banner', async () => {
@@ -178,7 +178,8 @@ describe('AuthService', () => {
     httpMock.expectOne(`${apiUrl}/logout`).flush({}, { status: 401, statusText: 'Unauthorized' });
     expect(await closing).toBe('local');
     expect(service.getToken()).toBeNull();
-    expect(service.avisoCierreSesion()).toContain('No se pudo confirmar');
+    expect(service.avisoCierreSesion()).toBeNull();
+    expect(service.cerrandoSesion()).toBe(true);
   });
 
   it('bounds a logout request that never responds and keeps the local logout', async () => {
