@@ -100,4 +100,22 @@ describe('avisos del actor', () => {
     const avisos = avisosDelActor('CIUDADANO', [], [apelacion, apelacion]);
     expect(avisos.map(aviso => aviso.id)).toEqual(['apel:00001-2026-JUS/TTAIP:subsanar']);
   });
+
+  it('aplica las alertas guardadas solo cuando se informan', () => {
+    const vencida = solicitud({ id: 4, estado: 'VENCIDA', ciudadanoNombre: 'Persona sintética' });
+    const proxima = solicitud({
+      id: 5, expediente: 'SAIP-TEST-5', estado: 'EN_REVISION', diasRestantes: 2, ciudadanoNombre: 'Persona sintética',
+    });
+    expect(avisosDelActor('FUNCIONARIO', [vencida, proxima], []).map(aviso => aviso.titulo)).toEqual([
+      'Solicitud por atender',
+      'Solicitud en atención',
+    ]);
+    const conAlertas = avisosDelActor('FUNCIONARIO', [vencida, proxima], [], {
+      vencidas: false, proximos: true, umbralProximo: 2,
+    });
+    expect(conAlertas.map(aviso => aviso.titulo)).toEqual(['Plazo próximo']);
+    const etapaSan = solicitud({ id: 6, expediente: 'SAIP-TEST-6', estado: 'VENCIDA', etapa: 'san' });
+    expect(avisosDelActor('FUNCIONARIO', [etapaSan], [], { vencidas: false, proximos: false, umbralProximo: 2 })
+      .map(aviso => aviso.titulo)).toEqual(['Solicitud por atender']);
+  });
 });

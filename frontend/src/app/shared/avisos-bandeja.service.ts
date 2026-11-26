@@ -1,7 +1,11 @@
+import { HttpClient } from '@angular/common/http';
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
-import { Subscription, forkJoin } from 'rxjs';
+import { Subscription, catchError, forkJoin, of } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { PanelApelacion, PanelSolicitud } from '../models/panel-query.model';
 import { PanelQueryService } from '../services/panel-query.service';
-import { Aviso, avisosDelActor } from './avisos-bandeja';
+import { NotifConfig } from '../services/system-config.service';
+import { AlertasFuncionario, Aviso, avisosDelActor } from './avisos-bandeja';
 
 type Rol = 'CIUDADANO' | 'FUNCIONARIO' | 'TTAIP';
 type Estado = 'sin-consultar' | 'cargando' | 'disponible' | 'vacio' | 'error';
@@ -11,7 +15,9 @@ const REFRESCO_MS = 60_000;
 @Injectable({ providedIn: 'root' })
 export class AvisosBandejaService {
   private readonly panel = inject(PanelQueryService);
+  private readonly http = inject(HttpClient, { optional: true });
   private suscripcion?: Subscription;
+  private suscripcionAlertas?: Subscription;
   private timer?: ReturnType<typeof setInterval>;
   private clave: string | null = null;
   private primera = true;
@@ -56,6 +62,8 @@ export class AvisosBandejaService {
     this.limpiarTimer();
     this.suscripcion?.unsubscribe();
     this.suscripcion = undefined;
+    this.suscripcionAlertas?.unsubscribe();
+    this.suscripcionAlertas = undefined;
     this.avisos.set([]);
     this.recienLlegados.set([]);
     this.estado.set('sin-consultar');
@@ -63,6 +71,8 @@ export class AvisosBandejaService {
 
   private cargar(rol: Rol, clave: string): void {
     this.suscripcion?.unsubscribe();
+    this.suscripcionAlertas?.unsubscribe();
+    this.suscripcionAlertas = undefined;
     if (this.primera) {
       this.estado.set('cargando');
       this.avisos.set([]);
@@ -80,6 +90,7 @@ export class AvisosBandejaService {
           return;
         }
         this.publicar(avisosDelActor(rol, solicitudes, apelaciones));
+        this.aplicarAlertas(rol, clave, solicitudes, apelaciones);
       },
       error: () => {
         if (this.clave !== clave || !this.primera) return;
@@ -89,8 +100,25 @@ export class AvisosBandejaService {
     });
   }
 
-  private publicar(avisos: Aviso[]): void {
-    if (!this.primera) {
+  private aplicarAlertas(
+    rol: Rol,
+    clave: string,
+    solicitudes: readonly PanelSolicitud[],
+    apelaciones: readonly PanelApelacion[],
+  ): void {
+    if (rol !== 'FUNCIONARIO' || !this.http) return;
+    this.suscripcionAlertas = this.http.get<{ notif?: NotifConfig }>(`${environment.apiUrl}/configuracion`).pipe(
+      catchError(() => of(null)),
+    ).subscribe(config => {
+      if (this.clave !== clave) return;
+      const preferencias = alertasFuncionario(config);
+      if (!preferencias) return;
+      this.publicar(avisosDelActor(rol, solicitudes, apelaciones, preferencias), false);
+    });
+  }
+
+  private publicar(avisos: Aviso[], anunciar = !this.primera): void {
+    if (anunciar) {
       const nuevos = avisos.filter(aviso => !this.conocidos.has(aviso.id));
       if (nuevos.length) this.recienLlegados.set(nuevos);
     }
@@ -105,4 +133,15 @@ export class AvisosBandejaService {
     clearInterval(this.timer);
     this.timer = undefined;
   }
+}
+
+function alertasFuncionario(config: { notif?: NotifConfig } | null): AlertasFuncionario | undefined {
+  const notif = config?.notif;
+  if (!notif || typeof notif.vencidas !== 'boolean' || typeof notif.proximos !== 'boolean') return undefined;
+  const umbral = Number(notif.umbralProximo);
+  return {
+    vencidas: notif.vencidas,
+    proximos: notif.proximos,
+    umbralProximo: Number.isFinite(umbral) && umbral >= 1 ? Math.trunc(umbral) : 2,
+  };
 }

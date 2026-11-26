@@ -16,6 +16,8 @@ export interface ReporteSolicitudItem {
   asunto: string;
   estado: string;
   fechaSolicitud: string;
+  fechaLimite?: string | null;
+  fechaRespuesta?: string | null;
   entidad: string;
   ciudadano: string;
   tieneRespuesta: boolean;
@@ -43,6 +45,11 @@ export interface ReporteEntidadItem {
   totalSolicitudes: number;
   solicitudesPendientes: number;
   solicitudesRespondidas: number;
+  vencidas?: number;
+  respuestasConFecha?: number;
+  promedioDiasRespuesta?: number | null;
+  minimoDiasRespuesta?: number | null;
+  maximoDiasRespuesta?: number | null;
 }
 
 export interface ReporteFuncionarioItem {
@@ -129,6 +136,10 @@ export class ReportesService {
 
   getReporteEntidades(): Observable<ReporteResponse<ReporteEntidadItem>> {
     return this.http.get<ReporteResponse<ReporteEntidadItem>>(`${this.apiUrl}/entidades`);
+  }
+
+  getReporteTiempos(): Observable<ReporteResponse<ReporteEntidadItem>> {
+    return this.http.get<ReporteResponse<ReporteEntidadItem>>(`${this.apiUrl}/tiempos`);
   }
 
   getReporteFuncionarios(entidadId?: number): Observable<ReporteResponse<ReporteFuncionarioItem>> {

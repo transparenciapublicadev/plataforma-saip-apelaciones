@@ -1,52 +1,54 @@
-<form [formGroup]="form" (ngSubmit)="submit()" class="p-5 space-y-4 overflow-y-auto">
-  <div class="field">
-    <label for="admin-create-name" class="field-label">Nombre completo</label>
-    <input id="admin-create-name" formControlName="nombre" class="field-input" autocomplete="off" />
-  </div>
-  <div class="field">
-    <label for="admin-create-email" class="field-label">Correo electrónico <span class="req">*</span></label>
-    <input id="admin-create-email" type="email" formControlName="email" class="field-input font-mono" autocomplete="off" required />
-    @if (form.controls.email.touched && form.controls.email.invalid) {
-      <p class="text-sm text-destructive" role="alert">Introduzca un correo electrónico válido.</p>
-    }
-  </div>
-  <div class="field">
-    <label for="admin-create-type" class="field-label">Tipo</label>
-    <select id="admin-create-type" formControlName="tipoUsuario" class="field-input">
-      <option value="CIUDADANO">Administrado</option>
-      <option value="FUNCIONARIO">Funcionario</option>
-      <option value="TTAIP">Personal TTAIP</option>
-      <option value="ADMINISTRADOR">Administrador</option>
-    </select>
-  </div>
-  @if (form.controls.tipoUsuario.value === 'FUNCIONARIO') {
+<form [formGroup]="form" (ngSubmit)="submit()" class="flex min-h-0 flex-1 flex-col">
+  <div class="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
     <div class="field">
-      <label for="admin-create-entity" class="field-label">Entidad</label>
-      <select id="admin-create-entity" formControlName="entidadId" class="field-input">
-        <option [ngValue]="null">Sin entidad asignada</option>
-        @for (entidad of entidades(); track entidad.id) {
-          <option [ngValue]="entidad.id">{{ entidad.nombre }}</option>
-        }
+      <label for="admin-create-name" class="field-label">Nombre completo</label>
+      <input id="admin-create-name" formControlName="nombre" class="field-input" autocomplete="off" />
+    </div>
+    <div class="field">
+      <label for="admin-create-email" class="field-label">Correo electrónico <span class="req">*</span></label>
+      <input id="admin-create-email" type="email" formControlName="email" class="field-input font-mono" autocomplete="off" required />
+      @if (form.controls.email.touched && form.controls.email.invalid) {
+        <p class="text-sm text-destructive" role="alert">Introduzca un correo electrónico válido.</p>
+      }
+    </div>
+    <div class="field">
+      <label for="admin-create-type" class="field-label">Tipo</label>
+      <select id="admin-create-type" formControlName="tipoUsuario" class="field-input">
+        <option value="CIUDADANO">Administrado</option>
+        <option value="FUNCIONARIO">Funcionario</option>
+        <option value="TTAIP">Personal TTAIP</option>
+        <option value="ADMINISTRADOR">Administrador</option>
       </select>
     </div>
-  }
-  <div class="field">
-    <label for="admin-create-password" class="field-label">Contraseña inicial <span class="req">*</span></label>
-    <input id="admin-create-password" type="password" formControlName="password" class="field-input" autocomplete="new-password" minlength="8" maxlength="72" aria-describedby="admin-password-help" required />
-    <p id="admin-password-help" class="text-xs text-muted-foreground">De 8 a 72 caracteres, sin exceder 72 bytes UTF-8: los acentos y emojis ocupan más de un byte. No se envía una invitación automática.</p>
-    @if (form.controls.password.touched && form.controls.password.invalid) {
-      <p class="text-sm text-destructive" role="alert">Use de 8 a 72 caracteres, con un máximo de 72 bytes UTF-8, y no solo espacios.</p>
+    @if (form.controls.tipoUsuario.value === 'FUNCIONARIO') {
+      <div class="field">
+        <label for="admin-create-entity" class="field-label">Entidad</label>
+        <select id="admin-create-entity" formControlName="entidadId" class="field-input">
+          <option [ngValue]="null">Sin entidad asignada</option>
+          @for (entidad of entidades(); track entidad.id) {
+            <option [ngValue]="entidad.id">{{ entidad.nombre }}</option>
+          }
+        </select>
+      </div>
     }
+    <div class="field">
+      <label for="admin-create-password" class="field-label">Contraseña inicial <span class="req">*</span></label>
+      <input id="admin-create-password" type="password" formControlName="password" class="field-input" autocomplete="new-password" minlength="8" maxlength="72" aria-describedby="admin-password-help" required />
+      <p id="admin-password-help" class="text-xs text-muted-foreground">De 8 a 72 caracteres, sin exceder 72 bytes UTF-8: los acentos y emojis ocupan más de un byte. No se envía una invitación automática.</p>
+      @if (form.controls.password.touched && form.controls.password.invalid) {
+        <p class="text-sm text-destructive" role="alert">Use de 8 a 72 caracteres, con un máximo de 72 bytes UTF-8, y no solo espacios.</p>
+      }
+    </div>
+    <div class="field">
+      <label for="admin-create-confirmation" class="field-label">Confirmar contraseña <span class="req">*</span></label>
+      <input id="admin-create-confirmation" type="password" formControlName="confirmation" class="field-input" autocomplete="new-password" aria-describedby="admin-confirmation-help" required />
+      @if (form.controls.confirmation.touched && (form.controls.confirmation.invalid || form.hasError('passwordMismatch'))) {
+        <p id="admin-confirmation-help" class="text-sm text-destructive" role="alert">Las contraseñas deben coincidir.</p>
+      }
+    </div>
+    @if (error()) { <p class="text-sm text-destructive" role="alert">{{ error() }}</p> }
   </div>
-  <div class="field">
-    <label for="admin-create-confirmation" class="field-label">Confirmar contraseña <span class="req">*</span></label>
-    <input id="admin-create-confirmation" type="password" formControlName="confirmation" class="field-input" autocomplete="new-password" aria-describedby="admin-confirmation-help" required />
-    @if (form.controls.confirmation.touched && (form.controls.confirmation.invalid || form.hasError('passwordMismatch'))) {
-      <p id="admin-confirmation-help" class="text-sm text-destructive" role="alert">Las contraseñas deben coincidir.</p>
-    }
-  </div>
-  @if (error()) { <p class="text-sm text-destructive" role="alert">{{ error() }}</p> }
-  <div class="flex justify-end gap-3 pt-2">
+  <div class="shrink-0 flex justify-end gap-3 px-5 py-4" style="border-top: 1px solid var(--border)">
     <button type="button" class="btn-ghost-brand cursor-pointer" (click)="cancel()">Cancelar</button>
     <button type="submit" class="btn-brand cursor-pointer disabled:opacity-50" [disabled]="form.invalid || saving()">{{ saving() ? 'Creando…' : 'Crear usuario' }}</button>
   </div>

@@ -208,17 +208,6 @@
 
         <button
           type="button"
-          aria-label="Configuración" [attr.aria-pressed]="activeTab() === 'settings'" (click)="cambiarTab('settings')"
-          class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-          [style.background]="activeTab() === 'settings' ? 'var(--brand-700)' : 'transparent'"
-          [style.color]="activeTab() === 'settings' ? 'white' : 'var(--muted-foreground)'"
-          [class.hover:bg-[color:var(--brand-subtle)]]="activeTab() !== 'settings'">
-          <svg lucideSettings class="w-4 h-4"></svg>
-          <span class="hidden sm:inline">Configurac.</span>
-        </button>
-
-        <button
-          type="button"
           aria-label="Plazos y Calendario" [attr.aria-pressed]="activeTab() === 'plazos'" (click)="cambiarTab('plazos')"
           class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
           [style.background]="activeTab() === 'plazos' ? 'var(--brand-700)' : 'transparent'"
@@ -226,6 +215,17 @@
           [class.hover:bg-[color:var(--brand-subtle)]]="activeTab() !== 'plazos'">
           <svg lucideCalendar class="w-4 h-4"></svg>
           <span class="hidden sm:inline">Plazos</span>
+        </button>
+
+        <button
+          type="button"
+          aria-label="Configuración" [attr.aria-pressed]="activeTab() === 'settings'" (click)="cambiarTab('settings')"
+          class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+          [style.background]="activeTab() === 'settings' ? 'var(--brand-700)' : 'transparent'"
+          [style.color]="activeTab() === 'settings' ? 'white' : 'var(--muted-foreground)'"
+          [class.hover:bg-[color:var(--brand-subtle)]]="activeTab() !== 'settings'">
+          <svg lucideSettings class="w-4 h-4"></svg>
+          <span class="hidden sm:inline">Configurac.</span>
         </button>
       </div>
     </div>
@@ -333,6 +333,7 @@
                 </div>
               </div>
               <div class="p-6 space-y-4">
+                <p class="text-xs text-muted-foreground">El primer lugar es quien tiene más solicitudes registradas. La barra compara esa cantidad, no la tasa de respuesta.</p>
                 @for (e of rankingEntidades(); track e.id; let idx = $index) {
                   <div class="flex items-center gap-3">
                     <span class="font-display flex-shrink-0 w-8 text-center" style="font-size: 22px; letter-spacing: -0.02em; color: var(--brand-700)">
@@ -342,9 +343,9 @@
                       <p class="text-sm truncate text-foreground/85">{{ e.nombre }}</p>
                       <div class="flex items-center gap-2 mt-1.5">
                         <div class="flex-1 h-1.5 rounded-full" style="background: var(--border)">
-                          <div class="h-1.5 rounded-full" [style.width]="e.tasaCumplimiento + '%'" style="background: linear-gradient(90deg, var(--brand-600), var(--gold))"></div>
+                          <div class="h-1.5 rounded-full" [style.width.%]="(e.solicitudesAsignadas / volumenMaximo()) * 100" style="background: linear-gradient(90deg, var(--brand-600), var(--gold))"></div>
                         </div>
-                        <span class="font-mono text-xs font-semibold" style="color: var(--brand-700)">{{ e.tasaCumplimiento }}%</span>
+                        <span class="font-mono text-xs font-semibold tabular-nums" style="color: var(--brand-700)">{{ e.solicitudesAsignadas }}</span>
                       </div>
                     </div>
                   </div>
@@ -488,7 +489,7 @@
               </div>
             </div>
             <div class="p-2">
-              @for (item of activityLog(); track (item.detail + '_' + i); let i = $index) {
+              @for (item of pagedActivity(); track item.detail + '_' + item.ts; let i = $index) {
                 <div
                   class="flex items-start gap-3 px-4 py-3.5 rounded-md hover:bg-[color:var(--brand-subtle)] transition-colors"
                   [style.borderTop]="i === 0 ? 'none' : '1px solid var(--border)'">
@@ -508,6 +509,16 @@
                 <p class="text-sm text-muted-foreground px-4 py-6">Sin actividad reciente.</p>
               }
             </div>
+            @if (activityLog().length > activityPageSize) {
+              <app-pagination
+                [page]="activityPage()"
+                [totalPages]="activityPages()"
+                [total]="activityLog().length"
+                [rangeFrom]="activityRangeFrom()"
+                [rangeTo]="activityRangeTo()"
+                (goTo)="activityPage.set($event)">
+              </app-pagination>
+            }
           </div>
         </div>
       }
@@ -919,13 +930,13 @@
                   <div>
                     <span class="eyebrow" style="color: var(--brand-600)">Reporte</span>
                     <h4 class="font-display mt-0.5" style="font-size: 17px; letter-spacing: -0.012em">Tiempos de respuesta</h4>
-                    <p class="text-xs text-muted-foreground mt-1 leading-relaxed">No disponible: el contrato actual no proporciona tiempos de respuesta por entidad.</p>
+                    <p class="text-xs text-muted-foreground mt-1 leading-relaxed">Días corridos entre la presentación y la respuesta registrada, por entidad.</p>
                   </div>
                 </div>
                 <div class="grid grid-cols-3 gap-2">
-                  <button type="button" disabled aria-disabled="true" title="Desglose por entidad no disponible en el contrato actual" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">PDF</button>
-                  <button type="button" disabled aria-disabled="true" title="Desglose por entidad no disponible en el contrato actual" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">XLSX</button>
-                  <button type="button" disabled aria-disabled="true" title="Desglose por entidad no disponible en el contrato actual" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">CSV</button>
+                  <button type="button" (click)="exportarReporte('tiempos','pdf')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">PDF</button>
+                  <button type="button" (click)="exportarReporte('tiempos','xlsx')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">XLSX</button>
+                  <button type="button" (click)="exportarReporte('tiempos','csv')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">CSV</button>
                 </div>
               </div>
 
@@ -1090,92 +1101,20 @@
             <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
               <svg lucideShield class="w-5 h-5 flex-shrink-0" style="color: var(--brand-700)"></svg>
               <p class="text-sm text-foreground/85 leading-relaxed">
-                Los <span class="font-semibold">plazos de cada proceso</span> son la fuente de verdad para el cálculo de vencimientos en toda la plataforma. Puede ampliarlos o reducirlos según cambie la normativa; el cambio rige de inmediato. <span class="font-semibold">El administrador gestiona reglas y cuentas, no puede eliminar solicitudes ni apelaciones.</span>
+                Los <span class="font-semibold">plazos, feriados y tarifas</span> se gestionan en la pestaña <button type="button" (click)="cambiarTab('plazos')" class="font-semibold underline" style="color: var(--brand-700)">Plazos y calendario</button>, que es la fuente de verdad para el cálculo de vencimientos. Aquí se configuran las alertas y notificaciones. <span class="font-semibold">El administrador gestiona reglas y cuentas, no puede eliminar solicitudes ni apelaciones.</span>
               </p>
             </div>
 
-            <!-- Plazos SAIP (DISC-19) -->
             <div>
               <span class="eyebrow flex items-center gap-2">
-                <svg lucideClock class="w-3.5 h-3.5" style="color: var(--brand-700)"></svg> Plazos · SAIP
+                <svg lucideClock class="w-3.5 h-3.5" style="color: var(--brand-700)"></svg> Alertas
               </span>
-              <h4 class="font-display mt-1.5 mb-4" style="font-size: 18px; letter-spacing: -0.012em">Solicitud de acceso</h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                @for (p of plazoDefs; track p.key) {
-                  @if (p.fase === 'SAIP') {
-                    <div class="field">
-                      <label class="field-label" [attr.for]="'admin-plazo-' + p.key">{{ p.label }}</label>
-                      <div class="relative">
-                        <input
-                          type="number"
-                          min="0"
-                          [id]="'admin-plazo-' + p.key" [ngModel]="configService.config().plazos[p.key]"
-                          (ngModelChange)="configService.updatePlazo(p.key, $event)"
-                          class="field-input font-mono pr-24" />
-                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">días hábiles</span>
-                      </div>
-                      <span class="field-hint">{{ p.hint }}</span>
-                    </div>
-                  }
-                }
-              </div>
-            </div>
-
-            <!-- Plazos TTAIP (DISC-19) -->
-            <div>
-              <span class="eyebrow flex items-center gap-2">
-                <svg lucideClock class="w-3.5 h-3.5" style="color: var(--brand-700)"></svg> Plazos · TTAIP
-              </span>
-              <h4 class="font-display mt-1.5 mb-4" style="font-size: 18px; letter-spacing: -0.012em">Apelación ante el Tribunal</h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                @for (p of plazoDefs; track p.key) {
-                  @if (p.fase === 'TTAIP') {
-                    <div class="field">
-                      <label class="field-label" [attr.for]="'admin-plazo-' + p.key">{{ p.label }}</label>
-                      <div class="relative">
-                        <input
-                          type="number"
-                          min="0"
-                          [id]="'admin-plazo-' + p.key" [ngModel]="configService.config().plazos[p.key]"
-                          (ngModelChange)="configService.updatePlazo(p.key, $event)"
-                          class="field-input font-mono pr-24" />
-                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">días hábiles</span>
-                      </div>
-                      <span class="field-hint">{{ p.hint }}</span>
-                    </div>
-                  }
-                }
-              </div>
-            </div>
-
-            <div class="rule-ornament"></div>
-
-            <!-- Tarifas (DISC-20) -->
-            <div>
-              <span class="eyebrow flex items-center gap-2">
-                <svg lucideAward class="w-3.5 h-3.5" style="color: var(--brand-700)"></svg> Tarifas
-              </span>
-              <h4 class="font-display mt-1.5 mb-4" style="font-size: 18px; letter-spacing: -0.012em">Costo de reproducción</h4>
+              <h4 class="font-display mt-1.5 mb-4" style="font-size: 18px; letter-spacing: -0.012em">Anticipación de los avisos</h4>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="field">
-                  <label class="field-label" for="admin-field-7">Costo por copia</label>
+                  <label class="field-label" for="admin-umbral-proximo">Umbral "plazo próximo"</label>
                   <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">S/</span>
-                    <input id="admin-field-7"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      [ngModel]="configService.config().tarifas.costoPorCopia"
-                      (ngModelChange)="configService.updateTarifas('costoPorCopia', $event)"
-                      class="field-input font-mono pl-9" />
-                  </div>
-                  <span class="field-hint">Costo de reproducción por página que asume el administrado.</span>
-                </div>
-
-                <div class="field">
-                  <label class="field-label" for="admin-field-8">Umbral "plazo próximo"</label>
-                  <div class="relative">
-                    <input id="admin-field-8"
+                    <input id="admin-umbral-proximo"
                       type="number"
                       min="1"
                       [ngModel]="configService.config().notif.umbralProximo"
@@ -1190,10 +1129,9 @@
 
             <div class="rule-ornament"></div>
 
-            <!-- Notificaciones (DISC-21) -->
             <div>
               <span class="eyebrow flex items-center gap-2">
-                <svg lucideActivity class="w-3.5 h-3.5" style="color: var(--brand-700)"></svg> Notificaciones
+                <svg lucideBell class="w-3.5 h-3.5" style="color: var(--brand-700)"></svg> Notificaciones
               </span>
               <h4 class="font-display mt-1.5 mb-4" style="font-size: 18px; letter-spacing: -0.012em">Reglas de envío</h4>
               <div class="space-y-3">
@@ -1201,7 +1139,7 @@
                 <div class="rounded-lg p-4 flex items-center justify-between gap-4" style="background: var(--card); border: 1px solid var(--border)">
                   <div>
                     <p class="text-sm text-foreground">Alertas de solicitudes vencidas</p>
-                    <p class="text-xs text-muted-foreground mt-0.5">Notificar cuando una solicitud exceda el plazo.</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">La campana del funcionario muestra la solicitud vencida que sigue sin respuesta.</p>
                   </div>
                   <button
                     type="button"
@@ -1222,7 +1160,7 @@
                 <div class="rounded-lg p-4 flex items-center justify-between gap-4" style="background: var(--card); border: 1px solid var(--border)">
                   <div>
                     <p class="text-sm text-foreground">Recordatorios de plazos próximos</p>
-                    <p class="text-xs text-muted-foreground mt-0.5">Notificar {{ configService.config().notif.umbralProximo }} días antes del vencimiento.</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">La campana del funcionario avisa cuando faltan {{ configService.config().notif.umbralProximo }} días y la solicitud sigue en atención.</p>
                   </div>
                   <button
                     type="button"
@@ -1243,7 +1181,7 @@
                 <div class="rounded-lg p-4 flex items-center justify-between gap-4" style="background: var(--card); border: 1px solid var(--border)">
                   <div>
                     <p class="text-sm text-foreground">Alertas de nuevos registros</p>
-                    <p class="text-xs text-muted-foreground mt-0.5">Notificar al registrar un nuevo usuario.</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">La preferencia se guarda. El alta de un usuario no envía un aviso por correo.</p>
                   </div>
                   <button
                     type="button"
@@ -1301,8 +1239,9 @@
 
   <!-- Modal: Ver Entidad (EntityView) -->
   @if (entModal() && entModal()!.mode === 'view') {
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="cerrarModalEntidad()">
-      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up max-h-[90vh] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-1" tabindex="-1" [appModalFocus]="true" (modalEscape)="cerrarModalEntidad()" (click)="$event.stopPropagation()">
+    <ng-container *appBodyPortal>
+    <div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="cerrarModalEntidad()">
+      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-1" tabindex="-1" [appModalFocus]="true" (modalEscape)="cerrarModalEntidad()" (click)="$event.stopPropagation()">
         <div class="px-5 py-4 flex items-center justify-between flex-shrink-0" style="border-bottom: 1px solid var(--brand-200); background: var(--brand-subtle)">
           <div class="flex items-center gap-2">
             <svg lucideBuilding2 class="w-4 h-4" style="color: var(--brand-700)"></svg>
@@ -1312,7 +1251,7 @@
             <svg lucideX class="w-4 h-4"></svg>
           </button>
         </div>
-        <div class="p-5 space-y-2 overflow-y-auto">
+        <div class="p-5 space-y-2 overflow-y-auto min-h-0 flex-1">
           <div class="flex items-center justify-between py-2 text-sm border-b border-border">
             <span class="text-muted-foreground">Acrónimo</span>
             <span class="font-medium text-foreground">{{ entModal()!.data!.acronimo }}</span>
@@ -1341,22 +1280,24 @@
             <span class="text-muted-foreground">Estado</span>
             <span class="pill" [class.pill-low]="entModal()!.data!.estado === 'Activa'">{{ entModal()!.data!.estado }}</span>
           </div>
-          <div class="flex justify-end gap-3 pt-3">
-            <button type="button" (click)="cerrarModalEntidad()" class="btn-ghost-brand cursor-pointer">Cerrar</button>
-            <button type="button" (click)="abrirModalEntidad('edit', entModal()!.data)" class="btn-brand flex items-center gap-1.5 cursor-pointer">
-              <svg lucideEdit class="w-4 h-4"></svg>
-              <span>Editar</span>
-            </button>
-          </div>
+        </div>
+        <div class="flex justify-end gap-3 px-5 py-4 shrink-0" style="border-top: 1px solid var(--border)">
+          <button type="button" (click)="cerrarModalEntidad()" class="btn-ghost-brand cursor-pointer">Cerrar</button>
+          <button type="button" (click)="abrirModalEntidad('edit', entModal()!.data)" class="btn-brand flex items-center gap-1.5 cursor-pointer">
+            <svg lucideEdit class="w-4 h-4"></svg>
+            <span>Editar</span>
+          </button>
         </div>
       </div>
     </div>
+    </ng-container>
   }
 
   <!-- Modal: Crear / Editar Entidad (EntityForm) -->
   @if (entModal() && (entModal()!.mode === 'create' || entModal()!.mode === 'edit')) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="cerrarModalEntidad()">
-      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up max-h-[90vh] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-2" tabindex="-1" [appModalFocus]="true" (modalEscape)="cerrarModalEntidad()" (click)="$event.stopPropagation()">
+    <ng-container *appBodyPortal>
+    <div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="cerrarModalEntidad()">
+      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-2" tabindex="-1" [appModalFocus]="true" (modalEscape)="cerrarModalEntidad()" (click)="$event.stopPropagation()">
         <div class="px-5 py-4 flex items-center justify-between flex-shrink-0" style="border-bottom: 1px solid var(--brand-200); background: var(--brand-subtle)">
           <div class="flex items-center gap-2">
             <svg lucideBuilding2 class="w-4 h-4" style="color: var(--brand-700)"></svg>
@@ -1366,7 +1307,8 @@
             <svg lucideX class="w-4 h-4"></svg>
           </button>
         </div>
-        <form (ngSubmit)="guardarEntidad()" class="p-5 space-y-4 overflow-y-auto">
+        <form (ngSubmit)="guardarEntidad()" class="flex min-h-0 flex-1 flex-col">
+          <div class="p-5 space-y-4 overflow-y-auto min-h-0 flex-1">
           @if (error()) { <p role="alert" class="alert alert-error">{{ error() }}</p> }
           <div class="field">
             <label class="field-label" for="admin-field-9">Nombre de la entidad <span class="req">*</span></label>
@@ -1394,7 +1336,7 @@
             <div class="field">
               <label class="field-label" for="admin-field-11">Estado</label>
               <select id="admin-field-11"
-                [disabled]="saving() || entModal()?.mode === 'create'" [ngModel]="entFormEstado()"
+                [disabled]="saving()" [ngModel]="entFormEstado()"
                 (ngModelChange)="entFormEstado.set($event)"
                 name="entEstado"
                 class="field-input !py-[10px]">
@@ -1403,7 +1345,8 @@
               </select>
             </div>
           </div>
-          <div class="flex justify-end gap-3 pt-2">
+          </div>
+          <div class="flex justify-end gap-3 px-5 py-4 shrink-0" style="border-top: 1px solid var(--border)">
             <button type="button" (click)="cerrarModalEntidad()" class="btn-ghost-brand cursor-pointer">Cancelar</button>
             <button type="submit" [disabled]="saving()" class="btn-brand flex items-center gap-1.5 cursor-pointer">
               <svg lucideSave class="w-4 h-4"></svg>
@@ -1413,12 +1356,14 @@
         </form>
       </div>
     </div>
+    </ng-container>
   }
 
   <!-- Modal: Ver Usuario (UserView) -->
   @if (userModal() && userModal()!.mode === 'view') {
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="cerrarModalUsuario()">
-      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up max-h-[90vh] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-3" tabindex="-1" [appModalFocus]="true" (modalEscape)="cerrarModalUsuario()" (click)="$event.stopPropagation()">
+    <ng-container *appBodyPortal>
+    <div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="cerrarModalUsuario()">
+      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-3" tabindex="-1" [appModalFocus]="true" (modalEscape)="cerrarModalUsuario()" (click)="$event.stopPropagation()">
         <div class="px-5 py-4 flex items-center justify-between flex-shrink-0" style="border-bottom: 1px solid var(--brand-200); background: var(--brand-subtle)">
           <div class="flex items-center gap-2">
             <svg lucideUsers class="w-4 h-4" style="color: var(--brand-700)"></svg>
@@ -1428,7 +1373,7 @@
             <svg lucideX class="w-4 h-4"></svg>
           </button>
         </div>
-        <div class="p-5 space-y-2 overflow-y-auto">
+        <div class="p-5 space-y-2 overflow-y-auto min-h-0 flex-1">
           <div class="flex items-center justify-between py-2 text-sm border-b border-border">
             <span class="text-muted-foreground">Correo</span>
             <span class="font-mono text-sm text-foreground">{{ userModal()!.data!.email }}</span>
@@ -1461,22 +1406,24 @@
             <span class="text-muted-foreground">Estado</span>
             <span class="pill" [class.pill-low]="userModal()!.data!.estado === 'Activo'">{{ userModal()!.data!.estado }}</span>
           </div>
-          <div class="flex justify-end gap-3 pt-3">
-            <button type="button" (click)="cerrarModalUsuario()" class="btn-ghost-brand cursor-pointer">Cerrar</button>
-            <button type="button" (click)="abrirModalUsuario('edit', userModal()!.data)" class="btn-brand flex items-center gap-1.5 cursor-pointer">
-              <svg lucideEdit class="w-4 h-4"></svg>
-              <span>Editar</span>
-            </button>
-          </div>
+        </div>
+        <div class="flex justify-end gap-3 px-5 py-4 shrink-0" style="border-top: 1px solid var(--border)">
+          <button type="button" (click)="cerrarModalUsuario()" class="btn-ghost-brand cursor-pointer">Cerrar</button>
+          <button type="button" (click)="abrirModalUsuario('edit', userModal()!.data)" class="btn-brand flex items-center gap-1.5 cursor-pointer">
+            <svg lucideEdit class="w-4 h-4"></svg>
+            <span>Editar</span>
+          </button>
         </div>
       </div>
     </div>
+    </ng-container>
   }
 
   <!-- Modal: Crear / Editar Usuario (UserForm) -->
   @if (userModal() && (userModal()!.mode === 'create' || userModal()!.mode === 'edit')) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="cerrarModalUsuario()">
-      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up max-h-[90vh] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-4" tabindex="-1" [appModalFocus]="true" (modalEscape)="cerrarModalUsuario()" (click)="$event.stopPropagation()">
+    <ng-container *appBodyPortal>
+    <div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="cerrarModalUsuario()">
+      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-4" tabindex="-1" [appModalFocus]="true" (modalEscape)="cerrarModalUsuario()" (click)="$event.stopPropagation()">
         <div class="px-5 py-4 flex items-center justify-between flex-shrink-0" style="border-bottom: 1px solid var(--brand-200); background: var(--brand-subtle)">
           <div class="flex items-center gap-2">
             <svg lucideUserPlus class="w-4 h-4" style="color: var(--brand-700)"></svg>
@@ -1489,7 +1436,8 @@
         @if (userModal()!.mode === 'create') {
           <app-admin-user-create-form [entidades]="entidadesRaw()" (created)="usuarioCreado($event)" (cancelled)="cerrarModalUsuario()" />
         } @else {
-        <form (ngSubmit)="guardarUsuario()" class="p-5 space-y-4 overflow-y-auto">
+        <form (ngSubmit)="guardarUsuario()" class="flex min-h-0 flex-1 flex-col">
+          <div class="p-5 space-y-4 overflow-y-auto min-h-0 flex-1">
           @if (error()) { <p role="alert" class="alert alert-error">{{ error() }}</p> }
           <div class="field">
             <label class="field-label" for="admin-field-12">Nombre completo <span class="req">*</span></label>
@@ -1545,7 +1493,8 @@
               <select id="admin-field-16" [disabled]="saving()" [ngModel]="userFormEntidad()" (ngModelChange)="userFormEntidad.set($event)" name="uEntidad" class="field-input"><option value="">Conservar asignación actual</option>@for (entidad of entidadesRaw(); track entidad.id) { <option [value]="entidad.id">{{ entidad.nombre }}</option> }</select>
             </div>
           }
-          <div class="flex justify-end gap-3 pt-2">
+          </div>
+          <div class="flex justify-end gap-3 px-5 py-4 shrink-0" style="border-top: 1px solid var(--border)">
             <button type="button" (click)="cerrarModalUsuario()" class="btn-ghost-brand cursor-pointer">Cancelar</button>
             <button type="submit" [disabled]="saving()" class="btn-brand flex items-center gap-1.5 cursor-pointer">
               <svg lucideSave class="w-4 h-4"></svg>
@@ -1556,12 +1505,14 @@
         }
       </div>
     </div>
+    </ng-container>
   }
 
   <!-- Modal: Diálogo de Confirmación (ConfirmDialog) -->
   @if (confirm()) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="confirm.set(null)">
-      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up max-h-[90vh] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-5" tabindex="-1" [appModalFocus]="true" (modalEscape)="confirm.set(null)" (click)="$event.stopPropagation()">
+    <ng-container *appBodyPortal>
+    <div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="confirm.set(null)">
+      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-5" tabindex="-1" [appModalFocus]="true" (modalEscape)="confirm.set(null)" (click)="$event.stopPropagation()">
         <div class="px-5 py-4 flex items-center justify-between flex-shrink-0" style="border-bottom: 1px solid var(--brand-200); background: var(--brand-subtle)">
           <div class="flex items-center gap-2">
             <svg lucideAlertTriangle class="w-4 h-4" style="color: var(--brand-700)"></svg>
@@ -1571,17 +1522,18 @@
             <svg lucideX class="w-4 h-4"></svg>
           </button>
         </div>
-        <div class="p-5 overflow-y-auto">
+        <div class="p-5 overflow-y-auto min-h-0 flex-1">
           <p class="text-sm text-foreground/85 leading-relaxed">{{ confirm()!.detalle }}</p>
-          <div class="flex justify-end gap-3 pt-5">
-            <button type="button" (click)="confirm.set(null)" class="btn-ghost-brand cursor-pointer">Cancelar</button>
-            <button type="button" (click)="confirm()!.onOk()" class="btn-brand flex items-center gap-1.5 cursor-pointer">
-              <svg lucideTrash2 class="w-4 h-4"></svg>
-              <span>Confirmar</span>
-            </button>
-          </div>
+        </div>
+        <div class="flex justify-end gap-3 px-5 py-4 shrink-0" style="border-top: 1px solid var(--border)">
+          <button type="button" (click)="confirm.set(null)" class="btn-ghost-brand cursor-pointer">Cancelar</button>
+          <button type="button" (click)="confirm()!.onOk()" class="btn-brand flex items-center gap-1.5 cursor-pointer">
+            <svg lucideTrash2 class="w-4 h-4"></svg>
+            <span>Confirmar</span>
+          </button>
         </div>
       </div>
     </div>
+    </ng-container>
   }
 </div>

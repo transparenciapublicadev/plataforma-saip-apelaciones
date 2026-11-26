@@ -4,6 +4,7 @@ import { Component, ChangeDetectionStrategy, DestroyRef, OnInit, OnDestroy, comp
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, Subscription, finalize } from 'rxjs';
 import { ModalFocusDirective } from '../../shared/modal-focus.directive';
+import { BodyPortalDirective } from '../../shared/body-portal.directive';
 import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, DecimalPipe } from '@angular/common';
@@ -12,7 +13,7 @@ import { EntidadService } from '../../services/entidad.service';
 import { SolicitudService } from '../../services/solicitud.service';
 import { ApelacionService } from '../../services/apelacion.service';
 import { UsuarioAdmin, UsuarioService } from '../../services/usuario.service';
-import { SystemConfigService, PLAZO_DEFS } from '../../services/system-config.service';
+import { SystemConfigService } from '../../services/system-config.service';
 import { EstadisticasService, EstadisticasGenerales, RankingEntidadItem, ApelacionesEstadisticas, TtaipEstadisticas, ActividadRecienteItem } from '../../services/estadisticas.service';
 import { ReportesService } from '../../services/reportes.service';
 import { Entidad } from '../../models/entidad.model';
@@ -26,7 +27,7 @@ import {
   LucideShield, LucideFileText, LucideUsers, LucideBuilding2, LucideAward,
   LucideClock, LucideCheckCircle, LucideCheckCircle2, LucideAlertTriangle,
   LucideScale, LucideBarChart, LucideBarChart3, LucideDownload, LucideSettings,
-  LucideActivity, LucideSearch, LucideFilter, LucideEye, LucideEdit, LucideTrash2,
+  LucideActivity, LucideBell, LucideSearch, LucideFilter, LucideEye, LucideEdit, LucideTrash2,
   LucideUserPlus, LucideCalendar, LucideChevronRight, LucideChevronLeft,
   LucideCompass, LucideSliders, LucideGavel, LucideSave, LucidePlus, LucideX,
   LucideArrowRight, LucideInfo, LucideTrendingUp
@@ -121,6 +122,12 @@ export const ETAPA_ORDEN = [
   'Resuelto',
 ];
 
+function fechaInforme(valor: unknown): string {
+  const texto = String(valor ?? '').trim();
+  if (!texto || texto === 'null' || texto === 'undefined') return 'Sin fecha registrada';
+  return texto.slice(0, 10);
+}
+
 function parseFechaTs(f?: string): number {
   if (!f) return 0;
   const iso = f.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -142,11 +149,11 @@ function hasNumbers(value: unknown, keys: string[]): boolean {
   selector: 'app-admin-dashboard',
   standalone: true,
   imports: [
-    AdminUserCreateFormComponent, AdminPlazosCalendarioComponent, CommonModule, FormsModule, DecimalPipe, PaginationComponent, ModalFocusDirective, YaikuCargandoComponent,
+    AdminUserCreateFormComponent, AdminPlazosCalendarioComponent, CommonModule, FormsModule, DecimalPipe, PaginationComponent, ModalFocusDirective, BodyPortalDirective, YaikuCargandoComponent,
     LucideShield, LucideFileText, LucideUsers, LucideBuilding2, LucideAward,
     LucideClock, LucideCheckCircle, LucideAlertTriangle,
     LucideScale, LucideBarChart3, LucideDownload, LucideSettings,
-    LucideActivity, LucideSearch, LucideFilter, LucideEye, LucideEdit, LucideTrash2,
+    LucideActivity, LucideBell, LucideSearch, LucideFilter, LucideEye, LucideEdit, LucideTrash2,
     LucideUserPlus, LucideCalendar, LucideChevronRight,
     LucideCompass, LucideSliders, LucideGavel, LucideSave, LucidePlus, LucideX,
     LucideArrowRight, LucideInfo, LucideTrendingUp
@@ -167,7 +174,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private readonly tourService = inject(GuidedTourService);
   readonly configService = inject(SystemConfigService);
 
-  readonly plazoDefs = PLAZO_DEFS;
   readonly etapaOrden = ETAPA_ORDEN;
   readonly etapaLabels = ETAPA_LABEL;
 
@@ -179,8 +185,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     { selector: '[data-tour="a-entities"]', title: 'Entidades públicas', body: 'Listado y operaciones administrativas disponibles según sus permisos. Resaltar esta sección no crea, modifica ni desactiva una entidad.', align: 'start', onEnter: () => this.activeTab.set('entities') },
     { selector: '[data-tour="a-users"]', title: 'Usuarios del sistema', body: 'Consulta y gestión autorizadas de cuentas. El alta exige una contraseña explícita; el tutorial no crea cuentas ni cambia sus credenciales.', align: 'start', onEnter: () => this.activeTab.set('users') },
     { selector: '[data-tour="a-reports"]', title: 'Reportes disponibles', body: 'Revise los datos, filtros y formatos habilitados. Los reportes no disponibles se indican como tales; una exportación no equivale a emisión documental oficial.', align: 'start', onEnter: () => this.activeTab.set('reports') },
-    { selector: '[data-tour="a-settings"]', title: 'Configuración consultada', body: 'Consulte los valores recuperados del servidor y las limitaciones indicadas en pantalla. Abrir esta sección no guarda cambios ni acredita el inicio de un plazo.', align: 'start', onEnter: () => this.activeTab.set('settings') },
     { selector: '[data-tour="a-plazos"]', title: 'Plazos y Calendario Oficial', body: 'Gestión del calendario oficial de días hábiles, feriados nacionales, días no laborables y auditoría de plazos legales según Ley 27806 y TUO LPAG.', align: 'start', onEnter: () => this.activeTab.set('plazos') },
+    { selector: '[data-tour="a-settings"]', title: 'Configuración consultada', body: 'Consulte los valores recuperados del servidor y las limitaciones indicadas en pantalla. Abrir esta sección no guarda cambios ni acredita el inicio de un plazo.', align: 'start', onEnter: () => this.activeTab.set('settings') },
   ];
 
   readonly pageSize = 8;
@@ -259,6 +265,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   filterUserType = signal<string>('todos');
   entPage = signal<number>(1);
   userPage = signal<number>(1);
+  readonly activityPageSize = 5;
+  activityPage = signal(1);
 
   // Modales
   entModal = signal<{ mode: 'create' | 'edit' | 'view'; data: EntityRow | null } | null>(null);
@@ -332,27 +340,34 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     }).sort((a, b) => a.nombre.localeCompare(b.nombre));
   });
 
-  // ── Ranking y Entidades con Vencidas para Resumen (Overview) ─────────────
+  // ── Ranking por cantidad de solicitudes, no por la tasa de respuesta ────
   readonly rankingEntidades = computed<EntityRow[]>(() => {
     const apiRanking = this.rankingEntidadesApi();
-    if (apiRanking) {
-      return apiRanking.slice(0, 5).map((item) => {
-        const match = this.entidadesRaw().find((e) => e.id === item.entidadId || e.nombre === item.entidadNombre);
-        const tasa = item.totalSolicitudes > 0 ? Math.round((item.respondidas / item.totalSolicitudes) * 100) : 0;
-        return {
-          id: String(item.entidadId),
-          nombre: item.entidadNombre,
-          acronimo: item.acronimo || item.entidadNombre,
-          solicitudesAsignadas: item.totalSolicitudes,
-          pendientes: item.pendientes,
-          respondidas: item.respondidas,
-          vencidas: this.entidades().find(e => e.id === String(item.entidadId))?.vencidas ?? 0,
-          tasaCumplimiento: tasa,
-          estado: (match?.activa !== false && match?.estado !== 'Inactiva' ? 'Activa' : 'Inactiva') as 'Activa' | 'Inactiva',
-        };
-      });
-    }
-    return [...this.entidades()].sort((a, b) => b.tasaCumplimiento - a.tasaCumplimiento).slice(0, 5);
+    const filas = apiRanking
+      ? apiRanking.map((item) => {
+          const match = this.entidadesRaw().find((e) => e.id === item.entidadId || e.nombre === item.entidadNombre);
+          const tasa = item.totalSolicitudes > 0 ? Math.round((item.respondidas / item.totalSolicitudes) * 100) : 0;
+          return {
+            id: String(item.entidadId),
+            nombre: item.entidadNombre,
+            acronimo: item.acronimo || item.entidadNombre,
+            solicitudesAsignadas: item.totalSolicitudes,
+            pendientes: item.pendientes,
+            respondidas: item.respondidas,
+            vencidas: this.entidades().find(e => e.id === String(item.entidadId))?.vencidas ?? 0,
+            tasaCumplimiento: tasa,
+            estado: (match?.activa !== false && match?.estado !== 'Inactiva' ? 'Activa' : 'Inactiva') as 'Activa' | 'Inactiva',
+          };
+        })
+      : this.entidades();
+    return [...filas]
+      .sort((a, b) => b.solicitudesAsignadas - a.solicitudesAsignadas || a.nombre.localeCompare(b.nombre, 'es'))
+      .slice(0, 5);
+  });
+
+  readonly volumenMaximo = computed(() => {
+    const mayor = this.rankingEntidades().reduce((max, entidad) => Math.max(max, entidad.solicitudesAsignadas), 0);
+    return mayor > 0 ? mayor : 1;
   });
 
   readonly entidadesConVencidas = computed<EntityRow[]>(() => {
@@ -504,6 +519,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   // ── Actividad reciente (consumida directamente del backend) ─────────────
   readonly activityLog = computed(() => this.actividadReciente());
+  readonly activityPages = computed(() => Math.max(1, Math.ceil(this.activityLog().length / this.activityPageSize)));
+  readonly pagedActivity = computed(() => {
+    const page = Math.min(Math.max(this.activityPage(), 1), this.activityPages());
+    const start = (page - 1) * this.activityPageSize;
+    return this.activityLog().slice(start, start + this.activityPageSize);
+  });
+  readonly activityRangeFrom = computed(() => this.activityLog().length === 0 ? 0 : (Math.min(this.activityPage(), this.activityPages()) - 1) * this.activityPageSize + 1);
+  readonly activityRangeTo = computed(() => Math.min(Math.min(this.activityPage(), this.activityPages()) * this.activityPageSize, this.activityLog().length));
 
   // ── Filtros y paginación de entidades ───────────────────────────────────
   readonly filteredEntities = computed(() => {
@@ -565,7 +588,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         _estadoRaw: s.estado,
         resultado: (s.respuesta as any)?.tipoRespuesta || (s as any).resultadoEntidad || (s as any).resultado || '—',
         fecha: s.fechaPresentacion || '—',
-        plazo: (s as any).fechaLimite || 'No disponible',
+        plazo: fechaInforme((s as any).fechaLimite),
         _entidad: s.entidadNombre || s.entidadAcronimo || '—',
         _ts: parseFechaTs(s.fechaPresentacion),
       })),
@@ -691,7 +714,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     this.request('solicitudes', this.solicitudService.findAll(), data => this.solicitudes.set(data), Array.isArray);
     this.request('apelaciones', this.apelacionService.findAll(), data => this.apelaciones.set(data), Array.isArray);
     this.request('usuarios', this.usuarioService.findAll(), data => this.usuariosRaw.set(data), data => Array.isArray(data) && data.every(u => u && Number.isSafeInteger(u.id) && typeof u.email === 'string' && typeof u.activo === 'boolean' && ['CIUDADANO', 'FUNCIONARIO', 'TTAIP', 'ADMINISTRADOR'].includes(u.tipoUsuario)));
-    this.request('actividad', this.estadisticasService.getActividadReciente(15), data => this.actividadReciente.set(data), Array.isArray);
+    this.request('actividad', this.estadisticasService.getActividadReciente(15), data => {
+      this.actividadReciente.set(data);
+      this.activityPage.set(1);
+    }, Array.isArray);
     this.request('apelStats', this.estadisticasService.getApelacionesEstadisticas(), data => this.apelacionesStatsBackend.set(data), data => hasNumbers(data, ['resueltosFundado', 'resueltosInfundado', 'resueltosFundadoEnParte', 'resueltosInfundadoEnParte', 'resueltosImprocedente', 'resueltosEsteseALoResuelto', 'resueltosNulidadActo', 'tenerPorNoPresentado', 'conclusionSustraccion', 'conclusionDesistimiento']));
     this.request('ttaipStats', this.estadisticasService.getTtaipEstadisticas(), data => this.ttaipStatsBackend.set(data), data => hasNumbers(data, ['pendientesAdmision', 'pendientesElevacion', 'enProceso', 'enSubsanacion', 'resueltas']));
     this.request('general', this.estadisticasService.getGeneral(), data => this.estadisticasGenerales.set(data), data => hasNumbers(data, ['totalSolicitudes', 'totalUsuarios', 'totalEntidades', 'totalApelaciones', 'apelacionesResueltas', 'solicitudesPendientes', 'solicitudesRespondidas', 'solicitudesVencidas']));
@@ -968,7 +994,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     } else if (tipo === 'apelaciones') {
       this.requestReport(this.reportesService.getReporteApelaciones(), receiveRows(this.procesarReporteApelaciones));
     } else if (tipo === 'tiempos') {
-      this.procesarReporteTiempos(formato);
+      this.requestReport(this.reportesService.getReporteTiempos(), receiveRows(this.procesarReporteTiempos));
     } else if (tipo === 'consolidado') {
       this.requestReport(this.reportesService.getResumenEjecutivo(), res => {
         if (!res?.solicitudes || !res?.apelaciones || !res?.usuarios) { this.error.set('Información del reporte no disponible.'); return; }
@@ -987,8 +1013,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       s.ciudadano || s.ciudadanoNombre || 'Administrado',
       s.entidad || s.entidadNombre || s.entidadAcronimo || '—',
       ETAPA_LABEL[s.estado] || s.estado || '—',
-      s.fechaSolicitud || s.fechaPresentacion || '—',
-      s.fechaLimite || 'No disponible'
+      fechaInforme(s.fechaSolicitud || s.fechaPresentacion),
+      fechaInforme(s.fechaLimite)
     ]);
     const head = [['Expediente', 'Ciudadano', 'Entidad', 'Estado', 'F. Presentación', 'Plazo']];
     if (formato === 'pdf') {
@@ -999,7 +1025,9 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         Ciudadano: s.ciudadano || s.ciudadanoNombre || 'Administrado',
         Entidad: s.entidad || s.entidadNombre || s.entidadAcronimo || '—',
         Estado: ETAPA_LABEL[s.estado] || s.estado || '—',
-        Fecha: s.fechaSolicitud || s.fechaPresentacion || '—'
+        Fecha: fechaInforme(s.fechaSolicitud || s.fechaPresentacion),
+        Plazo: fechaInforme(s.fechaLimite),
+        Respuesta: fechaInforme(s.fechaRespuesta)
       })), 'Solicitudes', 'reporte-solicitudes.xlsx');
     } else {
       this.downloadFile(this.csvOf([head[0], ...rows]), 'reporte-solicitudes.csv', 'text/csv');
@@ -1015,7 +1043,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       e.totalSolicitudes ?? e.solicitudesAsignadas ?? 0,
       e.solicitudesPendientes ?? e.pendientes ?? 0,
       e.solicitudesRespondidas ?? e.respondidas ?? 0,
-      e.vencidas ?? 'No disponible',
+      e.vencidas ?? 0,
       (e.totalSolicitudes ? Math.round(((e.solicitudesRespondidas ?? 0) / e.totalSolicitudes) * 100) : 0) + '%'
     ]);
     const head = [['Entidad', 'Acrónimo', 'Asignadas', 'Pendientes', 'Respondidas', 'Vencidas', 'Respuesta %']];
@@ -1023,7 +1051,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       const totAsig = list.reduce((s: number, e: any) => s + (e.totalSolicitudes ?? e.solicitudesAsignadas ?? 0), 0);
       const totPend = list.reduce((s: number, e: any) => s + (e.solicitudesPendientes ?? e.pendientes ?? 0), 0);
       const totResp = list.reduce((s: number, e: any) => s + (e.solicitudesRespondidas ?? e.respondidas ?? 0), 0);
-      const totVenc = 'No disponible';
+      const totVenc = list.reduce((s: number, e: any) => s + (Number(e.vencidas) || 0), 0);
       this.pdfPro({
         title: 'Reporte de Entidades', subtitle, head, body: rows,
         foot: [[{ content: 'Totales', colSpan: 2 }, totAsig, totPend, totResp, totVenc, (totAsig ? Math.round(totResp / totAsig * 100) : 0) + '%']],
@@ -1036,7 +1064,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         Asignadas: e.totalSolicitudes ?? e.solicitudesAsignadas ?? 0,
         Pendientes: e.solicitudesPendientes ?? e.pendientes ?? 0,
         Respondidas: e.solicitudesRespondidas ?? e.respondidas ?? 0,
-        Vencidas: e.vencidas ?? 'No disponible',
+        Vencidas: e.vencidas ?? 0,
         'Respuesta %': e.tasaCumplimiento !== undefined ? e.tasaCumplimiento : (e.totalSolicitudes ? Math.round(((e.solicitudesRespondidas ?? 0) / e.totalSolicitudes) * 100) : 0)
       })), 'Entidades', 'reporte-entidades.xlsx');
     } else {
@@ -1068,7 +1096,9 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         Expediente: a.expediente,
         SAIP: a.solicitudExpediente || (a as any).saip || '—',
         Estado: ETAPA_LABEL[a.estado] || a.estado || '—',
-        Fecha: a.fechaApelacion || (a as any).fecha || '—'
+        Ciudadano: a.ciudadano || a.ciudadanoNombre || 'Administrado',
+        Entidad: a.entidad || '—',
+        Fecha: fechaInforme(a.fechaApelacion || a.fecha)
       })), 'Apelaciones', 'reporte-apelaciones.xlsx');
     } else {
       this.downloadFile(this.csvOf([head[0], ...rows]), 'reporte-apelaciones.csv', 'text/csv');
@@ -1076,8 +1106,43 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     this.mostrarMensaje(`Reporte de apelaciones (${formato.toUpperCase()}) generado con éxito`);
   }
 
-  private procesarReporteTiempos(_formato: 'pdf' | 'xlsx' | 'csv'): void {
-    this.error.set('No disponible: el contrato actual no proporciona tiempos de respuesta por entidad para este reporte.');
+  private procesarReporteTiempos(apiData: any[] | null, formato: 'pdf' | 'xlsx' | 'csv', subtitle: string): void {
+    const list = apiData ?? [];
+    const dias = (valor: unknown) => valor === null || valor === undefined || valor === '' ? 'Sin respuesta registrada' : `${valor} d`;
+    const rows = list.map((e: any) => [
+      e.nombre || '—',
+      e.acronimo || e.nombre || '—',
+      e.totalSolicitudes ?? 0,
+      e.solicitudesRespondidas ?? 0,
+      e.respuestasConFecha ?? 0,
+      dias(e.promedioDiasRespuesta),
+      dias(e.minimoDiasRespuesta),
+      dias(e.maximoDiasRespuesta)
+    ]);
+    const head = [['Entidad', 'Acrónimo', 'Solicitudes', 'Respondidas', 'Con fecha', 'Promedio', 'Mínimo', 'Máximo']];
+    if (formato === 'pdf') {
+      this.pdfPro({
+        title: 'Tiempos de respuesta por entidad',
+        subtitle: subtitle || 'Días corridos entre la presentación y la respuesta registrada',
+        head, body: rows,
+        foot: [[{ content: `${rows.length} entidades · el promedio solo incluye respuestas con fecha`, colSpan: 8 }]],
+        file: 'reporte-tiempos.pdf'
+      });
+    } else if (formato === 'xlsx') {
+      this.xlsxOf(list.map((e: any) => ({
+        Entidad: e.nombre || '—',
+        Acronimo: e.acronimo || e.nombre || '—',
+        Solicitudes: e.totalSolicitudes ?? 0,
+        Respondidas: e.solicitudesRespondidas ?? 0,
+        ConFecha: e.respuestasConFecha ?? 0,
+        PromedioDias: e.promedioDiasRespuesta ?? 'Sin respuesta registrada',
+        MinimoDias: e.minimoDiasRespuesta ?? 'Sin respuesta registrada',
+        MaximoDias: e.maximoDiasRespuesta ?? 'Sin respuesta registrada'
+      })), 'Tiempos', 'reporte-tiempos.xlsx');
+    } else {
+      this.downloadFile(this.csvOf([head[0], ...rows]), 'reporte-tiempos.csv', 'text/csv');
+    }
+    this.mostrarMensaje(`Reporte de tiempos (${formato.toUpperCase()}) generado con datos del servidor`);
   }
 
   private procesarReporteConsolidado(res: any | null, formato: 'pdf' | 'xlsx' | 'csv', subtitle: string): void {

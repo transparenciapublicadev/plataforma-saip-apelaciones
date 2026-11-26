@@ -16,16 +16,23 @@ export interface Aviso {
 
 const TOPE = 12;
 
+export interface AlertasFuncionario {
+  vencidas: boolean;
+  proximos: boolean;
+  umbralProximo: number;
+}
+
 /** Un aviso por expediente autorizado. No calcula plazos ni acredita notificación eficaz. */
 export function avisosDelActor(
   rol: 'CIUDADANO' | 'FUNCIONARIO' | 'TTAIP',
   solicitudes: readonly PanelSolicitud[],
   apelaciones: readonly PanelApelacion[],
+  alertas?: AlertasFuncionario,
 ): Aviso[] {
   const items = rol === 'CIUDADANO'
     ? [...solicitudes.map(avisoCiudadano), ...apelaciones.map(avisoApelacionCiudadano)]
     : rol === 'FUNCIONARIO'
-      ? [...solicitudes.map(avisoFuncionario), ...apelaciones.map(avisoApelacionFuncionario)]
+      ? [...solicitudes.map(solicitud => avisoFuncionario(solicitud, alertas)), ...apelaciones.map(avisoApelacionFuncionario)]
       : apelaciones.map(avisoTtaip);
   const vistos = new Set<string>();
   return items
@@ -91,7 +98,7 @@ function avisoApelacionCiudadano(apelacion: PanelApelacion): Aviso | null {
   return null;
 }
 
-function avisoFuncionario(solicitud: PanelSolicitud): Aviso | null {
+function avisoFuncionario(solicitud: PanelSolicitud, alertas?: AlertasFuncionario): Aviso | null {
   const expediente = texto(solicitud.expediente);
   if (!expediente) return null;
   const detalle = linea(texto(solicitud.ciudadanoNombre) || 'Administrado', expediente, solicitud.fechaLimite);
@@ -102,9 +109,15 @@ function avisoFuncionario(solicitud: PanelSolicitud): Aviso | null {
     return aviso(`ent:${expediente}:precision`, 'Precisión recibida', detalle, ['/funcionario/solicitud', expediente], true);
   }
   if (!solicitud.respuesta && (solicitud.estado === 'VENCIDA' || solicitud.etapa === 'san')) {
+    if (alertas && !alertas.vencidas && solicitud.estado === 'VENCIDA' && solicitud.etapa !== 'san') return null;
     return aviso(`ent:${expediente}:atender`, 'Solicitud por atender', detalle, ['/funcionario/responder', expediente], true);
   }
   if (!solicitud.respuesta && (solicitud.estado === 'RECEPCIONADA' || solicitud.estado === 'EN_REVISION')) {
+    const dias = solicitud.diasRestantes;
+    const umbral = alertas?.umbralProximo ?? 0;
+    if (alertas?.proximos && typeof dias === 'number' && dias >= 1 && dias <= umbral) {
+      return aviso(`ent:${expediente}:proximo`, 'Plazo próximo', detalle, ['/funcionario/responder', expediente], true, 'reloj');
+    }
     return aviso(`ent:${expediente}:tramite`, 'Solicitud en atención', detalle, ['/funcionario/responder', expediente], false);
   }
   return null;

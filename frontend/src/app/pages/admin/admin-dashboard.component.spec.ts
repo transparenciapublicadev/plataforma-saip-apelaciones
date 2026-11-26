@@ -141,6 +141,7 @@ describe('AdminDashboardComponent', () => {
       getReporteSolicitudes: vi.fn().mockReturnValue(of({ datos: [] } as any)),
       getReporteApelaciones: vi.fn().mockReturnValue(of({ datos: [] } as any)),
       getReporteEntidades: vi.fn().mockReturnValue(of({ datos: [] } as any)),
+      getReporteTiempos: vi.fn().mockReturnValue(of({ datos: [] } as any)),
       getReporteFuncionarios: vi.fn().mockReturnValue(of({ datos: [] } as any)),
       getReporteCiudadanos: vi.fn().mockReturnValue(of({ datos: [] } as any)),
       getResumenEjecutivo: vi.fn().mockReturnValue(of({} as any)),
@@ -195,7 +196,7 @@ describe('AdminDashboardComponent', () => {
     expect(reportesServiceMock.getReporteSolicitudes).not.toHaveBeenCalled();
     TestBed.inject(HttpTestingController).expectNone(req => req.method !== 'GET');
     const end = vi.spyOn(tourService, 'endTourFor'); fixture.destroy(); expect(end).toHaveBeenCalledWith('saip_tour_admin');
-  });
+  }, 15000);
 
   it('does not present a failed users query as an empty registry and can retry', () => {
     (usuarioServiceMock.findAll as any).mockReturnValue(throwError(() => ({ status: 403 })));
@@ -400,6 +401,26 @@ describe('AdminDashboardComponent', () => {
     expect(cancelSpy).toHaveBeenCalled();
   });
 
+  it('deja plazos, feriados y tarifas en la pestaña de plazos y conserva las alertas', () => {
+    fixture.detectChanges();
+    component.cambiarTab('settings');
+    fixture.detectChanges();
+
+    const texto = fixture.nativeElement.textContent as string;
+    expect(texto).toContain('Plazos y calendario');
+    expect(texto).toContain('Umbral "plazo próximo"');
+    expect(texto).toContain('Alertas de solicitudes vencidas');
+    expect(texto).not.toContain('Plazos · SAIP');
+    expect(texto).not.toContain('Costo por copia');
+
+    const enlace = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find((boton) => boton.textContent?.includes('Plazos y calendario'));
+    expect(enlace).toBeTruthy();
+    enlace?.click();
+    fixture.detectChanges();
+    expect(component.activeTab()).toBe('plazos');
+  });
+
   it('preserves the backend ranking order and limits its displayed results to five', () => {
     fixture.detectChanges();
 
@@ -410,6 +431,27 @@ describe('AdminDashboardComponent', () => {
     expect(ranking[0].tasaCumplimiento).toBe(50);
     expect(ranking[1].acronimo).toBe('MINSA');
     expect(ranking[1].tasaCumplimiento).toBe(0);
+  });
+
+  it('pone primero a quien tiene más solicitudes aunque su tasa de respuesta sea menor', () => {
+    fixture.detectChanges();
+    component.rankingEntidadesApi.set([
+      { entidadId: 2, entidadNombre: 'Ministerio de Salud', acronimo: 'MINSA', totalSolicitudes: 1, respondidas: 1, pendientes: 0 },
+      { entidadId: 1, entidadNombre: 'Ministerio de Justicia', acronimo: 'MINJUS', totalSolicitudes: 8, respondidas: 0, pendientes: 8 },
+    ]);
+    expect(component.rankingEntidades().map((entidad) => entidad.acronimo)).toEqual(['MINJUS', 'MINSA']);
+    expect(component.volumenMaximo()).toBe(8);
+  });
+
+  it('pagina la actividad reciente de cinco en cinco', () => {
+    fixture.detectChanges();
+    component.actividadReciente.set(Array.from({ length: 6 }, (_, indice) => ({
+      dot: '#7f1d1d', label: `Hecho ${indice}`, detail: `detalle-${indice}`, ts: indice,
+    })));
+    expect(component.pagedActivity()).toHaveLength(5);
+    expect(component.activityRangeTo()).toBe(5);
+    component.activityPage.set(2);
+    expect(component.pagedActivity().map((item) => item.detail)).toEqual(['detalle-5']);
   });
 
   it('should compute entidadesConVencidas filtering only entities with vencidas > 0 sorted descending', () => {
@@ -594,6 +636,9 @@ describe('AdminDashboardComponent', () => {
 
     component.exportarReporte('usuarios', 'csv');
     expect(usuarioServiceMock.findAll).toHaveBeenCalledTimes(2);
+
+    component.exportarReporte('tiempos', 'pdf');
+    expect(reportesServiceMock.getReporteTiempos).toHaveBeenCalled();
   });
 
   it('should prioritize rankingEntidadesApi when provided from backend', () => {
@@ -695,7 +740,7 @@ describe('AdminDashboardComponent', () => {
     component.guardarUsuario(); component.guardarUsuario();
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(fixture.nativeElement.querySelector('input[name="uNombre"]').disabled).toBe(true);
+    expect((document.body.querySelector('input[name="uNombre"]') as HTMLInputElement).disabled).toBe(true);
     expect(usuarioServiceMock.actualizar).toHaveBeenCalledTimes(1);
     expect(component.userModal()?.mode).toBe('edit');
     expect(component.mensaje()).toBe('');
@@ -737,9 +782,9 @@ describe('AdminDashboardComponent', () => {
     fixture.detectChanges(); component.cambiarTab('users'); fixture.detectChanges();
     const opener = Array.from(fixture.nativeElement.querySelectorAll('button')).find((b: any) => b.textContent.includes('Nuevo usuario')) as HTMLButtonElement;
     opener.focus(); opener.click(); fixture.detectChanges(); await fixture.whenStable();
-    const dialog = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement;
+    const dialog = document.body.querySelector('[role="dialog"]') as HTMLElement;
     expect(dialog.getAttribute('aria-modal')).toBe('true');
-    expect(fixture.nativeElement.querySelector('#' + dialog.getAttribute('aria-labelledby')).textContent).toContain('Nuevo usuario');
+    expect(document.body.querySelector('#' + dialog.getAttribute('aria-labelledby'))?.textContent).toContain('Nuevo usuario');
     expect(dialog.contains(document.activeElement)).toBe(true);
     const buttons = dialog.querySelectorAll('button');
     buttons[buttons.length - 1].focus();

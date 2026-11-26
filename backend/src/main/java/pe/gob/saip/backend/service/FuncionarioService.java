@@ -5,7 +5,9 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.gob.saip.backend.model.entity.Funcionario;
 import pe.gob.saip.backend.repository.FuncionarioRepository;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -20,6 +22,25 @@ public class FuncionarioService {
     @Transactional(readOnly = true)
     public List<Funcionario> obtenerTodosLosFuncionarios() {
         return funcionarioRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> filasReporte(Long entidadId) {
+        return funcionarioRepository.findAll().stream()
+                .filter(funcionario -> entidadId == null
+                        || (funcionario.getEntidad() != null && entidadId.equals(funcionario.getEntidad().getId())))
+                .map(funcionario -> {
+                    Map<String, Object> fila = new HashMap<>();
+                    fila.put("id", funcionario.getId());
+                    fila.put("nombreCompleto", funcionario.getNombreCompleto());
+                    fila.put("cargo", funcionario.getCargo());
+                    fila.put("email", funcionario.getEmail());
+                    fila.put("activo", funcionario.getActivo());
+                    fila.put("entidad", funcionario.getEntidad() != null ? funcionario.getEntidad().getNombre() : null);
+                    fila.put("respuestasEmitidas", funcionario.getRespuestas() != null ? funcionario.getRespuestas().size() : 0);
+                    return fila;
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)

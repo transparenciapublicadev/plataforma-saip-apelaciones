@@ -114,8 +114,9 @@ public class EntidadRestController {
         entidad.setDireccion(sanitizeOptionalPlainText(entidadDTO.direccion(), "direccion", 300));
         entidad.setTelefono(sanitizeOptionalPlainText(entidadDTO.telefono(), "telefono", 20));
         entidad.setEmail(sanitizeOptionalPlainText(entidadDTO.email(), "email", 100));
-        entidad.setEstado("Activa");
-        entidad.setActiva(true);
+        String estado = estadoInicial(entidadDTO.estado());
+        entidad.setEstado(estado);
+        entidad.setActiva("Activa".equals(estado));
         entidad.setFechaRegistro(LocalDateTime.now());
 
         entidadService.save(entidad);
@@ -208,6 +209,17 @@ public class EntidadRestController {
         response.put("id", id);
 
         return ResponseEntity.ok(response);
+    }
+
+    private String estadoInicial(String solicitado) {
+        if (solicitado == null || solicitado.isBlank()) {
+            return "Activa";
+        }
+        String estado = sanitizeRequiredPlainText(solicitado, "estado", 20);
+        if (!ESTADOS_VALIDOS.contains(estado)) {
+            throw new IllegalArgumentException("Estado no válido. Use Activa o Inactiva.");
+        }
+        return estado;
     }
 
     private String sanitizeRequiredPlainText(String value, String fieldName, int maxLength) {

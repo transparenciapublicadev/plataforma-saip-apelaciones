@@ -13,6 +13,7 @@ const bcryptByteLimit: ValidatorFn = (control) => new TextEncoder().encode(contr
   imports: [ReactiveFormsModule],
   templateUrl: './admin-user-create-form.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'flex min-h-0 flex-1 flex-col' },
 })
 export class AdminUserCreateFormComponent implements OnDestroy {
   private readonly usuarios = inject(UsuarioService);
