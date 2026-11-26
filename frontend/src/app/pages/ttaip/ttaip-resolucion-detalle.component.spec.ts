@@ -19,7 +19,7 @@ describe('Evidencia de notificación — fechas explícitas', () => {
   let servicio: { validarNotificacionManualmente: ReturnType<typeof vi.fn>; registrarAcuseAutomatico: ReturnType<typeof vi.fn> };
   beforeEach(() => {
     servicio = { validarNotificacionManualmente: vi.fn(() => new Subject()), registrarAcuseAutomatico: vi.fn(() => new Subject()) };
-    TestBed.configureTestingModule({ imports: [TtaipResolucionDetalleComponent], providers: [
+    TestBed.configureTestingModule({ imports: [TtaipResolucionDetalleComponent], providers: [provideHttpClient(), provideHttpClientTesting(),
       { provide: ActivatedRoute, useValue: {} }, { provide: AuthService, useValue: { cambiosSesion: signal(0), obtenerSesion: () => ({ usuarioId: 7, token: 'sesión-sintética', tipoUsuario: 'TTAIP', nombre: 'Operador sintético' }) } },
       { provide: ApelacionService, useValue: { findByExpediente: vi.fn() } }, { provide: TtaipService, useValue: servicio }] });
   });
@@ -51,7 +51,7 @@ describe('R2: borrador de la resolución y relación con el expediente', () => {
   const consultas = { findByExpediente: vi.fn() };
   beforeEach(() => {
     consultas.findByExpediente.mockReset();
-    TestBed.configureTestingModule({ imports: [TtaipResolucionDetalleComponent], providers: [
+    TestBed.configureTestingModule({ imports: [TtaipResolucionDetalleComponent], providers: [provideHttpClient(), provideHttpClientTesting(),
       { provide: ActivatedRoute, useValue: {} }, { provide: AuthService, useValue: { cambiosSesion: signal(0), obtenerSesion: () => ({ usuarioId: 7, token: 'sesión-sintética', tipoUsuario: 'TTAIP' }) } },
       { provide: ApelacionService, useValue: consultas }, { provide: TtaipService, useValue: {} }] });
   });
@@ -137,7 +137,41 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
   }
   it('el número de expediente no se confunde con un ID de apelación ausente', () => { expect(page(data({ id: 0 })).componentInstance.apelacion()).toBeNull(); });
   it('rechaza un agregado perteneciente a otro código', () => { expect(page(data({ expedienteTtaip: { ...data().expedienteTtaip, numeroExpediente: 'AJENO' } })).componentInstance.apelacion()).toBeNull(); });
-  it('no atribuye observaciones del Tribunal como causal ni fundamento de la entidad', () => { const view = page().componentInstance.dataView(); expect(view.causalDenegatoria).not.toBe(first.decision); expect(view.fundamentoEntidad).not.toBe(first.observaciones); });
+  it('no atribuye observaciones del Tribunal como causal ni fundamento de la entidad', () => {
+    const view = page().componentInstance.dataView();
+    expect(view.causalDenegatoria).not.toBe(first.decision); expect(view.fundamentoEntidad).not.toBe(first.observaciones);
+    expect(view.dni).toBe('No informado'); expect(view.email).toBe('No informado'); expect(view.telefono).toBe('No informado');
+    expect(view.causalDenegatoria).toBe('Denegatoria expresa'); expect(view.fundamentoEntidad).toBe('Respuesta registrada de la entidad');
+  });
+  it('muestra el DNI, el contacto y la causal registrados en la solicitud de origen', () => {
+    const f = page(data({ tipoOrigen: 'SAIP_INTERNA', solicitudId: 8, solicitudExpediente: 'SAIP-2026-10008', tipoDenegatoria: null, resumenRespuestaEntidad: null }));
+    const req = http.expectOne(api + '/solicitudes/8');
+    req.flush({ id: 8, expediente: 'SAIP-2026-10008', ciudadanoId: 4, ciudadanoDni: '12345678', ciudadanoEmail: 'daniel@example.invalid', ciudadanoTelefono: '999111222',
+      respuesta: { id: 3, solicitudId: 8, tipoRespuesta: 'DENEGACION_TOTAL', causalDenegatoria: 'reservada', contenido: 'La entidad reservó el extremo solicitado.', fundamentoLegal: 'Artículo 15 de la Ley 27806' } });
+    f.detectChanges();
+    const view = f.componentInstance.dataView();
+    expect(view.dni).toBe('12345678'); expect(view.email).toBe('daniel@example.invalid'); expect(view.telefono).toBe('999111222');
+    expect(view.causalDenegatoria).toBe('Información reservada');
+    expect(view.fundamentoEntidad).toContain('reservó el extremo'); expect(view.fundamentoEntidad).toContain('Artículo 15');
+    expect(view.causalDenegatoria).not.toBe(first.decision); expect(view.fundamentoEntidad).not.toContain(first.observaciones);
+    expect(f.nativeElement.textContent).toContain('12345678');
+    f.componentInstance.cambiarTab('subsanacion'); f.detectChanges();
+    const texto = f.nativeElement.textContent as string;
+    expect(texto).toContain('Este es el escrito de subsanación que presentó el administrado.');
+    expect(texto).not.toContain('Verlos aquí no confirma');
+  });
+  it('marca cada archivo recibido como documento de subsanación', () => {
+    const f = TestBed.createComponent(TtaipResolucionDetalleComponent); f.detectChanges();
+    http.expectOne(api + '/apelaciones/expediente/' + code).flush(data()); f.detectChanges();
+    http.expectOne(api + '/ttaip/expedientes/41/requerimientos/71/subsanacion/recepcion').flush({
+      estado: 'RECIBIDA', expedienteTtaipId: 41, apelacionId: 51, requerimientoId: 71, expediente: code,
+      recepcionId: 111, fechaRecepcion: '2026-10-02T10:00:00', fundamentosAdicionales: 'Fundamentos registrados',
+      documentos: [{ id: 15, nombreOriginal: 'anexo-subsanacion.pdf', tipoDocumento: 'SUBSANACION', contentType: 'application/pdf', apelacionId: 51, estado: 'ACTIVO' }],
+    });
+    f.detectChanges(); f.componentInstance.cambiarTab('subsanacion'); f.detectChanges();
+    const texto = f.nativeElement.textContent as string;
+    expect(texto).toContain('Documento de subsanación'); expect(texto).toContain('anexo-subsanacion.pdf');
+  });
   it('la fecha histórica de requerimiento no crea una recepción de subsanación en el historial', () => { const c = page(data({ fechaSubsanacion: '2026-10-01' })).componentInstance; expect(c.timeline().some(t => t.titulo === 'Subsanación registrada')).toBe(false); });
   it('no usa la ausencia de estado para inventar EN_CALIFICACION_1', () => { expect(page(data({ estado: undefined })).componentInstance.estadoLabel()).not.toBe('En primera calificacion'); });
   it('cambiar ruta cancela la consulta anterior', () => {
@@ -178,6 +212,14 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
   it('el alias de funcionario conserva entidad y retorno sin consultar recursos globales', () => {
     TestBed.inject(AuthService).guardarSesion({ ...session, tipoUsuario: 'FUNCIONARIO', entidadId: 3 }); const f = page(); expect(f.componentInstance.retorno()).toBe('/funcionario'); expect(f.componentInstance.rolInstitucional()).toBe(false);
     f.componentInstance.cargarApelacion(code); http.expectOne(api + '/apelaciones/expediente/' + code).flush(data({ entidadId: 99 })); expect(f.componentInstance.apelacion()).toBeNull(); expect(http.match(r => r.url === api + '/apelaciones')).toHaveLength(0);
+  });
+  it('desde actuaciones el funcionario vuelve a esa bandeja', () => {
+    const route = TestBed.inject(ActivatedRoute) as { snapshot: { queryParamMap?: ReturnType<typeof convertToParamMap> } };
+    route.snapshot.queryParamMap = convertToParamMap({ desde: 'actuaciones' });
+    TestBed.inject(AuthService).guardarSesion({ ...session, tipoUsuario: 'FUNCIONARIO', entidadId: 3 });
+    const f = page();
+    expect(f.componentInstance.retorno()).toBe('/funcionario/tribunal');
+    expect(f.nativeElement.textContent).toContain('Volver a actuaciones');
   });
   it('un parámetro numérico sigue siendo un código y no se reutiliza como ID de resolución', () => {
     const f = page(); f.componentInstance.cargarApelacion('101'); const req = http.expectOne(api + '/apelaciones/expediente/101'); req.flush(null, { status: 404, statusText: 'Not Found' }); expect(http.match(r => /\/resoluciones\/101/.test(r.url))).toHaveLength(0);
@@ -240,7 +282,7 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
     const c = page(notified()).componentInstance; c.registrarAcuseNotificacion(91, 'ENTREGADO', 'Acuse sintético', 'REF-1', '2026-10-20T10:30');
     const req = http.expectOne(api + '/ttaip/expedientes/41/notificaciones/91/acuse-automatico'); expect(req.request.body.fechaAcuse).toBe('2026-10-20T10:30:00');
     const n = { ...notification, estado: 'ENTREGADA', estadoAcuse: 'ENTREGADO', acuseAutomatico: 'Acuse sintético', fechaAcuse: '2026-10-20T10:30:00' }; req.flush(n); expect(c.notificacionMessage()).toBe('');
-    http.expectOne(api + '/apelaciones/expediente/' + code).flush(notified(n)); expect(c.notificacionMessage()).toContain('ID 91'); expect(c.notificacionMessage()).toContain('No acredita');
+    http.expectOne(api + '/apelaciones/expediente/' + code).flush(notified(n)); expect(c.notificacionMessage()).toContain('Actuación registrada y recuperada'); expect(c.notificacionMessage()).toContain('No acredita'); expect(c.notificacionMessage()).not.toContain('ID 91');
   });
   it('un resultado incierto impide otro POST aunque el GET observe la misma notificación', () => {
     const c = page(notified()).componentInstance; c.registrarAcuseNotificacion(91, 'ENTREGADO', 'Acuse sintético', '', '2026-10-20T10:30'); http.expectOne(r => r.method === 'POST').error(new ProgressEvent('error'));
@@ -250,7 +292,7 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
   it('reintentar recuperación con ID conocido no repite el registro de evidencia', () => {
     const c = page(notified()).componentInstance; c.validarNotificacionManual(91, 'Sustento explícito', '', '2026-10-20T09:30'); const n = { ...notification, estado: 'VALIDADA', observacionValidacion: 'Sustento explícito' };
     http.expectOne(r => r.method === 'POST').flush({ ...n, validadaManualmente: true }); http.expectOne(api + '/apelaciones/expediente/' + code).flush(null, { status: 500, statusText: 'Unavailable' }); expect(c.apelacion()).toBeNull();
-    c.recuperarActuacion(); http.expectOne(api + '/apelaciones/expediente/' + code).flush(notified({ ...n, validadaManualmente: true })); expect(c.actionUncertain()).toBe(false); expect(c.notificacionMessage()).toContain('ID 91'); expect(http.match(r => r.method === 'POST')).toHaveLength(0);
+    c.recuperarActuacion(); http.expectOne(api + '/apelaciones/expediente/' + code).flush(notified({ ...n, validadaManualmente: true })); expect(c.actionUncertain()).toBe(false); expect(c.notificacionMessage()).toContain('Actuación registrada y recuperada'); expect(c.notificacionMessage()).not.toContain('ID 91'); expect(http.match(r => r.method === 'POST')).toHaveLength(0);
   });
   it('cambiar ruta con un comando pendiente cancela y no recupera ni confirma en otro expediente', () => {
     const f = page(notified()); const c = f.componentInstance; c.validarNotificacionManual(91, 'Sustento', '', '2026-10-20T09:30'); const req = http.expectOne(r => r.method === 'POST');
@@ -324,6 +366,49 @@ describe('ResolutionDetail — identificación y aislamiento', () => {
     const queries = http.match(req => req.url === api + '/documentos');
     expect(queries.some(req => req.request.params.has('cedulaNotificacionId'))).toBe(false);
     queries.forEach(req => req.flush([]));
+  });
+  it('agrupa el expediente por etapa y no ofrece adjuntar archivos sueltos', () => {
+    const f = page(); f.componentInstance.cambiarTab('adjuntos'); f.detectChanges();
+    const requests = http.match(req => req.url === api + '/documentos');
+    expect(requests.flatMap(req => req.request.params.keys()).sort()).toEqual(['apelacionId', 'expedienteTtaipId', 'resolucionId']);
+    requests.find(req => req.request.params.get('apelacionId') === '51')!.flush([{ id: 9, nombreOriginal: 'escrito.pdf', tipoDocumento: 'SUBSANACION', contentType: 'application/pdf', fechaCreacion: '2026-11-24T13:10:00', apelacionId: 51, estado: 'ACTIVO' }]);
+    requests.find(req => req.request.params.get('resolucionId') === '71')!.flush([{ id: 11, nombreOriginal: 'primera.pdf', tipoDocumento: 'RESOLUCION_TTAIP', contentType: 'application/pdf', fechaCreacion: '2026-11-20', resolucionId: 71, estado: 'ACTIVO' }]);
+    requests.find(req => req.request.params.get('expedienteTtaipId') === '41')!.flush([{ id: 10, nombreOriginal: 'cedula.pdf', tipoDocumento: 'CEDULA_NOTIFICACION', contentType: 'application/pdf', fechaCreacion: '2026-11-24', expedienteTtaipId: 41, estado: 'ACTIVO' }]);
+    f.detectChanges();
+    const text = f.nativeElement.textContent as string;
+    expect(text).toContain('Subsanación'); expect(text).toContain('Resoluciones del Tribunal'); expect(text).toContain('Notificaciones y cargos');
+    expect(text).toContain('Cédula'); expect(text).not.toContain('Adjuntar documento');
+    expect(text).toContain('Las cédulas no aparecen en este legajo');
+  });
+  it('la entidad no consulta la inadmisibilidad ni el legajo cuando las cédulas no están vinculadas', () => {
+    TestBed.inject(AuthService).guardarSesion({ ...session, tipoUsuario: 'FUNCIONARIO', entidadId: 3, funcionarioId: 9 });
+    const f = page(); f.componentInstance.cambiarTab('adjuntos'); f.detectChanges();
+    const requests = http.match(req => req.url === api + '/documentos');
+    expect(requests.map(req => req.request.params.keys()[0])).toEqual(['apelacionId']);
+    requests[0].flush([]); f.detectChanges();
+    const text = f.nativeElement.textContent as string;
+    expect(text).toContain('notificó a su entidad'); expect(text).not.toContain('No tiene permiso');
+  });
+  it('la entidad solo consulta lo presentado por el administrado y lo notificado a ella', () => {
+    TestBed.inject(AuthService).guardarSesion({ ...session, tipoUsuario: 'FUNCIONARIO', entidadId: 3, funcionarioId: 9 });
+    const entidad = { id: 61, destinatario: 'ENTIDAD_PUBLICA' };
+    const ciudadano = { id: 62, destinatario: 'CIUDADANO' };
+    const f = page(data({
+      resolucionPrimeraCalificacion: { ...first, cedulas: [ciudadano] },
+      resolucion: { id: 80, tipoResolucion: 'RESOLUCION_FINAL', decision: 'FUNDADO', cedulas: [entidad] },
+      expedienteTtaip: { ...data().expedienteTtaip, cedulas: [entidad, ciudadano], notificaciones: [] },
+    }));
+    f.componentInstance.cambiarTab('adjuntos'); f.detectChanges();
+    const requests = http.match(req => req.url === api + '/documentos');
+    const claves = requests.map(req => { const key = req.request.params.keys()[0]; return key + '=' + req.request.params.get(key); }).sort();
+    expect(claves).toEqual(['apelacionId=51', 'cedulaNotificacionId=61', 'resolucionId=80']);
+    requests.find(req => req.request.params.get('apelacionId') === '51')!.flush([{ id: 9, nombreOriginal: 'recurso-administrado.pdf', tipoDocumento: 'RECURSO_APELACION', contentType: 'application/pdf', fechaCreacion: '2026-11-24', apelacionId: 51, estado: 'ACTIVO' }]);
+    requests.find(req => req.request.params.get('resolucionId') === '80')!.flush([{ id: 11, nombreOriginal: 'resolucion-entidad.pdf', tipoDocumento: 'RESOLUCION_TTAIP', contentType: 'application/pdf', fechaCreacion: '2026-11-25', resolucionId: 80, estado: 'ACTIVO' }]);
+    requests.find(req => req.request.params.get('cedulaNotificacionId') === '61')!.flush([{ id: 12, nombreOriginal: 'cedula-entidad.pdf', tipoDocumento: 'CEDULA_NOTIFICACION', contentType: 'application/pdf', fechaCreacion: '2026-11-25', cedulaNotificacionId: 61, estado: 'ACTIVO' }]);
+    f.detectChanges();
+    const text = f.nativeElement.textContent as string;
+    expect(text).toContain('recurso-administrado.pdf'); expect(text).toContain('resolucion-entidad.pdf'); expect(text).toContain('cedula-entidad.pdf');
+    expect(text).toContain('No aparecen documentos de otras entidades'); expect(text).not.toContain('No tiene permiso');
   });
   it('la suspensión requiere un responsable explícito sin atribución institucional predeterminada', () => {
     const f = page(data({ estado: 'EN_RESOLUCION' })); f.componentInstance.cambiarTab('subprocesos'); f.detectChanges();

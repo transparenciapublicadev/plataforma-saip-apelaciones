@@ -63,7 +63,7 @@ describe('SecondQualificationForm — contexto y límites reales', { timeout: 15
     const f = page(appeal({ expedienteTtaip: aggregate })); http.expectOne(receiptUrl).flush(receipt({ documentos: [
       { id: 154, apelacionId: 21, tipoDocumento: 'SUBSANACION', estado: 'ACTIVO', nombreOriginal: 'Anexo recibido.txt' }
     ] })); f.detectChanges(); prepare(f); expect(f.componentInstance.canSubmit()).toBe(true);
-    expect(f.nativeElement.textContent).toContain('Anexo recibido.txt'); expect(f.nativeElement.textContent).toContain('ID 154');
+    expect(f.nativeElement.textContent).toContain('Anexo recibido.txt'); expect(f.nativeElement.textContent).not.toContain('ID 154');
   });
   it.each(['admitido', 'improcedente'] as const)('registra %s con comando específico y exige recuperar el mismo ID antes del éxito', decision => {
     const f = ready(); const c = f.componentInstance; c.seleccionarDecision(decision); c.fundamentos = 'Sustento registrado'; c.enviarCalificacion(); c.enviarCalificacion();
@@ -302,7 +302,7 @@ describe('SecondQualificationForm — contexto y límites reales', { timeout: 15
   const doc = { id: 51, apelacionId: 21, nombreOriginal: 'Anexo conocido.pdf', contentType: 'application/pdf', estado: 'ACTIVO' };
   it('consulta documentos por relaciones exactas, sin buscar claves ciudadanas de recepción', () => {
     const f = page(); docs(f, [doc]); expect(f.componentInstance.documentCount()).toBe(1); expect(f.nativeElement.textContent).toContain(doc.nombreOriginal);
-    expect(f.nativeElement.textContent).toContain('sin atribuir recepción'); expect(http.match(req => /recepcion|subsanacion/.test(req.url))).toHaveLength(0);
+    expect(f.nativeElement.textContent).toContain('Recurso de apelación'); expect(f.nativeElement.textContent).toContain('Documento'); expect(http.match(req => /recepcion|subsanacion/.test(req.url))).toHaveLength(0);
   });
   it('distingue lista documental vacía de prueba de ausencia de presentación', () => {
     const f = page(); docs(f); expect(f.nativeElement.textContent).toContain('No acredita ausencia de recepción'); expect(f.componentInstance.documentError()).toBe('');
@@ -370,8 +370,8 @@ describe('SecondQualificationForm — contexto y límites reales', { timeout: 15
   });
   it('la búsqueda y los filtros documentales no hacen consultas nuevas ni cambian relaciones', () => {
     const f = page(); docs(f, [doc, ...[52, 53, 54].map(id => ({ ...doc, id, nombreOriginal: 'Informe ' + id + '.pdf' }))]); const c = f.componentInstance;
-    c.documentSearch.set('ANEXO'); f.detectChanges(); expect(c.visibleGroups()[0].documents.map(d => d.id)).toEqual([51]);
-    c.documentFilter.set('Primera calificación y requerimiento'); expect(c.visibleGroups()).toEqual([]);
+    c.documentSearch.set('ANEXO'); f.detectChanges(); expect(c.etapasVisibles()[0].filas.map(fila => fila.doc.id)).toEqual([51]);
+    c.documentFilter.set('resolucion'); expect(c.etapasVisibles()).toEqual([]);
     c.documentSearch.set(''); c.documentFilter.set(''); expect(c.documentCount()).toBe(4); expect(http.match(req => req.url === api + '/documentos')).toHaveLength(0);
   });
   it('cambiar ruta cancela la lista documental pendiente y elimina el contenido anterior', () => {

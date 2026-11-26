@@ -3,7 +3,7 @@
     <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
       <a [routerLink]="retorno()" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
         <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7"/><path stroke-width="2" d="M19 12H5"/></svg>
-        Volver al panel institucional
+        {{ textoRetorno() }}
       </a>
 
       <div class="flex flex-wrap items-center gap-3 mb-3">
@@ -120,6 +120,7 @@
                     <span class="eyebrow">Contacto</span>
                     <div class="mt-2 text-foreground">{{ dataView().email }}</div>
                     <div class="font-mono text-[11px] text-muted-foreground mt-0.5">{{ dataView().telefono }}</div>
+                    @if (origenEstado() === 'error') { <p role="alert" class="text-xs text-destructive mt-2">{{ origenMensaje() }}</p> }
                   </div>
                 </div>
 
@@ -134,7 +135,7 @@
                   <span class="eyebrow" style="color: var(--brand-700)">Causal de denegatoria · Entidad</span>
                   <div class="mt-2 rounded-md p-4" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)">
                     <div class="font-semibold">{{ dataView().causalDenegatoria }}</div>
-                    <p class="text-xs text-foreground/75 mt-1.5 leading-relaxed">{{ dataView().fundamentoEntidad }}</p>
+                    <p class="text-xs text-foreground/75 mt-1.5 leading-relaxed whitespace-pre-wrap">{{ dataView().fundamentoEntidad }}</p>
                   </div>
                 </div>
 
@@ -167,18 +168,21 @@
                 @if (resolucionesExpediente().length > 1 && apelacion()?.resolucion?.tipoResolucion !== 'RESOLUCION_FINAL') {
                   <div class="field"><label class="field-label" for="detail-selected-act">Actuación registrada</label><select id="detail-selected-act" class="field-input" [value]="selectedActId() || ''" (change)="seleccionarActuacion($any($event.target).value)"><option value="">Seleccione una actuación registrada</option>@for (act of resolucionesExpediente(); track act.id) { <option [value]="act.id">{{ act.decision ? etiquetaActuacion(act.tipoResolucion, act.decision) : etiquetaActuacion(act.tipoResolucion) + ' · Decisión no informada' }}</option> }</select></div>
                 }
-                @if (draftError()) { <p role="alert" class="text-sm text-destructive">{{ draftError() }}</p> }
-                <p role="note" class="text-xs text-muted-foreground">Copia de trabajo. No acredita firma ni emisión formal.</p>
-                <div class="grid grid-cols-2 gap-2">
-                  <button type="button" [disabled]="!selectedAct()" (click)="verResolucion()" class="btn-ghost-brand w-full justify-center !py-3 flex items-center gap-2">
-                    <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg>
-                    Ver resolución
-                  </button>
-                  <button type="button" [disabled]="!selectedAct()" (click)="descargarResolucion()" class="btn-ghost-brand w-full justify-center !py-3 flex items-center gap-2">
-                    <svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg>
-                    Descargar resolución
-                  </button>
-                </div>
+                <details class="rounded-md p-4" style="background: var(--card); border: 1px solid var(--border)">
+                  <summary class="text-sm font-medium cursor-pointer">Copia de trabajo de la actuación seleccionada</summary>
+                  <p class="text-xs text-muted-foreground mt-2 leading-relaxed">Se arma en esta pantalla para revisar el texto. No es la resolución firmada y no queda registrada. El documento incorporado al expediente está en Documentos del expediente.</p>
+                  @if (draftError()) { <p role="alert" class="text-sm text-destructive mt-2">{{ draftError() }}</p> }
+                  <div class="grid grid-cols-2 gap-2 mt-3">
+                    <button type="button" [disabled]="!selectedAct()" (click)="verResolucion()" class="btn-ghost-brand w-full justify-center !py-3 flex items-center gap-2">
+                      <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg>
+                      Ver copia de trabajo
+                    </button>
+                    <button type="button" [disabled]="!selectedAct()" (click)="descargarResolucion()" class="btn-ghost-brand w-full justify-center !py-3 flex items-center gap-2">
+                      <svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg>
+                      Descargar copia de trabajo
+                    </button>
+                  </div>
+                </details>
               </div>
             } @else if (activeTab() === 'subsanacion' && rolInstitucional() && requiereRecepcion()) {
               <div role="tabpanel" id="detail-panel-subsanacion" aria-labelledby="detail-tab-subsanacion" tabindex="0" class="p-6 animate-fade-in">
@@ -344,15 +348,16 @@
                 <div>
                   <span class="eyebrow">Constancias y cédulas</span>
                   <h3 class="font-display text-lg mt-1">Notificaciones del expediente</h3>
-                  <p class="text-xs text-muted-foreground mt-1 max-w-2xl">Revise el destino, el medio y los documentos de cada aviso. El envío técnico no acredita la notificación eficaz.</p>
+                  <p class="text-xs text-muted-foreground mt-1 max-w-2xl">Elija la etapa y siga el paso marcado de cada destinatario. El envío técnico no acredita la notificación eficaz.</p>
                 </div>
                 @if (expedienteTtaip(); as exp) {
                   <app-actos-notificacion [expedienteId]="exp.id" [expediente]="expedienteDisplay()" [tribunal]="rolInstitucional()" [encabezado]="false"
                     (verExpediente)="cambiarTab('adjuntos')" (actualizado)="onDocumentoSubido()" />
                 }
                 @if (rolInstitucional()) {
-                <!-- SECCIÓN: Cédulas y Notificaciones Oficiales (DISC-06) -->
-                <div>
+                <details class="rounded-lg border border-border bg-card">
+                  <summary class="cursor-pointer px-4 py-3 font-display text-base font-semibold">Cédulas ya registradas</summary>
+                <div class="px-4 pb-4">
                   <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                     <div>
                       <h3 class="font-display text-base font-semibold flex items-center gap-2 tracking-wide"><svg aria-hidden="true" lucideMail class="w-4 h-4" style="color: var(--brand-700)"></svg> Cédulas de notificación</h3>
@@ -434,11 +439,11 @@
                     }
                   </div>
                 </div>
+                </details>
 
-                <div class="rule-ornament"></div>
-
-                <!-- SECCIÓN: Trazabilidad y Reprocesos -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <details class="rounded-lg border border-border bg-card">
+                  <summary class="cursor-pointer px-4 py-3 font-display text-base font-semibold">Trazabilidad y reprocesos</summary>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 px-4 pb-4">
                   <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
                     <h3 class="font-display text-base font-semibold tracking-wide">Trazabilidad del trámite</h3>
                     <p class="text-xs text-muted-foreground mt-1">Lo más reciente aparece primero.</p>
@@ -490,46 +495,68 @@
                     </div>
                   </div>
                 </div>
+                </details>
                 }
               </div>
             } @else {
-              <div role="tabpanel" id="detail-panel-adjuntos" aria-labelledby="detail-tab-adjuntos" class="p-6 space-y-6 animate-fade-in">
-                <div>
+              <div role="tabpanel" id="detail-panel-adjuntos" aria-labelledby="detail-tab-adjuntos" class="p-6 animate-fade-in">
+                <div class="mb-4">
                   <h3 class="font-display text-base font-semibold tracking-wide">Documentos del expediente</h3>
-                  <p class="text-xs text-muted-foreground mt-1">Solicitud, respuesta, apelación, subsanaciones, resoluciones y cédulas incorporadas.</p>
+                  <p class="text-xs text-muted-foreground mt-1">{{ leyendaDocumentos() }}</p>
                 </div>
-                @if (documentoRelation(); as relation) {
-                  @if (puedeAdjuntarDocumentos()) {
-                    <app-document-upload [verifiedContext]="resourceRevision()"
-                      heading="Adjuntar documento a la apelación"
-                      tipoDocumento="DOCUMENTO_ADJUNTO"
-                      [relation]="relation"
-                      (uploaded)="onDocumentoSubido()"
-                    />
+                @if (detalle().cedulas.error) { <p role="status" class="text-xs text-muted-foreground mb-3">Las cédulas no aparecen en este legajo: su vínculo con las actuaciones está incompleto.</p> }
+                @if (detalle().resoluciones.error) { <p role="status" class="text-xs text-muted-foreground mb-3">Las resoluciones no aparecen en este legajo: la consulta de actuaciones está incompleta.</p> }
+                @if (loadingDocuments()) { <p role="status">Consultando documentos por relación…</p> }
+                @else if (documentError()) { <p role="alert" class="text-sm text-destructive">{{ documentError() }}</p><button type="button" class="btn-ghost-brand mt-3" (click)="cargarDocumentos(true)">Reintentar consulta documental</button> }
+                @else {
+                  @if (documentCount() > 3) {
+                    <div class="space-y-2 mb-3">
+                      <div class="relative">
+                        <svg aria-hidden="true" lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></svg>
+                        <label class="sr-only" for="detail-doc-search">Buscar documentos del expediente</label>
+                        <input id="detail-doc-search" type="search" class="field-input !pl-9 !py-2 !text-sm" [value]="documentSearch()" (input)="documentSearch.set($any($event.target).value)" placeholder="Buscar por nombre, tipo, fecha o procedencia" />
+                      </div>
+                      <div role="group" aria-label="Filtrar por etapa" class="flex flex-wrap gap-1.5">
+                        <button type="button" class="text-xs px-2.5 py-1 rounded-full border border-border" [attr.aria-pressed]="!documentFilter()" [style.background]="!documentFilter() ? 'var(--brand-700)' : 'var(--card)'" [style.color]="!documentFilter() ? '#fff' : null" (click)="documentFilter.set('')">Todos <span class="font-mono">{{ documentCount() }}</span></button>
+                        @for (etapa of etapasDocumentales(); track etapa.key) {
+                          <button type="button" class="text-xs px-2.5 py-1 rounded-full border border-border" [attr.aria-pressed]="documentFilter() === etapa.key" [style.background]="documentFilter() === etapa.key ? 'var(--brand-700)' : 'var(--card)'" [style.color]="documentFilter() === etapa.key ? '#fff' : null" (click)="documentFilter.set(etapa.key)">{{ etapa.label }} <span class="font-mono">{{ etapa.total }}</span></button>
+                        }
+                      </div>
+                    </div>
                   }
-                  <app-document-list [verifiedContext]="resourceRevision()"
-                    [relation]="relation"
-                    [documents]="apelacion()?.documentosMetadata || apelacion()?.documentos || []"
-                    emptyMessage="No hay documentos asociados a la apelación."
-                  />
+                  @for (etapa of etapasVisibles(); track etapa.key) {
+                    <section class="mb-3" [attr.aria-label]="etapa.label">
+                      <h4>
+                        <button type="button" class="w-full flex items-center gap-2 py-1.5 text-left" [attr.aria-expanded]="groupOpen(etapa.key)" [attr.aria-controls]="documentGroupId(etapa.key)" [disabled]="!!documentSearch().trim() || !!documentFilter()" (click)="toggleDocumentGroup(etapa.key)">
+                          <span class="font-mono text-[11px] w-5 h-5 rounded-full flex items-center justify-center shrink-0" style="background: var(--brand-subtle); color: var(--brand-700)">{{ etapa.orden }}</span>
+                          <span class="eyebrow flex-1">{{ etapa.label }}</span>
+                          <span class="font-mono text-[11px] text-muted-foreground">{{ etapa.filas.length !== etapa.total ? etapa.filas.length + ' de ' + etapa.total : etapa.total }} doc{{ etapa.total === 1 ? '' : 's' }}.</span>
+                          <svg aria-hidden="true" lucideChevronDown class="w-4 h-4 text-muted-foreground" [style.transform]="groupOpen(etapa.key) ? null : 'rotate(-90deg)'"></svg>
+                        </button>
+                      </h4>
+                      <div [id]="documentGroupId(etapa.key)" role="list" [attr.aria-label]="'Documentos: ' + etapa.label" [hidden]="!groupOpen(etapa.key)" class="space-y-2 mt-1.5 pl-3 ml-2.5 border-l border-border">
+                        @for (fila of etapa.filas; track fila.doc.id) {
+                          <div role="listitem" class="rounded-md p-3 flex items-center gap-3 border border-border bg-card">
+                            <span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" [style.background]="'color-mix(in srgb, ' + fila.color + ' 10%, transparent)'" [style.border]="'1px solid color-mix(in srgb, ' + fila.color + ' 30%, transparent)'"><svg aria-hidden="true" lucideFileText class="w-4 h-4" [style.color]="fila.color"></svg></span>
+                            <div class="min-w-0 flex-1">
+                              <div class="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                <span class="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" [style.background]="'color-mix(in srgb, ' + fila.color + ' 12%, transparent)'" [style.color]="fila.color">{{ fila.etiqueta }}</span>
+                                <span class="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" [style.background]="'color-mix(in srgb, ' + fila.colorProcedencia + ' 10%, transparent)'" [style.color]="fila.colorProcedencia">{{ fila.procedencia }}</span>
+                              </div>
+                              <p class="text-sm font-medium truncate">{{ nombreDocumento(fila.doc) }}</p>
+                              <p class="font-mono text-[11px] text-muted-foreground mt-0.5">{{ fila.fecha }}@if (fila.doc.contentType) { · {{ fila.doc.contentType }} }</p>
+                            </div>
+                            <div class="flex gap-1 shrink-0">
+                              <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" [attr.aria-label]="'Previsualizar ' + nombreDocumento(fila.doc)" (click)="verDocumento(fila.doc)"><svg aria-hidden="true" lucideEye class="w-4 h-4"></svg></button>
+                              <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" [disabled]="downloadingId() !== null" [attr.aria-label]="'Descargar ' + nombreDocumento(fila.doc)" (click)="descargarDocumento(fila.doc)"><svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg></button>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </section>
+                  } @empty { <p role="status" class="rounded-md p-3 text-sm text-muted-foreground border border-dashed border-border">{{ documentCount() ? 'Ningún documento coincide con la búsqueda o filtro.' : 'No hay documentos registrados en las relaciones consultadas.' }}</p> }
                 }
-
-                @if (expedienteDocumentoRelation(); as relation) {
-                  @if (puedeAdjuntarDocumentos()) {
-                    <div class="rule-ornament"></div>
-                    <app-document-upload [verifiedContext]="resourceRevision()"
-                      heading="Adjuntar documento al expediente TTAIP"
-                      tipoDocumento="EXPEDIENTE_ADMINISTRATIVO"
-                      [relation]="relation"
-                      (uploaded)="onDocumentoSubido()"
-                    />
-                  }
-                  <app-document-list [verifiedContext]="resourceRevision()"
-                    [relation]="relation"
-                    [documents]="expedienteTtaip()?.documentos || []"
-                    emptyMessage="No hay documentos asociados directamente al expediente TTAIP."
-                  />
-                }
+                @if (downloadError()) { <p role="alert" class="text-sm text-destructive mt-3">{{ downloadError() }}</p> }
               </div>
             }
           </div>

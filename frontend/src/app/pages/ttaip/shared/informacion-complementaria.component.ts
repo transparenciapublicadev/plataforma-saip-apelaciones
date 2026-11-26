@@ -16,54 +16,71 @@ import type { DocumentoMetadata } from '../../../models/documento.model';
   imports: [MultiFileUploadZoneComponent, DatePipe, ReactiveFormsModule, DocumentPreviewModalComponent, ReferenceSuccessModalComponent, LucideFileQuestion, TtaipDocumentoFilaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="space-y-3">
-      <h3 class="font-display text-base font-semibold flex items-center gap-2">
-        <svg aria-hidden="true" lucideFileQuestion class="h-4 w-4 text-[var(--brand-700)]"></svg> Información complementaria
-      </h3>
+    <section class="space-y-4">
+      <header>
+        <h3 class="font-display text-base font-semibold flex items-center gap-2">
+          <svg aria-hidden="true" lucideFileQuestion class="h-4 w-4 text-[var(--brand-700)]"></svg> Información complementaria
+        </h3>
+        <p class="text-xs text-muted-foreground mt-1">A pedido del Tribunal. La solicitud suspende 3 días hábiles de esta etapa.</p>
+      </header>
       @if (error()) {
         <p role="alert" class="text-sm text-destructive">{{ error() }}</p>
         <button type="button" class="btn-ghost-brand" (click)="consultar()">Consultar requerimientos</button>
       }
-      @if (!datos() && ocupado()) { <p role="status">Consultando requerimientos…</p> }
+      @if (!datos() && ocupado()) { <p role="status" class="text-sm text-muted-foreground">Consultando requerimientos…</p> }
       @if (datos(); as consulta) {
-        @if (consulta.fechaLimiteCalificacion) {
-          <p class="text-sm">Fecha límite de la etapa
-            <strong>{{ consulta.fechaLimiteCalificacion | date:'dd/MM/yyyy' }}</strong>
-          </p>
-        }
-        @if (consulta.diasSuspendidos) {
-          <p class="text-sm">Suspensión de {{ consulta.diasSuspendidos }} días hábiles en esta etapa.</p>
-        }
-        @if (tribunal() && consulta.puedeSolicitar && formulario() === undefined) {
-          <button type="button" class="btn-ghost-brand" [disabled]="ocupado()" (click)="abrir(null)">Solicitar información complementaria</button>
-        }
-        @for (item of consulta.solicitudes; track item.id) {
-          <article class="rounded-md border border-border bg-card p-4 text-sm space-y-2">
-            <div class="flex justify-between gap-2 flex-wrap">
-              <strong>{{ etapas[item.etapa] }}</strong><span>{{ item.estado }}</span>
-            </div>
-            <p class="whitespace-pre-wrap">{{ item.solicitud }}</p>
-            <p class="text-muted-foreground">Respuesta de la entidad hasta el {{ item.fechaLimite | date:'dd/MM/yyyy' }} · 3 días hábiles</p>
-            @for (doc of item.adjuntos; track doc.id) {
-              <app-ttaip-documento-fila [documento]="doc" (abrir)="ver($event)" />
+        @if (consulta.fechaLimiteCalificacion || consulta.diasSuspendidos) {
+          <div class="grid grid-cols-2 gap-3 rounded-md border border-border bg-card p-3 text-xs text-muted-foreground">
+            @if (consulta.fechaLimiteCalificacion) {
+              <p>Fecha límite de la etapa <strong class="block font-mono text-sm text-foreground mt-0.5">{{ consulta.fechaLimiteCalificacion | date:'dd/MM/yyyy' }}</strong></p>
             }
-            @if (item.respuesta) {
-              <p class="font-semibold">Respuesta de la entidad</p>
-              <p class="whitespace-pre-wrap">{{ item.respuesta }}</p>
-              @for (doc of item.adjuntosRespuesta; track doc.id) {
+            @if (consulta.diasSuspendidos) {
+              <p>Suspensión de <strong class="text-foreground">{{ consulta.diasSuspendidos }} días hábiles</strong> en esta etapa.</p>
+            }
+          </div>
+        }
+        <div class="space-y-3">
+          @for (item of consulta.solicitudes; track item.id) {
+            <article class="rounded-md border border-border bg-card p-4 text-sm space-y-3">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-xs text-muted-foreground">Dirigido a la entidad</p>
+                  <p class="font-medium mt-0.5">{{ etapas[item.etapa] }}</p>
+                </div>
+                <span class="rounded-full px-2 py-1 text-xs whitespace-nowrap" [style.background]="fondoEstado(item.estado)" [style.color]="colorEstado(item.estado)">{{ etiquetaEstado(item.estado) }}</span>
+              </div>
+              <p class="whitespace-pre-wrap leading-relaxed">{{ item.solicitud }}</p>
+              <div class="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+                <p>Solicitud <span class="block font-mono text-foreground mt-0.5">{{ item.fechaSolicitud | date:'dd/MM/yyyy' }}</span></p>
+                <p>Respuesta de la entidad hasta el <span class="block font-mono text-foreground mt-0.5">{{ item.fechaLimite | date:'dd/MM/yyyy' }}</span></p>
+              </div>
+              <p class="text-xs text-muted-foreground">3 días hábiles</p>
+              @for (doc of item.adjuntos; track doc.id) {
                 <app-ttaip-documento-fila [documento]="doc" (abrir)="ver($event)" />
               }
-            } @else if (!tribunal() && (item.estado === 'PENDIENTE' || item.estado === 'VENCIDA')) {
-              <button type="button" class="btn-ghost-brand" [disabled]="ocupado()" (click)="abrir(item.id)">Responder al Tribunal</button>
-            }
-          </article>
-        } @empty {
-          <p class="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">No hay solicitudes de información complementaria registradas.</p>
+              @if (item.respuesta) {
+                <div class="rounded-md p-3 space-y-2" style="background: var(--brand-subtle)">
+                  <p class="font-semibold">Respuesta de la entidad</p>
+                  <p class="whitespace-pre-wrap">{{ item.respuesta }}</p>
+                  @for (doc of item.adjuntosRespuesta; track doc.id) {
+                    <app-ttaip-documento-fila [documento]="doc" (abrir)="ver($event)" />
+                  }
+                </div>
+              } @else if (!tribunal() && (item.estado === 'PENDIENTE' || item.estado === 'VENCIDA')) {
+                <button type="button" class="btn-ghost-brand" [disabled]="ocupado()" (click)="abrir(item.id)">Responder al Tribunal</button>
+              }
+            </article>
+          } @empty {
+            <p class="rounded-md border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">No hay solicitudes de información complementaria registradas.</p>
+          }
+        </div>
+        @if (tribunal() && consulta.puedeSolicitar && formulario() === undefined) {
+          <button type="button" class="btn-brand" [disabled]="ocupado()" (click)="abrir(null)">Solicitar información complementaria</button>
         }
         @if (formulario() !== undefined) {
-          <div class="rounded-lg border border-border p-3 space-y-2">
-            <label class="block text-sm">{{ tribunal() ? 'Información solicitada' : 'Respuesta al Tribunal' }}
-              <textarea rows="4" class="field-input" maxlength="5000" [formControl]="texto"></textarea>
+          <div class="rounded-lg border border-border p-4 space-y-3" style="background: var(--brand-subtle)">
+            <label class="block text-sm font-medium">{{ tribunal() ? 'Información solicitada' : 'Respuesta al Tribunal' }}
+              <textarea rows="4" class="field-input mt-1" maxlength="5000" [formControl]="texto"></textarea>
             </label>
             <app-multi-file-upload-zone label="Adjuntos" [batch]="true" [allowText]="true" [keyboardAccessible]="true"
               [disabled]="ocupado()" [(files)]="archivos" />
@@ -136,6 +153,19 @@ export class InformacionComplementariaComponent {
     });
   }
 
+  etiquetaEstado(estado: SolicitudComplementaria['estado']): string {
+    return estado === 'RESPONDIDA' ? 'Respondida' : estado === 'VENCIDA' ? 'Plazo vencido' : estado === 'CANCELADA' ? 'Cancelada' : 'Pendiente';
+  }
+  fondoEstado(estado: SolicitudComplementaria['estado']): string {
+    if (estado === 'RESPONDIDA') return 'color-mix(in srgb, var(--success) 12%, transparent)';
+    if (estado === 'VENCIDA' || estado === 'CANCELADA') return 'color-mix(in srgb, var(--warning) 14%, transparent)';
+    return 'color-mix(in srgb, var(--info) 12%, transparent)';
+  }
+  colorEstado(estado: SolicitudComplementaria['estado']): string {
+    if (estado === 'RESPONDIDA') return 'var(--success)';
+    if (estado === 'VENCIDA' || estado === 'CANCELADA') return 'var(--warning)';
+    return 'var(--info)';
+  }
   consultar(id = this.expedienteId()): void {
     const sesion = this.auth.cambiosSesion?.();
     this.ocupado.set(true);

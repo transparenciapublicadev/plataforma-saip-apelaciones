@@ -2,9 +2,9 @@ import { PresentacionesAdmisionComponent } from './shared/presentaciones-admisio
 import { CumplimientoDocumentalComponent } from './shared/cumplimiento-documental.component';
 import { ActosNotificacionComponent } from './shared/actos-notificacion.component';
 import { InformacionComplementariaComponent } from './shared/informacion-complementaria.component';
-import { Observable, Subscription } from 'rxjs';
+import { Observable, Subscription, forkJoin } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
-import { positiveId, apelacionCompatible, motivoPrimera } from './ttaip-calificar.model';
+import { positiveId, apelacionCompatible, motivoPrimera, documentosRelacionados } from './ttaip-calificar.model';
 import { motivoFinal } from './ttaip-resolver.model';
 import { contextoSegunda, relojConsultado, requerimientoConsultado } from './ttaip-segunda-calificacion.model';
 import { ConsultaRecepcion, consultarRecepcionInstitucional, motivoRecepcion, sinConsultaRecepcion } from './recepcion-institucional.model';
@@ -15,12 +15,15 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, OnInit, OnDestroy, ElementRef, effect, untracked, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApelacionService } from '../../services/apelacion.service';
+import { SolicitudService } from '../../services/solicitud.service';
 import { TtaipService } from '../../services/ttaip.service';
+import { DocumentoService } from '../../services/documento.service';
 import { Apelacion } from '../../models/apelacion.model';
+import { Solicitud } from '../../models/solicitud.model';
 import { CumplimientoResolucionTtaip, NotificacionTtaip, SuspensionPlazoTtaip } from '../../models/resolucion.model';
-import { DocumentoRelation } from '../../models/documento.model';
+import { DocumentoMetadata, DocumentoRelation } from '../../models/documento.model';
 import { DocumentListComponent } from '../../shared/document-list.component';
-import { DocumentUploadComponent } from '../../shared/document-upload.component';
+import { agruparExpediente, nombreDocumento as nombreDeDocumento } from './shared/expediente-docs';
 import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
 
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
@@ -31,7 +34,7 @@ import {
   LucideCalendar, LucideHash, LucideScale, LucideCheckCircle2,
   LucideXCircle, LucideAlertCircle, LucideClock, LucideMail,
   LucideGlobe, LucideMonitor, LucidePackage, LucideArrowLeft,
-  LucideRefreshCw, LucideShieldCheck, LucideUser
+  LucideRefreshCw, LucideShieldCheck, LucideUser, LucideSearch, LucideChevronDown
 } from '@lucide/angular';
 
 type DetailTab = 'apelacion' | 'subsanacion' | 'subprocesos' | 'requerimientos' | 'notificaciones' | 'adjuntos';
@@ -39,6 +42,17 @@ type TimelineIcon = 'check' | 'x' | 'alert';
 type SuspensionAdicional = 'INFORME_ORAL' | 'INFORMACION_COMPLEMENTARIA';
 type SuspensionSolicitante = 'CIUDADANO' | 'ENTIDAD_PUBLICA' | 'TTAIP';
 type TipoCumplimiento = 'TOTAL' | 'PARCIAL' | 'NO_CUMPLE';
+const TIPO_RESPUESTA: Record<string, string> = {
+  ENTREGA_TOTAL: 'Entrega total', ENTREGA_PARCIAL: 'Entrega parcial',
+  DENEGACION_TOTAL: 'Denegación total', SILENCIO_ADMINISTRATIVO: 'Silencio administrativo',
+};
+const CAUSAL_ENTIDAD: Record<string, string> = {
+  no_posee: 'La entidad no posee la información y no está obligada a poseerla',
+  inexistente: 'La solicitud exige crear o producir información inexistente',
+  evaluacion: 'La solicitud exige realizar evaluaciones o análisis',
+  extraviada: 'La información se extravió, destruyó o no puede ubicarse pese a que debía poseerla',
+  secreta: 'Información secreta', reservada: 'Información reservada', confidencial: 'Información confidencial',
+};
 
 interface TimelineItem {
   id: number | string;
@@ -59,11 +73,12 @@ import { RegistrarSuspensionTtaipPayload } from '../../models/resolucion.model';
 @Component({
   selector: 'app-ttaip-resolucion-detalle',
   imports: [PresentacionesAdmisionComponent, ActosNotificacionComponent, InformacionComplementariaComponent, CumplimientoDocumentalComponent,
-    CommonModule, RouterLink, DocumentListComponent, DocumentUploadComponent, StatusBadgeComponent, YaikuCargandoComponent,
+    CommonModule, RouterLink, DocumentListComponent, StatusBadgeComponent, YaikuCargandoComponent,
     DocumentPreviewModalComponent, RecepcionInstitucionalComponent,
     LucideEye, LucideDownload, LucideScale,
     LucideMail, LucideGlobe,
-    LucideMonitor, LucidePackage, LucideShieldCheck, LucideFolderOpen, LucideFileText, LucideRefreshCw
+    LucideMonitor, LucidePackage, LucideShieldCheck, LucideFolderOpen, LucideFileText, LucideRefreshCw,
+    LucideSearch, LucideChevronDown
   ],
   templateUrl: './ttaip-resolucion-detalle.component.html',
   styleUrl: './ttaip-resolucion-detalle.component.css',
@@ -88,7 +103,14 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   private pendingAction: { collection: DetailCollection; category: 'descargo' | 'notificacion' | 'cumplimiento'; id?: number; result?: Record<string, unknown>; code: string; apelacionId: number } | null = null;
   readonly selectedActId = signal<number | null>(null);
   private readonly apelacionService = inject(ApelacionService);
+  private readonly solicitudService = inject(SolicitudService);
+  private readonly documentoService = inject(DocumentoService);
   private readonly ttaipService = inject(TtaipService);
+  private docsReads = new Subscription();
+  private docsDownloads = new Subscription();
+  private docsGeneration = 0;
+  private docsKey = '';
+  private docsLoaded = false;
 
   readonly apelacion = signal<Apelacion | null>(null);
   readonly loading = signal<boolean>(true);
@@ -104,6 +126,17 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   readonly cumplimientoMessage = signal<string>('');
   readonly cumplimientoError = signal<string>('');
   readonly draftError = signal('');
+  readonly solicitudOrigen = signal<Solicitud | null>(null);
+  readonly origenEstado = signal<'ausente' | 'cargando' | 'disponible' | 'error'>('ausente');
+  readonly origenMensaje = signal('');
+  readonly documentGroups = signal<{ label: string; relation: DocumentoRelation; documents: DocumentoMetadata[] }[]>([]);
+  readonly documentSearch = signal('');
+  readonly documentFilter = signal('');
+  readonly closedGroups = signal<Record<string, boolean>>({});
+  readonly loadingDocuments = signal(false);
+  readonly documentError = signal('');
+  readonly downloadError = signal('');
+  readonly downloadingId = signal<number | null>(null);
   private documentQuery = 0;
   readonly previewModalOpen = signal<boolean>(false);
   readonly previewModalDoc = signal<DocumentPreviewTarget | null>(null);
@@ -143,7 +176,14 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   readonly resolucionFinalFundada = computed(() => { const id = this.apelacion()?.resolucion?.id; return this.resolucionesExpediente().find(r => r.id === id && r.tipoResolucion === 'RESOLUCION_FINAL' && ['FUNDADO', 'FUNDADO_EN_PARTE'].includes(r.decision || '')) ?? null; });
   readonly selectedAct = computed(() => this.resolucionesExpediente().find(r => r.id === this.selectedActId()) ?? null);
   readonly relojTexto = computed(() => relojConsultado(this.apelacion()));
-  readonly retorno = computed(() => { this.auth.cambiosSesion(); try { return this.auth.obtenerSesion()?.tipoUsuario === 'FUNCIONARIO' ? '/funcionario' : '/ttaip'; } catch { return '/ttaip'; } });
+  readonly retorno = computed(() => {
+    this.auth.cambiosSesion();
+    try {
+      if (this.auth.obtenerSesion()?.tipoUsuario !== 'FUNCIONARIO') return '/ttaip';
+      return this.route.snapshot?.queryParamMap?.get('desde') === 'actuaciones' ? '/funcionario/tribunal' : '/funcionario';
+    } catch { return '/ttaip'; }
+  });
+  readonly textoRetorno = computed(() => this.retorno() === '/funcionario/tribunal' ? 'Volver a actuaciones' : 'Volver al panel institucional');
   readonly rolInstitucional = computed(() => { this.auth.cambiosSesion(); try { return ['TTAIP', 'ADMINISTRADOR'].includes(this.auth.obtenerSesion()?.tipoUsuario || ''); } catch { return false; } });
   readonly rolEntidad = computed(() => { this.auth.cambiosSesion(); try { return ['FUNCIONARIO', 'ADMINISTRADOR'].includes(this.auth.obtenerSesion()?.tipoUsuario || ''); } catch { return false; } });
   readonly requerimiento = computed(() => requerimientoConsultado(this.apelacion()));
@@ -193,24 +233,6 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
       && ['RESUELTO_FUNDADO', 'RESUELTO_FUNDADO_EN_PARTE'].includes(apelacion.estado);
   });
 
-  readonly puedeAdjuntarDocumentos = computed(() => {
-    const estado = this.normalizeKey(this.apelacion()?.estado);
-    const closedStates = [
-      'RESUELTO',
-      'TENER_POR_NO_PRESENTADO',
-      'CONCLUSION_SUSTRACCION_MATERIA',
-      'CONCLUSION_DESISTIMIENTO',
-      'RESUELTO_FUNDADO',
-      'RESUELTO_FUNDADO_EN_PARTE',
-      'RESUELTO_INFUNDADO',
-      'RESUELTO_INFUNDADO_EN_PARTE',
-      'RESUELTO_IMPROCEDENTE',
-      'RESUELTO_ESTESE_A_LO_RESUELTO',
-      'RESUELTO_NULIDAD_ACTO'
-    ];
-    return this.contextoVigente() && !this.loading() && !this.error() && this.rolInstitucional() && !!estado && !closedStates.includes(estado);
-  });
-
   readonly resultadoNormalizado = computed(() => {
     const id = this.apelacion()?.resolucion?.id;
     const raw = this.resolucionesExpediente().find(r => r.id === id && r.tipoResolucion === 'RESOLUCION_FINAL')?.decision || this.apelacion()?.resultado;
@@ -254,29 +276,28 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
 
   readonly dataView = computed(() => {
     const apelacion = this.apelacion();
+    const respuesta = this.solicitudOrigen()?.respuesta;
     return {
       ciudadano: apelacion?.ciudadanoNombre || 'Ciudadano',
-      dni: '—',
-      email: '—',
-      telefono: '—',
+      dni: this.datoContacto(this.solicitudOrigen()?.ciudadanoDni),
+      email: this.datoContacto(this.solicitudOrigen()?.ciudadanoEmail),
+      telefono: this.datoContacto(this.solicitudOrigen()?.ciudadanoTelefono),
       entidad: apelacion?.entidadNombre || apelacion?.entidadExternaNombre || 'Entidad no informada',
       expedienteSAIP: apelacion?.solicitudExpediente || apelacion?.numeroSolicitudExterna || '—',
       asuntoSAIP: apelacion?.solicitudAsunto || apelacion?.resumenSolicitudOriginal || 'Sin asunto registrado',
-      causalDenegatoria: apelacion?.tipoDenegatoria || 'Tipo de denegatoria no informado',
-      fundamentoEntidad: apelacion?.resumenRespuestaEntidad || 'La consulta no informa el fundamento de la entidad.',
+      causalDenegatoria: this.causalVisible(apelacion, respuesta),
+      fundamentoEntidad: this.fundamentoVisible(apelacion, respuesta),
       fundamentosApelacion: apelacion?.fundamentos || 'Sin fundamentos registrados.',
       fechaApelacion: apelacion?.fechaApelacion || ''
     };
   });
-
-  readonly documentoRelation = computed<DocumentoRelation | null>(() => {
-    const apelacionId = this.apelacion()?.id;
-    return apelacionId ? { apelacionId } : null;
-  });
-
-  readonly expedienteDocumentoRelation = computed<DocumentoRelation | null>(() => {
-    const expedienteTtaipId = this.expedienteTtaip()?.id;
-    return expedienteTtaipId ? { expedienteTtaipId } : null;
+  readonly documentCount = computed(() => this.documentGroups().reduce((sum, group) => sum + group.documents.length, 0));
+  readonly etapasDocumentales = computed(() => agruparExpediente(this.documentosDelExpediente(), this.entidadDocumental(), ''));
+  readonly etapasVisibles = computed(() => {
+    const filtro = this.documentFilter();
+    return agruparExpediente(this.documentosDelExpediente(), this.entidadDocumental(), this.documentSearch().trim())
+      .filter(etapa => !filtro || filtro === etapa.key)
+      .filter(etapa => etapa.filas.length > 0);
   });
 
   resolucionDocumentoRelation(resolucionId?: number | null): DocumentoRelation | null {
@@ -390,14 +411,15 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
     if (tab === 'notificaciones' || tab === 'subprocesos' || tab === 'subsanacion' || (tab === 'requerimientos' && this.rolInstitucional())) this.activeTab.set(tab);
     this.cargarApelacion(p.get('expediente') || '');
   }); }
-  ngOnDestroy(): void { this.destroyed = true; this.documentQuery++; this.limpiarRecepcion(); this.requests.unsubscribe(); this.routeSub.unsubscribe(); this.cerrarPreviewModal(); }
+  ngOnDestroy(): void { this.destroyed = true; this.documentQuery++; this.docsGeneration++; this.docsReads.unsubscribe(); this.docsDownloads.unsubscribe(); this.limpiarRecepcion(); this.requests.unsubscribe(); this.routeSub.unsubscribe(); this.cerrarPreviewModal(); }
   cargarApelacion(expediente: string): void {
     if (this.destroyed) return;
     if (this.pendingAction && expediente === this.routeExpediente() && this.session === this.sessionKey()) { this.recuperarActuacion(); return; }
     this.requests.unsubscribe(); this.requests = new Subscription(); const query = ++this.documentQuery;
     this.limpiarRecepcion();
     this.routeExpediente.set(expediente); this.session = this.sessionKey(); this.revision = this.auth.cambiosSesion(); this.resourceRevision.update(v => v + 1);
-    this.cerrarPreviewModal(); this.draftError.set(''); this.apelacion.set(null); this.selectedActId.set(null); this.error.set(''); this.loading.set(true);
+    this.cerrarPreviewModal(); this.draftError.set(''); this.apelacion.set(null); this.solicitudOrigen.set(null); this.origenEstado.set('ausente'); this.origenMensaje.set('');
+    this.reiniciarDocumentos(); this.selectedActId.set(null); this.error.set(''); this.loading.set(true);
     this.pendingAction = null; this.actionUncertain.set(false);
     for (const category of ['descargo', 'notificacion', 'cumplimiento'] as const) { this.flags(category).busy.set(false); this.flags(category).message.set(''); this.flags(category).error.set(''); }
     let account; try { account = this.auth.obtenerSesion(); } catch { account = null; }
@@ -406,7 +428,7 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
     this.requests.add(this.apelacionService.findByExpediente(expediente).subscribe({ next: data => {
       if (!this.current(query)) return;
       if (!this.baseCompatible(data, expediente)) this.error.set('El servidor no devolvió el expediente solicitado o sus asociaciones son incompatibles.');
-      else { this.apelacion.set(data); const id = data.resolucion?.id ?? data.resolucionSegundaCalificacion?.id ?? data.resolucionPrimeraCalificacion?.id; this.selectedActId.set(positiveId(id) && this.resolucionesExpediente().some(r => r.id === id) ? id : null); }
+      else { this.apelacion.set(data); const id = data.resolucion?.id ?? data.resolucionSegundaCalificacion?.id ?? data.resolucionPrimeraCalificacion?.id; this.selectedActId.set(positiveId(id) && this.resolucionesExpediente().some(r => r.id === id) ? id : null); this.cargarContacto(data, query); }
       this.loading.set(false);
     }, error: err => { if (this.current(query)) { this.error.set(falloConsulta(err, 'la apelación').mensaje); this.loading.set(false); } } }));
   }
@@ -455,15 +477,173 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
   }
   nombreSalaResolucion(r: { sala?: { nombre?: string } | null }): string { return r.sala?.nombre || 'Sala no informada'; }
   eficaciaLabel(n: NotificacionTtaip): string { if (this.detalle().historial.error) return 'Evidencia de eficacia incompleta'; return eficaciaConsultada(n, this.detalle().historial.data) ? 'Evidencia de eficacia consultada' : 'Eficacia no acreditada en los datos consultados'; }
-  onDocumentoSubido(): void {
-    const expediente = this.expedienteDisplay();
-    if (expediente && expediente !== '—') {
-      this.cargarApelacion(expediente);
-    }
-  }
-
   cambiarTab(tab: DetailTab): void {
     this.activeTab.set(tab);
+    if (tab === 'adjuntos') this.cargarDocumentos();
+  }
+  onDocumentoSubido(): void {
+    const expediente = this.expedienteDisplay();
+    if (expediente && expediente !== '—') this.cargarApelacion(expediente);
+  }
+  private datoContacto(valor: string | null | undefined): string {
+    if (positiveId(this.apelacion()?.solicitudId) && this.origenEstado() === 'cargando') return 'Consultando…';
+    return (valor || '').trim() || 'No informado';
+  }
+  private causalVisible(ap: Apelacion | null, respuesta: Solicitud['respuesta'] | undefined): string {
+    const codigo = (respuesta?.causalDenegatoria || '').trim();
+    if (codigo) return CAUSAL_ENTIDAD[codigo] || codigo;
+    const tipo = respuesta?.tipoRespuesta;
+    if (tipo && TIPO_RESPUESTA[tipo]) return TIPO_RESPUESTA[tipo];
+    const denegatoria = (ap?.tipoDenegatoria || '').trim();
+    if (denegatoria === 'EXPRESA') return 'Denegatoria expresa';
+    if (denegatoria === 'TACITA') return 'Denegatoria tácita';
+    if (denegatoria) return denegatoria;
+    return 'La entidad no registró la causal';
+  }
+  private fundamentoVisible(ap: Apelacion | null, respuesta: Solicitud['respuesta'] | undefined): string {
+    const contenido = (respuesta?.contenido || '').trim();
+    const legal = (respuesta?.fundamentoLegal || '').trim();
+    const partes = [contenido, legal && legal !== contenido ? legal : ''].filter(Boolean);
+    if (partes.length) return partes.join('\n');
+    const resumen = (ap?.resumenRespuestaEntidad || '').trim();
+    return resumen || 'La respuesta de la entidad no trae el fundamento.';
+  }
+  private cargarContacto(ap: Apelacion, query: number): void {
+    if (!positiveId(ap.solicitudId)) { this.solicitudOrigen.set(null); this.origenEstado.set('ausente'); return; }
+    this.origenEstado.set('cargando'); this.origenMensaje.set('');
+    this.requests.add(this.solicitudService.findById(ap.solicitudId).subscribe({
+      next: sol => {
+        if (!this.current(query) || this.apelacion() !== ap) return;
+        if (!this.origenCompatible(sol, ap)) { this.solicitudOrigen.set(null); this.origenEstado.set('error'); this.origenMensaje.set('Los antecedentes no corresponden a la solicitud de origen.'); return; }
+        this.solicitudOrigen.set(sol); this.origenEstado.set('disponible');
+        if (this.activeTab() === 'adjuntos') this.cargarDocumentos();
+      },
+      error: err => { if (this.current(query) && this.apelacion() === ap) { this.solicitudOrigen.set(null); this.origenEstado.set('error'); this.origenMensaje.set(falloConsulta(err, 'la solicitud de origen').mensaje); } }
+    }));
+  }
+  private origenCompatible(sol: Solicitud, ap: Apelacion): boolean {
+    if (!sol || sol.id !== ap.solicitudId) return false;
+    if (ap.solicitudExpediente && sol.expediente !== ap.solicitudExpediente) return false;
+    if (sol.ciudadanoId != null && ap.ciudadanoId != null && sol.ciudadanoId !== ap.ciudadanoId) return false;
+    const respuesta = sol.respuesta as { solicitudId?: number } | null | undefined;
+    return !respuesta || respuesta.solicitudId == null || respuesta.solicitudId === sol.id;
+  }
+  private reiniciarDocumentos(): void {
+    this.docsGeneration++; this.docsReads.unsubscribe(); this.docsReads = new Subscription();
+    this.docsKey = ''; this.docsLoaded = false; this.documentGroups.set([]); this.documentSearch.set(''); this.documentFilter.set('');
+    this.closedGroups.set({}); this.loadingDocuments.set(false); this.documentError.set(''); this.downloadError.set(''); this.downloadingId.set(null);
+  }
+  private entidadDocumental(): string { return this.apelacion()?.entidadNombre || this.apelacion()?.entidadExternaNombre || 'Entidad'; }
+  private documentosDelExpediente(): DocumentoMetadata[] {
+    const vistos = new Set<number>();
+    return this.documentGroups().flatMap(group => group.documents).filter(doc => {
+      const id = doc.id;
+      if (!positiveId(id) || vistos.has(id)) return false;
+      vistos.add(id);
+      return true;
+    });
+  }
+  /** El Tribunal ve el legajo. La entidad solo ve lo presentado por el administrado y lo notificado a ella. */
+  private vistaInstitucional(): boolean { return this.rolInstitucional(); }
+  leyendaDocumentos(): string {
+    return this.vistaInstitucional()
+      ? 'Cada archivo indica su tipo, quién lo presentó y la fecha. El tipo no confirma por sí solo a qué escrito corresponde.'
+      : 'Se muestran los documentos que presentó el administrado y los que el Tribunal notificó a su entidad. No aparecen documentos de otras entidades que no hayan sido notificados.';
+  }
+  private cedulasDeLaEntidad() {
+    return this.cedulasExpediente().filter(cedula => cedula.destinatario === 'ENTIDAD_PUBLICA' && positiveId(cedula.id));
+  }
+  private resolucionNotificadaALaEntidad(resolucion: { id?: number; decision?: string | null; cedulas?: { id?: number }[] | null }): boolean {
+    if (!positiveId(resolucion.id) || resolucion.decision === 'INADMISIBLE') return false;
+    const notificadas = new Set(this.cedulasDeLaEntidad().map(cedula => cedula.id));
+    return !!resolucion.cedulas?.some(cedula => positiveId(cedula.id) && notificadas.has(cedula.id));
+  }
+  private relacionesDocumentales(): { label: string; relation: DocumentoRelation }[] {
+    const ap = this.apelacion();
+    if (!positiveId(ap?.id)) return [];
+    const groups: { label: string; relation: DocumentoRelation }[] = [];
+    if (positiveId(ap.solicitudId)) groups.push({ label: 'Solicitud de origen', relation: { solicitudId: ap.solicitudId } });
+    if (this.vistaInstitucional()) {
+      const respuestaId = this.solicitudOrigen()?.respuesta?.id;
+      if (positiveId(respuestaId)) groups.push({ label: 'Respuesta de la entidad', relation: { respuestaId } });
+    }
+    groups.push({ label: 'Recurso de apelación', relation: { apelacionId: ap.id } });
+    if (this.vistaInstitucional()) {
+      if (!this.detalle().resoluciones.error) {
+        for (const resolucion of this.resolucionesExpediente()) {
+          if (positiveId(resolucion.id)) groups.push({ label: 'Resolución', relation: { resolucionId: resolucion.id } });
+        }
+      }
+      if (!this.detalle().cedulas.error) {
+        for (const cedula of this.cedulasExpediente()) {
+          if (positiveId(cedula.id)) groups.push({ label: 'Cédula', relation: { cedulaNotificacionId: cedula.id } });
+        }
+      }
+      const expediente = ap.expedienteTtaip;
+      if (positiveId(expediente?.id) && expediente.numeroExpediente === ap.expediente) groups.push({ label: 'Expediente TTAIP', relation: { expedienteTtaipId: expediente.id } });
+      return groups;
+    }
+    if (!this.detalle().cedulas.error) {
+      if (!this.detalle().resoluciones.error) {
+        for (const resolucion of this.resolucionesExpediente()) {
+          if (this.resolucionNotificadaALaEntidad(resolucion)) groups.push({ label: 'Resolución notificada a la entidad', relation: { resolucionId: resolucion.id! } });
+        }
+      }
+      for (const cedula of this.cedulasDeLaEntidad()) {
+        groups.push({ label: 'Notificación a la entidad', relation: { cedulaNotificacionId: cedula.id } });
+      }
+    }
+    return groups;
+  }
+  cargarDocumentos(forzar = false): void {
+    const ap = this.apelacion();
+    if (!ap || !this.contextoVigente() || this.loading() || this.error()) return;
+    const groups = this.relacionesDocumentales();
+    const key = JSON.stringify(groups);
+    if (!forzar && key === this.docsKey && (this.docsLoaded || this.loadingDocuments())) return;
+    const generation = this.docsGeneration, query = this.documentQuery;
+    this.docsKey = key; this.docsReads.unsubscribe(); this.docsReads = new Subscription();
+    this.loadingDocuments.set(true); this.documentError.set(''); this.documentGroups.set([]); this.docsLoaded = false;
+    if (!groups.length) { this.loadingDocuments.set(false); this.docsLoaded = true; return; }
+    this.docsReads.add(forkJoin(groups.map(group => this.documentoService.listByRelation(group.relation))).subscribe({
+      next: values => {
+        if (generation !== this.docsGeneration || !this.current(query)) return;
+        const accepted: { label: string; relation: DocumentoRelation; documents: DocumentoMetadata[] }[] = [];
+        const ids = new Set<number>();
+        let invalid = false;
+        for (let index = 0; index < groups.length; index++) {
+          const documents = documentosRelacionados(values[index], groups[index].relation);
+          if (documents === null || documents.some(doc => ids.has(doc.id!) || !ids.add(doc.id!))) { invalid = true; break; }
+          accepted.push({ ...groups[index], documents });
+        }
+        if (invalid) this.documentError.set('Datos documentales incompletos o asociados a otro recurso. No se muestran archivos sustitutos.');
+        else { this.documentGroups.set(accepted); this.docsLoaded = true; }
+        this.loadingDocuments.set(false);
+      },
+      error: err => { if (generation === this.docsGeneration && this.current(query)) { this.loadingDocuments.set(false); this.documentError.set(falloConsulta(err, 'los documentos').mensaje); } }
+    }));
+  }
+  groupOpen(clave: string): boolean { return !!this.documentSearch().trim() || !!this.documentFilter() || !this.closedGroups()[clave]; }
+  toggleDocumentGroup(clave: string): void { if (!this.documentSearch().trim() && !this.documentFilter()) this.closedGroups.update(groups => ({ ...groups, [clave]: !groups[clave] })); }
+  documentGroupId(clave: string): string { return 'detail-docs-' + clave; }
+  nombreDocumento(doc: DocumentoMetadata): string { return nombreDeDocumento(doc); }
+  private documentoActual(doc: DocumentoMetadata): boolean { return this.contextoVigente() && this.documentGroups().some(group => group.documents.some(item => item === doc && positiveId(item.id))); }
+  verDocumento(doc: DocumentoMetadata): void {
+    if (this.documentoActual(doc)) { this.previewModalDoc.set({ id: doc.id, nombre: this.nombreDocumento(doc), tipo: doc.contentType, expediente: this.apelacion()!.expediente }); this.previewModalOpen.set(true); }
+  }
+  descargarDocumento(doc: DocumentoMetadata): void {
+    if (!this.documentoActual(doc) || this.downloadingId() != null) { this.downloadError.set('Consulte un archivo identificado del recurso actual.'); return; }
+    const generation = this.docsGeneration, query = this.documentQuery;
+    this.downloadingId.set(doc.id!); this.downloadError.set('');
+    this.docsDownloads.add(this.documentoService.download(doc.id!, this.nombreDocumento(doc)).subscribe({
+      next: ({ blob, filename }) => {
+        if (generation !== this.docsGeneration || !this.current(query)) return;
+        this.downloadingId.set(null); const url = URL.createObjectURL(blob);
+        try { const anchor = document.createElement('a'); anchor.href = url; anchor.download = filename; anchor.rel = 'noopener'; anchor.click(); }
+        finally { URL.revokeObjectURL(url); }
+      },
+      error: err => { if (generation === this.docsGeneration && this.current(query)) { this.downloadingId.set(null); this.downloadError.set(falloConsulta(err, 'el documento').mensaje); } }
+    }));
   }
 
   private flags(category: 'descargo' | 'notificacion' | 'cumplimiento') {
@@ -471,7 +651,7 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
       : category === 'notificacion' ? { busy: this.notificacionLoading, message: this.notificacionMessage, error: this.notificacionError }
       : { busy: this.cumplimientoLoading, message: this.cumplimientoMessage, error: this.cumplimientoError };
   }
-  actorLabel(): string { const s = this.auth.obtenerSesion(); return s?.nombre?.trim() || `Usuario ID ${s?.usuarioId}`; }
+  actorLabel(): string { const s = this.auth.obtenerSesion(); return s?.nombre?.trim() || 'Miembro del Tribunal'; }
   onAudienciaCambio(_audiencia: AudienciaInformeOral): void {
     // Si la audiencia fue actualizada localmente, se sincroniza el estado de la vista
   }
@@ -504,7 +684,7 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
       const result = value as Record<string, unknown> | null;
       const applied = !!result && Object.entries(intended).every(([key, value]) => key.startsWith('fecha') && typeof value === 'string'
         ? Number.isFinite(Date.parse(String(result[key]))) && Date.parse(String(result[key])) === Date.parse(value) : result[key] === value);
-      if (!positiveId(result?.['id']) || (expectedId != null && result?.['id'] !== expectedId) || (expectedId == null && previousIds.includes(result['id'])) || !applied) { this.uncertain('No se recibió un ID y efecto compatibles. Consulte el estado antes de repetir.'); return; }
+      if (!positiveId(result?.['id']) || (expectedId != null && result?.['id'] !== expectedId) || (expectedId == null && previousIds.includes(result['id'])) || !applied) { this.uncertain('No se recibió una actuación compatible. Consulte el estado antes de repetir.'); return; }
       op.id = result['id']; op.result = result; this.queryAction(op, query);
     }, error: err => {
       if (!this.current(query) || this.pendingAction !== op) return; f.busy.set(false);
@@ -523,8 +703,8 @@ export class TtaipResolucionDetalleComponent implements OnInit, OnDestroy {
       const records = (detalleConsultado(ap)[op.collection].data ?? []) as unknown as Record<string, unknown>[];
       const found = records.find(r => r['id'] === op.id);
       const keys = Object.keys(op.result ?? {}).filter(k => op.result![k] == null || typeof op.result![k] !== 'object');
-      if (!positiveId(op.id) || !op.result || !found || !keys.every(k => found[k] === op.result![k])) { this.uncertain('Consulta realizada. La actuación no se puede atribuir al envío por su ID y datos. No se repite automáticamente.'); return; }
-      this.pendingAction = null; this.actionUncertain.set(false); f.error.set(''); f.message.set(`Actuación registrada y recuperada · ID ${op.id}. No acredita por sí sola firma, entrega o inicio de plazo.`);
+      if (!positiveId(op.id) || !op.result || !found || !keys.every(k => found[k] === op.result![k])) { this.uncertain('Consulta realizada. La actuación no se puede atribuir al envío por sus datos. No se repite automáticamente.'); return; }
+      this.pendingAction = null; this.actionUncertain.set(false); f.error.set(''); f.message.set('Actuación registrada y recuperada. No acredita por sí sola firma, entrega o inicio de plazo.');
     }, error: () => { if (this.current(query) && this.pendingAction === op) { this.apelacion.set(null); this.cerrarPreviewModal(); this.error.set('No se pudo recuperar el expediente de la actuación. Reintente la consulta.'); this.uncertain('No se pudo recuperar la actuación. Consulte sin repetir la escritura.'); } } }));
   }
   requerirDescargos(observacion: string): void {

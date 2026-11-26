@@ -243,7 +243,7 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
       if (!this.current(generation) || this.operation !== op || this.selectedDecision() !== op.decision) return;
       this.confirmModalAbierto.set(false);
       const id = finalConsultada(updated)?.id;
-      if (!positiveId(id)) { this.marcarIncierto('No se recibió un ID verificable de resolución; consulte el resultado sin repetir el registro.'); return; }
+      if (!positiveId(id)) { this.marcarIncierto('No se recibió una resolución verificable; consulte el resultado sin repetir el registro.'); return; }
       const candidate = { ...op, resolucionId: id };
       if (!finalCompatible(updated, candidate)) { this.marcarIncierto('La respuesta no identifica una resolución compatible con el recurso y contenido enviados. Consulte antes de otra operación.'); return; }
       op.resolucionId = id; this.consultarOperacion(op, generation);
@@ -264,7 +264,7 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
       if (!apelacionCompatible(ap, op.expediente) || !relacionesFinalCoherentes(ap) || ap.id !== op.apelacionId || this.selectedDecision() !== op.decision) { this.marcarIncierto('La consulta no corresponde al recurso o decisión del envío. No se confirma el registro.'); return; }
       if (op.resolucionId == null || !finalCompatible(ap, op)) {
         this.registroObservado.set(finalConsultada(ap)?.id || null);
-        this.marcarIncierto(op.resolucionId == null ? 'Consulta realizada. Sin ID devuelto por el envío no se puede atribuir una resolución posterior, aunque coincidan los fundamentos. Revise el expediente.' : 'La resolución recuperada no coincide con el ID y contenido devueltos. No se repite el comando.'); return;
+        this.marcarIncierto(op.resolucionId == null ? 'Consulta realizada. Sin una resolución atribuible al envío no se toma una posterior, aunque coincidan los fundamentos. Revise el expediente.' : 'La resolución recuperada no coincide con el contenido confirmado. No se repite el comando.'); return;
       }
       this.apelacion.set(ap); this.resultadoIncierto.set(false); this.error.set('');
       if (!this.resultadoConfirmado()) { this.resultadoConfirmado.set(true); this.subirSiguiente(op, generation); }
@@ -296,17 +296,17 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
     }, error: err => {
       if (!this.current(generation) || this.operation !== op) return;
       const rejected = [400, 401, 403, 404, 409, 422].includes(err?.status);
-      this.updateArchivo(entry, { estado: rejected ? 'rechazado' : 'incierto', mensaje: rejected ? falloConsulta(err, 'el archivo').mensaje : 'Resultado de subida incierto, sin ID. Consulte los documentos; no se repite automáticamente.' });
+      this.updateArchivo(entry, { estado: rejected ? 'rechazado' : 'incierto', mensaje: rejected ? falloConsulta(err, 'el archivo').mensaje : 'Resultado de subida incierto. Consulte los documentos; no se repite automáticamente.' });
       if (rejected) this.subirSiguiente(op, generation); else this.finalizarArchivos();
     } }));
   }
   private verificarArchivo(entry: ArchivoFinal, op: FinalOperacion, generation: number, next: () => void): void {
     this.writes.add(this.documentoService.getMetadata(entry.documentoId!).subscribe({ next: doc => {
       if (!this.current(generation) || this.operation !== op || this.selectedDecision() !== op.decision) return;
-      if (doc?.id === entry.documentoId && archivoCompatible(doc, op.resolucionId!)) this.updateArchivo(entry, { estado: 'registrado', mensaje: 'Documento registrado y recuperado por ID.' });
+      if (doc?.id === entry.documentoId && archivoCompatible(doc, op.resolucionId!)) this.updateArchivo(entry, { estado: 'registrado', mensaje: 'Documento registrado y recuperado.' });
       else this.updateArchivo(entry, { estado: 'incierto', mensaje: 'No se pudo comprobar la asociación del documento recuperado. No se repite la subida.' });
       next();
-    }, error: () => { if (this.current(generation) && this.operation === op) { this.updateArchivo(entry, { estado: 'incierto', mensaje: 'La subida devolvió un ID, pero falló su recuperación. Consulte sin repetir la subida.' }); next(); } } }));
+    }, error: () => { if (this.current(generation) && this.operation === op) { this.updateArchivo(entry, { estado: 'incierto', mensaje: 'La subida no pudo recuperarse. Consulte sin repetir la subida.' }); next(); } } }));
   }
   reintentarArchivos(): void {
     const op = this.operation; if (!op || this.loading() || !this.resultadoConfirmado() || !this.contextoVigente() || this.selectedDecision() !== op.decision) return;
@@ -352,13 +352,13 @@ export class TtaipResolverComponent implements OnInit, OnDestroy {
   fechaVisible(value: unknown): string | null { return fechaRegistrada(value) ? value : null; }
   getInitials(name: string | undefined | null): string { return name?.trim().split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase() || '—'; }
   getDecisionLabel(decision: string | null): string { return this.options.find(o => o.id === decision)?.label || 'No seleccionada'; }
-  resolucionConfirmSummary(): ReferenceConfirmSummary[] { return [{ label: 'Expediente', value: this.apelacion()?.expediente || '—', mono: true }, { label: 'Admisión · ID', value: this.admision()?.id?.toString() || 'No identificada', mono: true }, { label: 'Decisión', value: this.getDecisionLabel(this.selectedDecision()) }, { label: 'Fundamentos', value: this.fundamentos.trim().length + ' caracteres' }, { label: 'Archivos seleccionados · subida independiente', value: this.documentosSeleccionados().length.toString() }]; }
+  resolucionConfirmSummary(): ReferenceConfirmSummary[] { return [{ label: 'Expediente', value: this.apelacion()?.expediente || '—', mono: true }, { label: 'Admisión', value: this.admision()?.numeroResolucion || 'Sin numeración registrada', mono: true }, { label: 'Decisión', value: this.getDecisionLabel(this.selectedDecision()) }, { label: 'Fundamentos', value: this.fundamentos.trim().length + ' caracteres' }, { label: 'Archivos seleccionados · subida independiente', value: this.documentosSeleccionados().length.toString() }]; }
   resolucionWarning(): ReferenceConfirmWarning { return { label: 'Registro y documentos son operaciones distintas', detail: 'El registro no acredita emisión formal, firma, entrega, notificación eficaz ni cumplimiento. Los archivos se suben después; sus errores no revierten la decisión. No repita la decisión para reintentar archivos.' }; }
   resolucionSuccessTone(): ReferenceSuccessTone { return this.archivos().some(f => f.estado !== 'registrado') ? 'warning' : 'brand'; }
   resolucionSuccessTitle(): string { return this.resultadoConfirmado() ? 'Resolución registrada y recuperada' : 'Resolución consultada'; }
   resolucionPlazoDias(): number | null { return null; }
   resolucionPlazoDescripcion(): string { return ''; }
-  resolucionSuccessMetadata(): ReferenceSuccessMeta[] { const r = this.resolucionRegistrada(); return [{ label: 'Resolución · ID', value: r?.id?.toString() || 'No informado', mono: true }, { label: 'Decisión registrada', value: r?.decision || 'No informada' }, { label: 'Fecha registrada', value: r?.fechaResolucion || 'No informada' }, { label: 'Archivos comprobados por separado', value: this.archivos().filter(f => f.estado === 'registrado').length + ' de ' + this.archivos().length }]; }
+  resolucionSuccessMetadata(): ReferenceSuccessMeta[] { const r = this.resolucionRegistrada(); return [{ label: 'Numeración', value: r?.numeroResolucion || 'Sin numeración registrada', mono: true }, { label: 'Decisión registrada', value: r?.decision || 'No informada' }, { label: 'Fecha registrada', value: r?.fechaResolucion || 'No informada' }, { label: 'Archivos comprobados por separado', value: this.archivos().filter(f => f.estado === 'registrado').length + ' de ' + this.archivos().length }]; }
   resolucionNextSteps(): ReferenceSuccessNextStep[] { return [{ label: 'Acredite las notificaciones de la resolución a las dos partes en el expediente.' }, { label: 'Para las resoluciones fundadas, la entidad podrá remitir el cumplimiento desde Requerimientos del Tribunal.' }]; }
   verResolucionRegistrada(): void { if (this.contextoVigente() && this.resolucionRegistrada() && !this.loadError()) this.successModalAbierto.set(true); }
   cerrarResultado(): void { const generation = this.generation; this.successModalAbierto.set(false); queueMicrotask(() => { if (this.current(generation)) this.host.nativeElement.querySelector<HTMLElement>('#final-view-record')?.focus(); }); }

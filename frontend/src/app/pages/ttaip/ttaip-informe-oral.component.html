@@ -156,7 +156,7 @@
             @if (aud.actaDocumentoId) {
               <div class="text-[11px] flex items-center gap-1.5 text-muted-foreground">
                 <svg aria-hidden="true" lucideFileText class="w-3.5 h-3.5 text-brand"></svg>
-                <span>Acta de audiencia incorporada al expediente con Documento ID #{{ aud.actaDocumentoId }}</span>
+                <span>Acta de audiencia incorporada al expediente</span>
               </div>
             }
           </div>
@@ -441,8 +441,8 @@
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
-                  <label for="acta-doc-id" class="field-label">ID Documento Acta (Opcional)</label>
-                  <input id="acta-doc-id" type="number" class="field-input text-xs" placeholder="N° Documento ID" [(ngModel)]="actaDocumentoIdInput" />
+                  <label for="acta-doc-id" class="field-label">Acta ya archivada (opcional)</label>
+                  <input id="acta-doc-id" type="number" class="field-input text-xs" placeholder="Número del documento del acta" [(ngModel)]="actaDocumentoIdInput" />
                 </div>
                 <div>
                   <label for="acta-responsable" class="field-label">Relator / Secretario responsable</label>

@@ -29,25 +29,59 @@
                 <ul class="text-xs text-foreground/80 list-disc list-inside space-y-1 mt-2">@for (obs of getObservaciones(); track $index) { <li>{{ obs }}</li> }</ul>
               } @else { <p class="text-xs text-foreground/70 mt-2">No se registraron observaciones en la 1ra calificación.</p> }
             </div>
-            <app-recepcion-institucional [consulta]="recepcion()" (reintentar)="reintentarConsulta()"></app-recepcion-institucional>
+            <app-recepcion-institucional [consulta]="recepcion()" [mostrarFecha]="false" (reintentar)="reintentarConsulta()"></app-recepcion-institucional>
             <div class="rounded-md p-3 grid grid-cols-2 gap-3 border border-border bg-card">
               <div><div class="eyebrow">Fecha límite</div><p class="font-mono mt-0.5">{{ (fechaVisible(ap.plazoSubsanacion?.fechaLimite) | date:'dd/MM/yyyy') || '—' }}</p></div>
-              <div><div class="eyebrow" style="color: var(--success)">Presentado</div><p class="font-mono mt-0.5" style="color: var(--success)">{{ ap.documentosSubsanacion?.length ? 'Registrado' : '—' }}</p></div>
+              <div><div class="eyebrow" style="color: var(--success)">Presentado</div><p class="font-mono mt-0.5" style="color: var(--success)">{{ fechaPresentado() }}</p></div>
             </div>
           </div>
           <div role="tabpanel" id="second-panel-adjuntos" aria-labelledby="second-tab-adjuntos" [hidden]="activeTab() !== 'adjuntos'" class="p-6">
             @if (loadingDocuments()) { <p role="status">Consultando documentos por relación…</p> }
             @else if (documentError()) { <p role="alert" class="text-sm text-destructive">{{ documentError() }}</p><button type="button" class="btn-ghost-brand mt-3" (click)="cargarDocumentos()">Reintentar consulta documental</button> }
             @else {
-              <p class="text-xs text-muted-foreground mb-4">Documentos registrados de relaciones consultadas. El tipo SUBSANACION o el nombre de un archivo no acreditan qué recepción o requerimiento le corresponde. No es un inventario universal ni una certificación de firma.</p>
+              <p class="text-xs text-muted-foreground mb-4">Cada archivo indica su tipo, quién lo presentó y la fecha. El tipo no confirma por sí solo a qué escrito corresponde.</p>
               @if (documentCount() > 3) {
-                <div class="space-y-2 mb-3"><div class="relative"><svg aria-hidden="true" lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></svg><label class="sr-only" for="second-doc-search">Buscar documentos del expediente</label><input id="second-doc-search" type="search" class="field-input !pl-9 !py-2 !text-sm" [ngModel]="documentSearch()" (ngModelChange)="documentSearch.set($event)" placeholder="Buscar por nombre, tipo, fecha o relación"/></div><div role="group" aria-label="Filtrar documentos por relación" class="flex flex-wrap gap-1.5"><button type="button" class="text-xs px-2.5 py-1 rounded-full border border-border" [attr.aria-pressed]="!documentFilter()" (click)="documentFilter.set('')">Todos {{ documentCount() }}</button>@for (group of documentGroups(); track group.label) { @if (group.documents.length) { <button type="button" class="text-xs px-2.5 py-1 rounded-full border border-border" [attr.aria-pressed]="documentFilter() === group.label" (click)="documentFilter.set(group.label)">{{ group.label }} {{ group.documents.length }}</button> } }</div></div>
+                <div class="space-y-2 mb-3">
+                  <div class="relative">
+                    <svg aria-hidden="true" lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></svg>
+                    <label class="sr-only" for="second-doc-search">Buscar documentos del expediente</label>
+                    <input id="second-doc-search" type="search" class="field-input !pl-9 !py-2 !text-sm" [ngModel]="documentSearch()" (ngModelChange)="documentSearch.set($event)" placeholder="Buscar por nombre, tipo, fecha o procedencia" />
+                  </div>
+                  <div role="group" aria-label="Filtrar por etapa" class="flex flex-wrap gap-1.5">
+                    <button type="button" class="text-xs px-2.5 py-1 rounded-full border border-border" [attr.aria-pressed]="!documentFilter()" [style.background]="!documentFilter() ? 'var(--brand-700)' : 'var(--card)'" [style.color]="!documentFilter() ? '#fff' : null" (click)="documentFilter.set('')">Todos <span class="font-mono">{{ documentCount() }}</span></button>
+                    @for (etapa of etapasDocumentales(); track etapa.key) {
+                      <button type="button" class="text-xs px-2.5 py-1 rounded-full border border-border" [attr.aria-pressed]="documentFilter() === etapa.key" [style.background]="documentFilter() === etapa.key ? 'var(--brand-700)' : 'var(--card)'" [style.color]="documentFilter() === etapa.key ? '#fff' : null" (click)="documentFilter.set(etapa.key)">{{ etapa.label }} <span class="font-mono">{{ etapa.total }}</span></button>
+                    }
+                  </div>
+                </div>
               }
-              @for (group of visibleGroups(); track group.label) {
-                <section class="mb-3"><h2><button type="button" class="w-full flex items-center gap-2 py-1.5 text-left" [attr.aria-expanded]="groupOpen(group.label)" [attr.aria-controls]="documentGroupId(group)" [disabled]="!!documentSearch().trim() || !!documentFilter()" (click)="toggleDocumentGroup(group.label)"><span class="eyebrow flex-1">{{ group.label }}</span><span class="font-mono text-[11px] text-muted-foreground">{{ group.documents.length }} de {{ group.total }} docs.</span><svg aria-hidden="true" lucideChevronDown class="w-4 h-4 text-muted-foreground" [style.transform]="groupOpen(group.label) ? null : 'rotate(-90deg)'"></svg></button></h2>
-                  <div [id]="documentGroupId(group)" role="list" [attr.aria-label]="'Documentos: ' + group.label" [hidden]="!groupOpen(group.label)" class="space-y-2 mt-1.5 pl-3 ml-2.5 border-l border-border">
-                    @for (doc of group.documents; track doc.id) {
-                      <div role="listitem" class="rounded-md p-3 flex items-center gap-3 flex-wrap border border-border bg-card"><span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)"><svg aria-hidden="true" lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg></span><div class="flex-1 min-w-0"><p class="text-sm font-medium">{{ nombreDocumento(doc) }}</p><p class="font-mono text-[11px] text-muted-foreground">ID {{ doc.id }} · {{ doc.contentType || 'Tipo no informado' }}</p></div><div class="flex gap-1"><button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" [attr.aria-label]="'Previsualizar ' + nombreDocumento(doc)" (click)="verDocumento(doc)"><svg aria-hidden="true" lucideEye class="w-4 h-4"></svg></button><button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" [disabled]="downloadingId() !== null" [attr.aria-label]="'Descargar ' + nombreDocumento(doc)" (click)="descargarDocumento(doc)"><svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg></button></div></div>
+              @for (etapa of etapasVisibles(); track etapa.key) {
+                <section class="mb-3" [attr.aria-label]="etapa.label">
+                  <h2>
+                    <button type="button" class="w-full flex items-center gap-2 py-1.5 text-left" [attr.aria-expanded]="groupOpen(etapa.key)" [attr.aria-controls]="documentGroupId(etapa.key)" [disabled]="!!documentSearch().trim() || !!documentFilter()" (click)="toggleDocumentGroup(etapa.key)">
+                      <span class="font-mono text-[11px] w-5 h-5 rounded-full flex items-center justify-center shrink-0" style="background: var(--brand-subtle); color: var(--brand-700)">{{ etapa.orden }}</span>
+                      <span class="eyebrow flex-1">{{ etapa.label }}</span>
+                      <span class="font-mono text-[11px] text-muted-foreground">{{ etapa.filas.length !== etapa.total ? etapa.filas.length + ' de ' + etapa.total : etapa.total }} doc{{ etapa.total === 1 ? '' : 's' }}.</span>
+                      <svg aria-hidden="true" lucideChevronDown class="w-4 h-4 text-muted-foreground" [style.transform]="groupOpen(etapa.key) ? null : 'rotate(-90deg)'"></svg>
+                    </button>
+                  </h2>
+                  <div [id]="documentGroupId(etapa.key)" role="list" [attr.aria-label]="'Documentos: ' + etapa.label" [hidden]="!groupOpen(etapa.key)" class="space-y-2 mt-1.5 pl-3 ml-2.5 border-l border-border">
+                    @for (fila of etapa.filas; track fila.doc.id) {
+                      <div role="listitem" class="rounded-md p-3 flex items-center gap-3 border border-border bg-card">
+                        <span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" [style.background]="'color-mix(in srgb, ' + fila.color + ' 10%, transparent)'" [style.border]="'1px solid color-mix(in srgb, ' + fila.color + ' 30%, transparent)'"><svg aria-hidden="true" lucideFileText class="w-4 h-4" [style.color]="fila.color"></svg></span>
+                        <div class="min-w-0 flex-1">
+                          <div class="flex items-center gap-1.5 flex-wrap mb-0.5">
+                            <span class="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" [style.background]="'color-mix(in srgb, ' + fila.color + ' 12%, transparent)'" [style.color]="fila.color">{{ fila.etiqueta }}</span>
+                            <span class="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" [style.background]="'color-mix(in srgb, ' + fila.colorProcedencia + ' 10%, transparent)'" [style.color]="fila.colorProcedencia">{{ fila.procedencia }}</span>
+                          </div>
+                          <p class="text-sm font-medium truncate">{{ nombreDocumento(fila.doc) }}</p>
+                          <p class="font-mono text-[11px] text-muted-foreground mt-0.5">{{ fila.fecha }}@if (fila.doc.contentType) { · {{ fila.doc.contentType }} }</p>
+                        </div>
+                        <div class="flex gap-1 shrink-0">
+                          <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" [attr.aria-label]="'Previsualizar ' + nombreDocumento(fila.doc)" (click)="verDocumento(fila.doc)"><svg aria-hidden="true" lucideEye class="w-4 h-4"></svg></button>
+                          <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" [disabled]="downloadingId() !== null" [attr.aria-label]="'Descargar ' + nombreDocumento(fila.doc)" (click)="descargarDocumento(fila.doc)"><svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg></button>
+                        </div>
+                      </div>
                     }
                   </div>
                 </section>
@@ -57,15 +91,18 @@
           </div>
           <div role="tabpanel" id="second-panel-subprocesos" aria-labelledby="second-tab-subprocesos" [hidden]="activeTab() !== 'subprocesos'" class="p-6">
             @if (activeTab() === 'subprocesos' && expedienteActuacion(); as expedienteId) {
-              <app-informacion-complementaria [expedienteId]="expedienteId" [tribunal]="true" />
+              <div class="space-y-8">
+                <app-presentaciones-admision [expedienteId]="expedienteId" [numeroExpediente]="ap.expediente" contexto="tribunal" />
+                <app-informacion-complementaria class="block border-t border-border pt-6" [expedienteId]="expedienteId" [tribunal]="true" />
+              </div>
             }
           </div>
         </section>
         <div class="space-y-5 min-w-0">
           <p role="status" class="rounded-lg p-4 border border-border text-sm text-muted-foreground">{{ motivoContexto() }}</p>
-          @if (resultadoIncierto()) { <p role="status" class="text-sm text-muted-foreground">El resultado permanece incierto. No se reenviará el comando automáticamente.@if (registroObservado()) { Actuación observada: ID {{ registroObservado() }}; no atribuida al envío. }</p><button type="button" class="btn-ghost-brand" [disabled]="loading()" (click)="recuperarResultado()">Consultar resultado sin reenviar</button> }
+          @if (resultadoIncierto()) { <p role="status" class="text-sm text-muted-foreground">El resultado permanece incierto. No se reenviará el comando automáticamente.@if (registroObservado()) { Hay una actuación observada; no está atribuida al envío. }</p><button type="button" class="btn-ghost-brand" [disabled]="loading()" (click)="recuperarResultado()">Consultar resultado sin reenviar</button> }
           @if (error()) { <p role="alert" class="rounded-lg p-4 text-sm text-destructive border border-border">{{ error() }}</p> }
-          @if (segundaActuacion(); as act) { <section class="form-shell p-5"><h2 class="font-display text-xl">Segunda actuación consultada</h2><p class="font-mono text-xs mt-2">ID {{ act.id }} · {{ act.numeroResolucion || 'Sin numeración registrada' }}</p><p class="text-sm mt-2">{{ act.decision }} · {{ getEstadoDisplay(ap.estado) }}</p><p class="text-xs text-muted-foreground mt-2">Esta consulta acredita una actuación registrada, no confirma un envío anterior cuyo resultado siga incierto. No se identifica una operación por coincidencia de fundamentos.</p><button id="second-view-record" type="button" class="btn-ghost-brand mt-3" (click)="verActuacionRegistrada()">Ver actuación registrada</button></section> }
+          @if (segundaActuacion(); as act) { <section class="form-shell p-5"><h2 class="font-display text-xl">Segunda actuación consultada</h2><p class="font-mono text-xs mt-2">{{ act.numeroResolucion || 'Sin numeración registrada' }}</p><p class="text-sm mt-2">{{ act.decision }} · {{ getEstadoDisplay(ap.estado) }}</p><p class="text-xs text-muted-foreground mt-2">Esta consulta acredita una actuación registrada, no confirma un envío anterior cuyo resultado siga incierto. No se identifica una operación por coincidencia de fundamentos.</p><button id="second-view-record" type="button" class="btn-ghost-brand mt-3" (click)="verActuacionRegistrada()">Ver actuación registrada</button></section> }
           <section class="form-shell"><div class="form-section-header"><span class="eyebrow">01 · Resultado</span><h2 id="second-options" class="form-section-title">Verificación</h2></div><div class="p-6 space-y-3" role="group" aria-labelledby="second-options">
             @for (option of options; track option.id) {
               <button type="button"
@@ -113,6 +150,6 @@
     </div>
   }
   <app-reference-confirm-modal [open]="confirmModalAbierto() && contextoVigente()" [manageFocus]="true" title="Confirmar segunda calificación" titleLead="Confirmar" titleEmphasis="segunda calificación" eyebrow="Registro de actuación" description="La decisión y sus documentos firmados quedarán disponibles en el panel de los destinatarios." [summary]="segundaConfirmSummary()" [warning]="segundaWarning()" [submitting]="loading()" confirmLabel="Emitir y enviar calificación" (close)="confirmModalAbierto.set(false)" (confirm)="enviarCalificacion()"></app-reference-confirm-modal>
-  <app-reference-success-modal [open]="successModalAbierto() && contextoVigente() && !!segundaActuacion()" [manageFocus]="true" variant="calificacion-2da" [tone]="segundaSuccessTone()" [eyebrow]="resultadoConfirmado() ? 'Registro confirmado por ID y consulta' : 'Actuación consultada · no es una confirmación de envío'" [title]="segundaSuccessTitle()" description="Actuación consultada por su ID. Consulte los documentos emitidos y valide la notificación según el medio registrado." [expediente]="apelacion()?.expediente || ''" [expedienteHint]="segundaActuacion()?.numeroResolucion || 'Sin numeración registrada'" [plazoDias]="null" [metadata]="segundaSuccessMetadata()" [nextSteps]="segundaNextSteps()" primaryLabel="Ir al panel TTAIP" secondaryLabel="Subir actos de notificación" (close)="successModalAbierto.set(false)" (primary)="irPanelTtaip()" (secondary)="irNotificaciones()"></app-reference-success-modal>
+  <app-reference-success-modal [open]="successModalAbierto() && contextoVigente() && !!segundaActuacion()" [manageFocus]="true" variant="calificacion-2da" [tone]="segundaSuccessTone()" [eyebrow]="resultadoConfirmado() ? 'Registro confirmado' : 'Actuación consultada · no es una confirmación de envío'" [title]="segundaSuccessTitle()" description="No acredita firma digital, entrega ni notificación eficaz. Consulte los documentos emitidos y valide la notificación según el medio registrado." [expediente]="apelacion()?.expediente || ''" [expedienteHint]="segundaActuacion()?.numeroResolucion || 'Sin numeración registrada'" [plazoDias]="null" [metadata]="segundaSuccessMetadata()" [nextSteps]="segundaNextSteps()" primaryLabel="Ir al panel TTAIP" secondaryLabel="Subir actos de notificación" (close)="successModalAbierto.set(false)" (primary)="irPanelTtaip()" (secondary)="irNotificaciones()"></app-reference-success-modal>
   <app-document-preview-modal [doc]="previewTarget()" [open]="!!previewTarget() && contextoVigente()" [manageFocus]="true" (close)="previewTarget.set(null)"></app-document-preview-modal>
 </div>

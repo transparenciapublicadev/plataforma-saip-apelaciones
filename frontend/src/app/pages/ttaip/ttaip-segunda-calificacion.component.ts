@@ -1,4 +1,5 @@
 import { InformacionComplementariaComponent } from './shared/informacion-complementaria.component';
+import { PresentacionesAdmisionComponent } from './shared/presentaciones-admision.component';
 import { ChangeDetectionStrategy, Component, ElementRef, OnInit, OnDestroy, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -11,6 +12,7 @@ import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import { DocumentoService } from '../../services/documento.service';
 import { Apelacion } from '../../models/apelacion.model';
 import { DocumentoMetadata, DocumentoRelation } from '../../models/documento.model';
+import { agruparExpediente, fechaLegible, nombreDocumento as nombreDeDocumento } from './shared/expediente-docs';
 import { ReferenceConfirmModalComponent, ReferenceConfirmSummary, ReferenceConfirmWarning } from '../../shared/reference-confirm-modal.component';
 import { ReferenceSuccessMeta, ReferenceSuccessModalComponent, ReferenceSuccessNextStep, ReferenceSuccessTone } from '../../shared/reference-success-modal.component';
 import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
@@ -29,7 +31,7 @@ interface DocumentGroup { label: string; relation: DocumentoRelation; documents:
 @Component({
   selector: 'app-ttaip-segunda-calificacion',
   imports: [CommonModule, FormsModule, RouterLink, YaikuCargandoComponent, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
-    InformacionComplementariaComponent, OfficialDocsSectionComponent, OfficialPreviewComponent, DocumentPreviewModalComponent, RecepcionInstitucionalComponent, LucideArrowLeft,
+    InformacionComplementariaComponent, PresentacionesAdmisionComponent, OfficialDocsSectionComponent, OfficialPreviewComponent, DocumentPreviewModalComponent, RecepcionInstitucionalComponent, LucideArrowLeft,
     LucideCheckCircle2, LucideFileText, LucideXCircle, LucideInfo, LucideEye, LucideEyeOff, LucideDownload, LucideSearch, LucideChevronDown, LucideSend],
   templateUrl: './ttaip-segunda-calificacion.component.html', styleUrl: './ttaip-segunda-calificacion.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -108,13 +110,12 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
     sumilla: this.apelacion()?.solicitudAsunto || this.apelacion()?.resumenSolicitudOriginal || 'No registrada',
   }));
   readonly documentCount = computed(() => this.documentGroups().reduce((sum, group) => sum + group.documents.length, 0));
-  readonly visibleGroups = computed(() => {
-    const norm = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('es');
-    const query = norm(this.documentSearch().trim());
-    return this.documentGroups().filter(group => !this.documentFilter() || this.documentFilter() === group.label)
-      .map(group => ({ ...group, total: group.documents.length, documents: group.documents.filter(doc => !query
-        || norm([doc.nombreOriginal, doc.tipoDocumento, doc.contentType, doc.fechaCreacion, group.label].filter(Boolean).join(' ')).includes(query)) }))
-      .filter(group => group.documents.length > 0);
+  readonly etapasDocumentales = computed(() => agruparExpediente(this.documentosDelExpediente(), this.entidadDocumental(), ''));
+  readonly etapasVisibles = computed(() => {
+    const filtro = this.documentFilter();
+    return agruparExpediente(this.documentosDelExpediente(), this.entidadDocumental(), this.documentSearch().trim())
+      .filter(etapa => !filtro || filtro === etapa.key)
+      .filter(etapa => etapa.filas.length > 0);
   });
   fundamentos = '';
   constructor() {
@@ -288,8 +289,8 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
         this.apelacion.set(ap); this.operation = null; this.resultadoIncierto.set(false); this.error.set(''); this.resultadoConfirmado.set(true); this.successModalAbierto.set(true); return;
       }
       this.registroObservado.set(segundaConsultada(ap)?.id ?? null);
-      this.marcarIncierto(op.resolucionId == null ? 'Consulta realizada. Sin un ID devuelto por el envío no se atribuye una actuación posterior por coincidencia de texto. Revise el expediente.'
-        : 'La actuación recuperada no coincide con el ID y contenido confirmados. No se repite el comando.');
+      this.marcarIncierto(op.resolucionId == null ? 'Consulta realizada. Sin una actuación atribuible al envío no se toma una posterior por coincidencia de texto. Revise el expediente.'
+        : 'La actuación recuperada no coincide con el contenido confirmado. No se repite el comando.');
     }, error: () => { if (this.current(generation) && this.operation === op) this.marcarIncierto('No se pudo recuperar la actuación. Los fundamentos se conservan; consulte sin reenviar.'); } }));
   }
   togglePreview(): void { if (this.contextoVigente() && this.selectedDecision()) this.showPreview.update(value => !value); }
@@ -299,7 +300,7 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
   getEstadoDisplay(value: string | undefined): string { return value?.replaceAll('_', ' ') || 'No informado'; }
   fechaVisible(value: unknown): string | null { return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) && Number.isFinite(Date.parse(value)) ? value : null; }
   motivoContexto(): string {
-    if (this.contexto() === 'registrada') return 'Hay una segunda actuación registrada. No se habilita otra calificación; consulte su ID y sus notificaciones.';
+    if (this.contexto() === 'registrada') return 'Hay una segunda actuación registrada. No se habilita otra calificación; consulte sus notificaciones.';
     if (this.contexto() === 'incompleto') return 'Información incompleta o asociaciones incompatibles de primera calificación, requerimiento o segunda actuación.';
     if (this.contexto() === 'incompatible') return 'Estado incompatible con la preparación de segunda calificación: ' + this.getEstadoDisplay(this.apelacion()?.estado) + '.';
     return 'Revise la recepción del requerimiento antes de registrar la segunda calificación. Los borradores no son documentos emitidos.';
@@ -358,13 +359,30 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
       error: err => { if (this.current(generation)) { this.downloadingId.set(null); this.downloadError.set(falloConsulta(err, 'el documento').mensaje); } }
     }));
   }
-  nombreDocumento(doc: DocumentoMetadata): string { return doc.nombreOriginal || 'Nombre no informado'; }
-  documentGroupId(group: DocumentGroup): string { const [key, id] = Object.entries(group.relation)[0]; return 'second-docs-' + key + '-' + id; }
-  groupOpen(label: string): boolean { return !!this.documentSearch().trim() || !!this.documentFilter() || !this.closedGroups()[label]; }
-  toggleDocumentGroup(label: string): void { if (!this.documentSearch().trim() && !this.documentFilter()) this.closedGroups.update(groups => ({ ...groups, [label]: !groups[label] })); }
+  nombreDocumento(doc: DocumentoMetadata): string { return nombreDeDocumento(doc); }
+  fechaPresentado(): string {
+    const consulta = this.recepcion();
+    if (consulta.estado !== 'disponible') return '—';
+    return fechaLegible(consulta.datos?.fechaRecepcion);
+  }
+  private entidadDocumental(): string {
+    return this.apelacion()?.entidadNombre || this.apelacion()?.entidadExternaNombre || 'Entidad';
+  }
+  groupOpen(clave: string): boolean { return !!this.documentSearch().trim() || !!this.documentFilter() || !this.closedGroups()[clave]; }
+  toggleDocumentGroup(clave: string): void { if (!this.documentSearch().trim() && !this.documentFilter()) this.closedGroups.update(groups => ({ ...groups, [clave]: !groups[clave] })); }
+  documentGroupId(clave: string): string { return 'second-docs-' + clave; }
+  private documentosDelExpediente(): DocumentoMetadata[] {
+    const vistos = new Set<number>();
+    return this.documentGroups().flatMap(group => group.documents).filter(doc => {
+      const id = doc.id;
+      if (!positiveId(id) || vistos.has(id)) return false;
+      vistos.add(id);
+      return true;
+    });
+  }
   segundaConfirmSummary(): ReferenceConfirmSummary[] {
     return [{ label: 'Expediente consultado', value: this.apelacion()?.expediente || '—', mono: true },
-      { label: 'Requerimiento · ID', value: this.requerimiento()?.id?.toString() || 'No identificado', mono: true },
+      { label: 'Requerimiento', value: this.requerimiento()?.numeroResolucion || 'Sin numeración registrada', mono: true },
       { label: 'Decisión que se registrará', value: this.getDecisionLabel(this.selectedDecision()) },
       { label: 'Fundamentos locales', value: String(this.fundamentos.trim().length) + ' caracteres' }];
   }
@@ -379,7 +397,7 @@ export class TtaipSegundaCalificacionComponent implements OnInit, OnDestroy {
   }
   segundaSuccessMetadata(): ReferenceSuccessMeta[] {
     const r = this.segundaActuacion();
-    return [{ label: 'Actuación · ID', value: r?.id?.toString() || 'No informado', mono: true },
+    return [{ label: 'Numeración', value: r?.numeroResolucion || 'Sin numeración registrada', mono: true },
       { label: 'Decisión registrada', value: r?.decision || 'No informada' }, { label: 'Fecha registrada', value: r?.fechaResolucion || 'No informada' },
       { label: 'Estado del expediente', value: this.apelacion()?.estado || 'No informado' }];
   }

@@ -136,7 +136,7 @@
                 <div class="flex items-center justify-between gap-2">
                   <div class="font-mono text-[11px]" style="color: var(--brand-700)">
                     {{ item.expedienteTTAIP }}
-                    <span class="block text-muted-foreground">Seguimiento ID {{ item.id }} · Resolución ID {{ item.registro.resolucionId || 'No informada' }}</span>
+                    <span class="block text-muted-foreground">{{ item.fechaResolucion || 'Fecha de resolución no informada' }}</span>
                   </div>
                   <!-- Badge de Estado -->
                   <app-status-badge [status]="estadoLabels[item.estado]" [toneOverride]="item.estado === 'cumplido_parcial' ? 'gold' : null"></app-status-badge>
@@ -159,7 +159,7 @@
                 <div>
                   <span class="eyebrow" style="color: var(--brand-700)">Expediente TTAIP</span>
                   <div class="font-mono text-sm mt-0.5">{{ itemActual.expedienteTTAIP }}</div>
-                  <h2 id="compliance-selection" class="text-xs text-muted-foreground mt-1" aria-live="polite">Seguimiento ID {{ itemActual.id }}</h2>
+                  <h2 id="compliance-selection" class="text-xs text-muted-foreground mt-1" aria-live="polite">{{ itemActual.entidad }}</h2>
                 </div>
 
                 <!-- Badge de Estado -->

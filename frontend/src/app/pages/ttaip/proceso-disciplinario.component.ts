@@ -69,7 +69,7 @@ export class ProcesoDisciplinarioComponent implements OnInit {
   readonly timeline = computed(() => {
     const item = this.selectedCase();
     return item ? [{ id: item.resolucion.id, title: 'Resolución final registrada', date: this.formatDate(item.resolucion.fechaResolucion),
-      desc: `ID ${item.resolucion.id} · ${this.formatDecision(item.resolucion.decision)}. No acredita apertura ni remisión disciplinaria.` }] : [];
+      desc: `${item.resolucion.numeroResolucion || 'Sin numeración registrada'} · ${this.formatDecision(item.resolucion.decision)}. No acredita apertura ni remisión disciplinaria.` }] : [];
   });
 
   constructor() {

@@ -392,7 +392,7 @@ export class TtaipCalificarComponent implements OnInit, OnDestroy {
   numeroPrimera(): string { return this.apelacion()?.resolucionPrimeraCalificacion?.numeroResolucion || 'Sin numeración registrada'; }
   calificacionSuccessMetadata(): ReferenceSuccessMeta[] {
     const r = this.apelacion()?.resolucionPrimeraCalificacion;
-    return [{ label: 'Actuación registrada · ID', value: r?.id?.toString() || 'No informado', mono: true },
+    return [{ label: 'Numeración', value: r?.numeroResolucion || 'Sin numeración registrada', mono: true },
       { label: 'Decisión', value: r?.decision || 'No informada' }, { label: 'Fecha registrada', value: r?.fechaResolucion || 'No informada' },
       { label: 'Miembro registrado', value: r?.miembroTTAIPNombre || 'No informado' }];
   }

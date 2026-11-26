@@ -20,6 +20,7 @@
           <svg lucideFileText class="h-5 w-5" style="color: var(--brand-700)"></svg>
         </div>
         <div class="min-w-0">
+          @if (clasificacion()) { <p class="text-[10px] font-semibold uppercase tracking-widest mb-0.5" style="color: var(--warning)">{{ clasificacion() }}</p> }
           <p class="text-sm font-medium text-foreground" [class.truncate]="verifiedContext() === null" [style.overflow-wrap]="verifiedContext() !== null ? 'anywhere' : null">{{ documentName(documento) }}</p>
           <p class="font-mono text-[11px] text-muted-foreground">
             {{ documentType(documento) }}

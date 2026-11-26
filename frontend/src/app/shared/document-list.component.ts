@@ -60,6 +60,7 @@ export class DocumentListComponent implements OnDestroy {
   readonly readOnly = input(true);
   readonly allowDelete = input(false);
   readonly emptyMessage = input('No hay documentos adjuntos.');
+  readonly clasificacion = input('');
   readonly deleted = output<number>();
 
   readonly relatedDocuments = signal<DocumentoMetadata[] | null>(null);

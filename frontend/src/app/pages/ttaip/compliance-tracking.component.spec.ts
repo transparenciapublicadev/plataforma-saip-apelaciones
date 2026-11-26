@@ -296,7 +296,7 @@ describe('Cumplimiento TTAIP: datos y actuaciones del servidor', () => {
     const f = pagina(), c = f.componentInstance;
     expect(c.items().map(i => [i.id, i.estado])).toEqual([['45', 'cumplido'], ['46', 'cumplido_parcial'], ['47', 'cerrado']]);
     expect(c.resumen().cumplidos).toBe(2); c.seleccionarItem('46'); f.detectChanges();
-    expect(c.sel()?.registro.id).toBe(46); expect(f.nativeElement.querySelector('button[aria-pressed="true"]').textContent).toContain('ID 46');
+    expect(c.sel()?.registro.id).toBe(46); expect(f.nativeElement.querySelector('button[aria-pressed="true"]').textContent).not.toContain('ID 46');
   });
   it('un resultado parcial explica el alcance recuperado y no muestra indicadores como totales completos', () => {
     servicio.getResueltas.mockReturnValue(of([apelacion, { ...apelacion, id: 8, expediente: 'OTRO', expedienteTtaip: { id: 92 } }]));
