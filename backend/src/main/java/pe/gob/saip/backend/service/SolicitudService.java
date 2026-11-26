@@ -39,6 +39,7 @@ import pe.gob.saip.backend.repository.LiquidacionCostoSolicitudRepository;
 import pe.gob.saip.backend.repository.ObservacionSolicitudRepository;
 import pe.gob.saip.backend.repository.SolicitudRepository;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
+import pe.gob.saip.backend.util.PlazoAtencionVigente;
 import pe.gob.saip.backend.util.PlazoApelacionAmpliacion;
 
 import static pe.gob.saip.backend.config.ClockConfig.ZONA_LIMA;
@@ -438,7 +439,7 @@ public class SolicitudService {
 
         String responsable = normalizarResponsable(request.responsable(), "Entidad pública");
         LocalDateTime ahora = LocalDateTime.now();
-        LocalDate fechaLimiteRecojo = fechaNotificacion.plusDays(30);
+        LocalDate fechaLimiteRecojo = fechaNotificacion.plusDays(diasVigentes("SAIP_RECOJO", 30));
 
         LiquidacionCostoSolicitud liquidacion = new LiquidacionCostoSolicitud();
         liquidacion.setSolicitud(solicitud);
@@ -581,7 +582,7 @@ public class SolicitudService {
         LocalDate fechaRecepcion = solicitud.getFechaPresentacion() != null
                 ? solicitud.getFechaPresentacion().toLocalDate()
                 : hoy;
-        LocalDate fechaLimiteEncauzamiento = DiasHabilesUtil.sumarDiasHabiles(fechaRecepcion, DIAS_HABILES_ENCAUZAMIENTO);
+        LocalDate fechaLimiteEncauzamiento = DiasHabilesUtil.sumarDiasHabiles(fechaRecepcion, diasVigentes("SAIP_ENCAUZAMIENTO", 4));
         if (hoy.isAfter(fechaLimiteEncauzamiento)) {
             throw new IllegalArgumentException("El plazo de 4 días hábiles para encauzar la SAIP ya venció");
         }
@@ -640,17 +641,22 @@ public class SolicitudService {
         derivada.setCanalNotificacion(origen.getCanalNotificacion() != null
                 ? origen.getCanalNotificacion() : Solicitud.CanalNotificacion.CASILLA_ELECTRONICA);
         derivada.setFechaPresentacion(hoy.atStartOfDay());
-        derivada.setFechaLimite(DiasHabilesUtil.sumarDiasHabiles(hoy, 10));
+        derivada.setFechaLimite(DiasHabilesUtil.sumarDiasHabiles(hoy, diasVigentes("SAIP_ATENCION", 10)));
         Solicitud guardada = solicitudRepository.save(derivada);
         Solicitud creada = guardada != null ? guardada : derivada;
         documentoService.copiarDocumentosDelAdministrado(origen, creada);
         return creada;
     }
 
-    private static final int DIAS_HABILES_ENCAUZAMIENTO = 4;
-    private static final int UMBRAL_CRONOGRAMA = 30;
-    private static final int DIAS_HABILES_PARA_COMUNICAR_AMPLIACION = 2;
     private static final int DIAS_HABILES_ENTRE_ENTREGAS = 30;
+
+    private int diasVigentes(String clave, int porDefecto) {
+        int valor = plazoCalculadorService.diasVigentes(clave, porDefecto);
+        if ("SAIP_ATENCION".equals(clave)) {
+            PlazoAtencionVigente.publicar(valor > 0 ? valor : porDefecto);
+        }
+        return valor > 0 ? valor : porDefecto;
+    }
 
     @Transactional(readOnly = true)
     public PrevisionAmpliacionDTO preverAmpliacion(Long solicitudId, int dias) {
@@ -662,7 +668,8 @@ public class SolicitudService {
 
     private PrevisionAmpliacionDTO previsionAmpliacion(Solicitud solicitud, int dias) {
         LocalDate hoy = plazoCalculadorService.hoy();
-        LocalDate maxComunicacion = DiasHabilesUtil.sumarDiasHabiles(inicioPlazoAtencion(solicitud), DIAS_HABILES_PARA_COMUNICAR_AMPLIACION);
+        int diasComunicacion = diasVigentes("SAIP_PRORROGA_COMUNICACION", 2);
+        LocalDate maxComunicacion = DiasHabilesUtil.sumarDiasHabiles(inicioPlazoAtencion(solicitud), diasComunicacion);
         boolean disponible = (solicitud.getEstado() == Solicitud.EstadoSolicitud.RECEPCIONADA
                 || solicitud.getEstado() == Solicitud.EstadoSolicitud.EN_REVISION)
                 && solicitud.getRespuesta() == null && !hoy.isAfter(maxComunicacion)
@@ -674,7 +681,7 @@ public class SolicitudService {
                         AmpliacionPlazoSolicitud.EstadoAmpliacion.VENCIDA));
         LocalDate limite = disponible && dias > 0 ? plazoCalculadorService.calcularFechaVencimiento(
                 solicitud.getFechaLimite(), dias, solicitud.getEntidad().getId()) : null;
-        return new PrevisionAmpliacionDTO(hoy, maxComunicacion, limite, disponible, dias > UMBRAL_CRONOGRAMA);
+        return new PrevisionAmpliacionDTO(hoy, maxComunicacion, limite, disponible, dias > diasVigentes("SAIP_CRONOGRAMA_UMBRAL", 30));
     }
 
     @Transactional
@@ -687,10 +694,12 @@ public class SolicitudService {
         LocalDate ancla = solicitud.getFechaPresentacion() != null
                 ? inicioPlazoAtencion(solicitud)
                 : LocalDate.now();
-        LocalDate fechaLimiteRegistro = DiasHabilesUtil.sumarDiasHabiles(ancla, DIAS_HABILES_PARA_COMUNICAR_AMPLIACION);
+        int diasComunicacion = diasVigentes("SAIP_PRORROGA_COMUNICACION", 2);
+        LocalDate fechaLimiteRegistro = DiasHabilesUtil.sumarDiasHabiles(ancla, diasComunicacion);
         boolean conDiasDeclarados = request.diasHabilesAdicionales() != null;
         if (!conDiasDeclarados && (fechaNotificacion.isAfter(fechaLimiteRegistro) || LocalDate.now().isAfter(fechaLimiteRegistro))) {
-            throw new IllegalArgumentException("La ampliación debe comunicarse como máximo hasta el día hábil 2 de atención de la SAIP");
+            throw new IllegalArgumentException("La ampliación debe comunicarse como máximo hasta el día hábil "
+                    + diasComunicacion + " de atención de la SAIP");
         }
 
         LocalDate fechaLimiteOriginal = solicitud.getFechaLimite();
@@ -828,9 +837,10 @@ public class SolicitudService {
         LocalDate fechaRecepcion = solicitud.getFechaPresentacion() != null
                 ? solicitud.getFechaPresentacion().toLocalDate()
                 : hoy;
-        LocalDate fechaLimiteObservacion = DiasHabilesUtil.sumarDiasHabiles(fechaRecepcion, 2);
+        int diasObservacion = diasVigentes("SAIP_OBSERVACION", 2);
+        LocalDate fechaLimiteObservacion = DiasHabilesUtil.sumarDiasHabiles(fechaRecepcion, diasObservacion);
         if (hoy.isAfter(fechaLimiteObservacion)) {
-            throw new IllegalArgumentException("El plazo de 2 días hábiles para observar la SAIP ya venció");
+            throw new IllegalArgumentException("El plazo de " + diasObservacion + " días hábiles para observar la SAIP ya venció");
         }
 
         if (observacionRepository.existsBySolicitud_IdSolicitudAndEstado(
@@ -845,7 +855,7 @@ public class SolicitudService {
         observacion.setSolicitud(solicitud);
         observacion.setMotivoObservacion(request.motivoObservacion().trim());
         observacion.setFechaObservacion(ahora);
-        observacion.setFechaLimiteSubsanacion(DiasHabilesUtil.sumarDiasHabiles(hoy, 2));
+        observacion.setFechaLimiteSubsanacion(DiasHabilesUtil.sumarDiasHabiles(hoy, diasVigentes("SAIP_SUBSANACION", 2)));
         observacion.setEstado(ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION);
         observacion.setResponsableObservacion(responsable);
         observacion.setTrazabilidad("%s - Observación registrada por %s. Plazo de subsanación hasta %s."
@@ -885,7 +895,7 @@ public class SolicitudService {
 
         if (LocalDate.now().isAfter(observacion.getFechaLimiteSubsanacion())) {
             marcarNoSubsanada(observacion, "Sistema SAIP", "Plazo de subsanación vencido");
-            throw new IllegalArgumentException("El plazo de subsanación de 2 días hábiles ya venció");
+            throw new IllegalArgumentException("El plazo de subsanación de " + diasVigentes("SAIP_SUBSANACION", 2) + " días hábiles ya venció");
         }
 
         if (isBlank(request.comentarioSubsanacion())
@@ -907,7 +917,7 @@ public class SolicitudService {
                 "%s - Subsanación registrada por %s; la solicitud vuelve a revisión.".formatted(ahora, responsable)));
 
         solicitud.setEstado(Solicitud.EstadoSolicitud.EN_REVISION);
-        solicitud.setFechaLimite(DiasHabilesUtil.sumarDiasHabiles(ahora.toLocalDate(), 10));
+        solicitud.setFechaLimite(DiasHabilesUtil.sumarDiasHabiles(ahora.toLocalDate(), diasVigentes("SAIP_ATENCION", 10)));
         solicitudRepository.save(solicitud);
         return observacionRepository.save(observacion);
     }

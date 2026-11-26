@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 import pe.gob.saip.backend.config.ClockConfig;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
+import pe.gob.saip.backend.util.PlazoAtencionVigente;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -146,8 +147,9 @@ public class Solicitud {
     @PrePersist
     protected void onCreate() {
         fechaPresentacion = LocalDateTime.now();
-        // BR-SAIP-001/002: 10 días hábiles desde el día siguiente, en el calendario de Lima.
-        fechaLimite = DiasHabilesUtil.sumarDiasHabiles(LocalDate.now(ClockConfig.ZONA_LIMA), 10);
+        // El alta usa los días de atención guardados en Plazos y calendario.
+        fechaLimite = DiasHabilesUtil.sumarDiasHabiles(
+                LocalDate.now(ClockConfig.ZONA_LIMA), PlazoAtencionVigente.dias());
         if (estado == null) {
             estado = EstadoSolicitud.RECEPCIONADA;
         }

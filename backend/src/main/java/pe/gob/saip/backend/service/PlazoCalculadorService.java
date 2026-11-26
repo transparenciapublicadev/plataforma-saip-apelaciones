@@ -41,4 +41,10 @@ public interface PlazoCalculadorService {
 
     // 6. Invalida la memoria caché en cambios del calendario
     void invalidarCache();
+
+    /**
+     * Días guardados en la configuración del calendario. Si la clave no existe
+     * o el valor no es positivo, devuelve {@code porDefecto}.
+     */
+    int diasVigentes(String clave, int porDefecto);
 }

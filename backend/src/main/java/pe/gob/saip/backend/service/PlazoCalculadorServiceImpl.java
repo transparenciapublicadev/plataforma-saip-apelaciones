@@ -1,13 +1,17 @@
 package pe.gob.saip.backend.service;
 
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import pe.gob.saip.backend.config.ClockConfig;
 import pe.gob.saip.backend.model.dto.CalendarioAnioResumenDTO;
 import pe.gob.saip.backend.model.dto.DiaInhabilDTO;
+import pe.gob.saip.backend.model.entity.ConfiguracionSistema;
 import pe.gob.saip.backend.model.entity.FeriadoCalendario;
+import pe.gob.saip.backend.repository.ConfiguracionSistemaRepository;
 import pe.gob.saip.backend.repository.FeriadoCalendarioRepository;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
+import pe.gob.saip.backend.util.PlazoAtencionVigente;
 
 import java.time.*;
 import java.util.*;
@@ -22,6 +26,7 @@ public class PlazoCalculadorServiceImpl implements PlazoCalculadorService {
 
     private final Clock clock;
     private final FeriadoCalendarioRepository feriadoRepository;
+    private final ConfiguracionSistemaRepository configRepository;
     private final Map<Integer, List<DiaInhabilDTO>> cacheInhabilesPorAnio = new ConcurrentHashMap<>();
 
     // Feriados nacionales base por ley (D. Leg. N.° 713 y modificatorias)
@@ -44,13 +49,25 @@ public class PlazoCalculadorServiceImpl implements PlazoCalculadorService {
     }
 
     public PlazoCalculadorServiceImpl() {
-        this(Clock.system(ClockConfig.ZONA_LIMA), null);
+        this(Clock.system(ClockConfig.ZONA_LIMA), null, null);
+    }
+
+    public PlazoCalculadorServiceImpl(Clock clock, FeriadoCalendarioRepository feriadoRepository) {
+        this(clock, feriadoRepository, null);
     }
 
     @Autowired
-    public PlazoCalculadorServiceImpl(Clock clock, @Autowired(required = false) FeriadoCalendarioRepository feriadoRepository) {
+    public PlazoCalculadorServiceImpl(Clock clock,
+                                       @Autowired(required = false) FeriadoCalendarioRepository feriadoRepository,
+                                       @Autowired(required = false) ConfiguracionSistemaRepository configRepository) {
         this.clock = clock != null ? clock : Clock.system(ClockConfig.ZONA_LIMA);
         this.feriadoRepository = feriadoRepository;
+        this.configRepository = configRepository;
+    }
+
+    @PostConstruct
+    void publicarPlazoDeAtencion() {
+        PlazoAtencionVigente.publicar(diasVigentes("SAIP_ATENCION", 10));
     }
 
     @Override
@@ -66,6 +83,39 @@ public class PlazoCalculadorServiceImpl implements PlazoCalculadorService {
     @Override
     public void invalidarCache() {
         cacheInhabilesPorAnio.clear();
+        PlazoAtencionVigente.publicar(diasVigentes("SAIP_ATENCION", 10));
+    }
+
+    @Override
+    public int diasVigentes(String clave, int porDefecto) {
+        if (clave == null || configRepository == null) {
+            return porDefecto;
+        }
+        ConfiguracionSistema config = configRepository.findById(1L).orElse(null);
+        if (config == null) {
+            return porDefecto;
+        }
+        Integer valor = switch (clave) {
+            case "SAIP_ATENCION" -> config.getPlazoSaipRespuesta();
+            case "SAIP_OBSERVACION" -> config.getPlazoSaipObservacion();
+            case "SAIP_SUBSANACION" -> config.getPlazoSubsanacion();
+            case "SAIP_PRORROGA_COMUNICACION" -> config.getPlazoSaipProrrogaComunicacion();
+            case "SAIP_CRONOGRAMA_UMBRAL" -> config.getPlazoSaipCronogramaUmbral();
+            case "SAIP_ENCAUZAMIENTO" -> config.getPlazoSaipEncauzamiento();
+            case "SAIP_LIQUIDACION_PAGO" -> config.getPlazoSaipLiquidacionPago();
+            case "SAIP_RECOJO" -> config.getPlazoRecojoInformacion();
+            case "APELACION_PLAZO" -> config.getPlazoApelacionInterposicion();
+            case "TTAIP_ELEVACION" -> config.getPlazoTtaipElevacion();
+            case "TTAIP_CALIFICACION_1" -> config.getPlazoTtaipCalificacion();
+            case "TTAIP_SUBSANACION" -> config.getPlazoTtaipSubsanacion();
+            case "TTAIP_DESCARGOS" -> config.getPlazoTtaipDescargos();
+            case "TTAIP_INFORME_ORAL" -> config.getPlazoTtaipInformeOral();
+            case "TTAIP_INFO_COMPLEMENTARIA" -> config.getPlazoTtaipInfoComplementaria();
+            case "TTAIP_RESOLUCION" -> config.getPlazoTtaipResolucion();
+            case "TTAIP_CUMPLIMIENTO" -> config.getPlazoTtaipCumplimiento();
+            default -> porDefecto;
+        };
+        return valor != null && valor > 0 ? valor : porDefecto;
     }
 
     @Override
