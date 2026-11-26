@@ -68,7 +68,7 @@
         <button type="button" (click)="cargarDatos()" class="btn-brand mt-4">Reintentar</button>
       </div>
     } @else {
-      <div class="space-y-8">
+      <div class="space-y-8" style="overflow-anchor: none">
         <!-- ── PIPELINE: Mis solicitudes de un vistazo ──────────────── -->
         <section data-tour="resumen">
           <div class="flex items-baseline justify-between mb-3">
@@ -140,7 +140,7 @@
                   [value]="globalQuery()"
                   (input)="onGlobalSearchChange($any($event.target).value)"
                   (keydown)="onGlobalKeyDown($event)"
-                  placeholder="Escriba la entidad, el tema o el número (ej: SUNAT, educación, SAIP-2025…)"
+                  placeholder="Estado, expediente SAIP, expediente del Tribunal, entidad o tema"
                   class="w-full bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground/70 mt-0.5"
                   aria-label="Buscar entre todas mis solicitudes"
                   [attr.aria-expanded]="globalOpen()"
@@ -510,14 +510,14 @@
               <div class="flex-1 min-w-[180px]">
                 <span class="eyebrow">Etapa enfocada</span>
                 <div class="font-display" style="font-size: 17px; letter-spacing: -0.01em">
-                  {{ selectedStageMeta().label }} · <span class="font-mono">{{ stageSearch() ? stageTotal() : selectedStageMeta().count }}</span>
+                  {{ selectedStageMeta().label }} · <span class="font-mono">{{ selectedStageMeta().count }}</span>
                 </div>
                 <p class="text-xs text-muted-foreground mt-0.5">{{ selectedStageMeta().desc }}</p>
               </div>
-              @if (stageAll().length > 0) {
+              @if (selectedStageMeta().count > 0 || stageSearch()) {
                 <div class="flex items-center gap-2 rounded-lg px-3 py-2 w-full sm:w-[400px]" style="background: var(--input-background, var(--card)); border: 1px solid var(--border)">
                   <svg class="w-4 h-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                  <input [attr.aria-label]="'Buscar dentro de la etapa ' + selectedStageMeta().label" [ngModel]="stageSearch()" (ngModelChange)="onStageSearchChange($event)" [placeholder]="'Buscar en «' + selectedStageMeta().label + '»…'" class="w-full bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground/70" />
+                  <input data-buscador-etapa type="search" autocomplete="off" [attr.aria-label]="'Buscar dentro de la etapa ' + selectedStageMeta().label" [ngModel]="stageSearch()" (ngModelChange)="onStageSearchChange($event)" placeholder="Estado, SAIP, Tribunal, entidad o tema" class="w-full bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground/70" />
                   @if (stageSearch()) {
                     <button type="button" (click)="clearStageSearch()" class="w-6 h-6 rounded flex items-center justify-center hover:bg-[color:var(--muted)] transition-colors shrink-0">
                       <svg class="w-3.5 h-3.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M18 6 6 18M6 6l12 12"/></svg>
@@ -542,7 +542,7 @@
                 </div>
                 <p class="text-sm text-muted-foreground">
                   @if (stageSearch()) {
-                    Ningun expediente de «{{ selectedStageMeta().label }}» coincide con "<span class="font-semibold text-foreground">{{ stageSearch() }}</span>".
+                    Ningún expediente de «{{ selectedStageMeta().label }}» coincide con «<span class="font-semibold text-foreground">{{ stageSearch() }}</span>».
                   } @else {
                     No tiene solicitudes en la etapa «{{ selectedStageMeta().label }}».
                   }
@@ -662,7 +662,7 @@
 
 
         <!-- ── EMPTY STATE ──────────────────────────────────────────── -->
-        @if (solicitudesActivas().length === 0 && historicas().length === 0) {
+        @if (!stageSearch().trim() && (resumen()?.total ?? 0) === 0 && solicitudesActivas().length === 0 && historicas().length === 0) {
           <div class="text-center py-20">
             <div class="w-16 h-16 mx-auto rounded-lg flex items-center justify-center mb-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
               <svg lucideInbox class="w-7 h-7 text-brand-700"></svg>

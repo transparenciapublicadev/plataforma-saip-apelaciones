@@ -119,6 +119,28 @@ public class PanelConsultaRepository {
         left join cumplimientos_resolucion_ttaip dc on dc.id_expediente_ttaip=ex.id_expediente_ttaip
             and dc.id_resolucion=rf.id_resolucion and dc.id_notificacion_inicio is not null
         """;
+    private static final String ESTADO_VISIBLE = """
+        case s.estado
+            when 'RECEPCIONADA' then 'Recepcionada'
+            when 'EN_REVISION' then 'En revision de la entidad'
+            when 'EN_PRECISION' then 'En precision'
+            when 'POR_RECOGER' then 'Por recoger Lista para recoger'
+            when 'ENCAUZADA' then 'Encauzada'
+            when 'RESPONDIDA' then 'Respondida Resuelta por la entidad'
+            when 'DENEGADA' then 'Denegada por la entidad'
+            when 'VENCIDA' then 'Vencida Sin respuesta plazo vencido'
+            else ''
+        end,
+        case
+            when a.estado like 'RESUELTO%' or a.estado in ('CONCLUSION_SUSTRACCION_MATERIA','CONCLUSION_DESISTIMIENTO','TENER_POR_NO_PRESENTADO') then 'Resuelto por el Tribunal'
+            when a.estado = 'EN_SUBSANACION' then 'En subsanacion'
+            when a.estado = 'EN_CALIFICACION_1' then 'En primera calificacion'
+            when a.estado = 'EN_CALIFICACION_2' then 'En segunda calificacion En 2da Calificacion'
+            when a.estado = 'EN_RESOLUCION' then 'En resolucion final'
+            when a.estado = 'PENDIENTE_ELEVACION' then 'Pendiente de remision al Tribunal'
+            else ''
+        end
+        """;
     private static final String SAIP_FROM = """
         from solicitudes s join ciudadanos c on c.id_usuario=s.id_ciudadano
         join entidades e on e.id_entidad=s.id_entidad
@@ -154,8 +176,8 @@ public class PanelConsultaRepository {
         }
         if (filtro.busqueda()!=null) {
             String fields = apelaciones
-                ? "concat_ws(' ',a.expediente,a.fundamentos,s.asunto,a.resumen_solicitud_original,ac.nombre_completo,ae.nombre,a.entidad_externa_nombre)"
-                : "concat_ws(' ',s.expediente,s.asunto,s.descripcion,c.nombre_completo,e.nombre,e.acronimo)";
+                ? "concat_ws(' ',a.expediente,s.expediente,a.estado,a.fundamentos,s.asunto,a.resumen_solicitud_original,ac.nombre_completo,ae.nombre,a.entidad_externa_nombre," + ESTADO_VISIBLE + ")"
+                : "concat_ws(' ',s.expediente,a.expediente,s.estado,a.estado,s.asunto,s.descripcion,c.nombre_completo,e.nombre,e.acronimo," + ESTADO_VISIBLE + ")";
             where += " and lower(translate("+fields+",'áéíóúüñÁÉÍÓÚÜÑ','aeiouunAEIOUUN')) like :busqueda escape '!'";
             params.addValue("busqueda","%"+filtro.busqueda().replace("!","!!").replace("%","!%").replace("_","!_")+"%");
         }

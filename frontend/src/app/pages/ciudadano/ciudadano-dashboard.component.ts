@@ -460,7 +460,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     clearTimeout(this.globalTimer); this.globalRead?.unsubscribe(); ++this.globalGeneration;
     const terms = this.normalizeText(val.trim()).split(/\s+/).filter(Boolean);
     const local = terms.length ? this.todasSolicitudes().filter(sol => {
-      const text = this.normalizeText(`${sol.expediente || ''} ${sol.asunto || ''} ${sol.entidadNombre || ''} ${sol.descripcion || ''}`);
+      const text = this.textoBuscable(sol);
       return terms.every(t => text.includes(t));
     }) : [];
     this.globalResults.set(local); this.globalTotal.set(local.length); this.globalError.set('');
@@ -610,9 +610,9 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
     const generation = ++this.generation;
     this.read?.unsubscribe(); this.clearGlobalSearch(); clearTimeout(this.searchTimer);
     this.timers.forEach(timer => clearTimeout(timer)); this.timers.clear();
-    this.selectedSolicitudId.set(null); this.accionResaltada.set(false);
     const changed = this.sessionRevision !== this.authService.cambiosSesion();
     if (resetFilters || changed) {
+      this.selectedSolicitudId.set(null); this.accionResaltada.set(false);
       this.todasSolicitudes.set([]); this.pagina.set(null); this.scrollEtapaPendiente = false;
       this.selectedStageKey.set('todas'); this.stagePage.set(1); this.stageSearch.set(''); this.clearGlobalSearch();
     }
@@ -653,9 +653,11 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
           this.errorTipo.set('incompleta'); this.error.set('La información recibida está incompleta o no corresponde a esta consulta. Reintente la consulta.');
           this.resumen.set(null); this.loading.set(false); this.queryLoading.set(false); this.scrollEtapaPendiente = false; return;
         }
+        const ancla = this.anclaBuscadorEtapa();
         this.todasSolicitudes.set(data.contenido); this.pagina.set(data); this.resumen.set(data.resumen);
         this.calcularEstadisticas(); this.loading.set(false); this.queryLoading.set(false);
         if (this.scrollEtapaPendiente) { this.scrollEtapaPendiente = false; this.scrollToStageList(); }
+        else this.restaurarAnclaEtapa(ancla);
       },
       error: failure => {
         if (!current() || this.authService.cerrandoSesion?.()) return;
@@ -919,7 +921,7 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
 
   onStageSearchChange(value: string): void {
     this.stageSearch.set(value.slice(0, 120)); this.stagePage.set(1);
-    clearTimeout(this.searchTimer); this.read?.unsubscribe(); this.generation++; this.todasSolicitudes.set([]); this.queryLoading.set(true);
+    clearTimeout(this.searchTimer); this.read?.unsubscribe(); this.generation++; this.queryLoading.set(true);
     this.searchTimer = setTimeout(() => this.cargarDatos(false), 250);
   }
 
@@ -938,6 +940,31 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
 
   private normalizeText(text: string): string {
     return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  }
+
+  private textoBuscable(sol: Solicitud): string {
+    const ubicacion = this.ubicacionTramite(sol);
+    return this.normalizeText([
+      sol.expediente, sol.apelacion?.expediente, sol.asunto, sol.entidadNombre, sol.descripcion,
+      sol.estado, sol.apelacion?.estado, this.estadoInsignia(sol), this.formatoEstado(sol.estado),
+      sol.apelacion?.estado ? this.formatoEstado(sol.apelacion.estado) : '', ubicacion.label, ubicacion.instancia,
+    ].filter(Boolean).join(' '));
+  }
+
+  private anclaBuscadorEtapa(): number | null {
+    if (!this.stageSearch().trim() || this.scrollEtapaPendiente || typeof document === 'undefined') return null;
+    const input = this.elementRef.nativeElement.querySelector('[data-buscador-etapa]') as HTMLElement | null;
+    return input ? input.getBoundingClientRect().top : null;
+  }
+
+  private restaurarAnclaEtapa(top: number | null): void {
+    if (top == null) return;
+    this.schedule(() => {
+      const input = this.elementRef.nativeElement.querySelector('[data-buscador-etapa]') as HTMLElement | null;
+      if (!input || typeof window === 'undefined') return;
+      const delta = input.getBoundingClientRect().top - top;
+      if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+    }, 0);
   }
 
   timelineDotBackground(status: TimelineStep['status']): string {
@@ -1496,8 +1523,10 @@ export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
 
   private aplicarDetalle(id: number, detalle: ExpedienteDetalle | null): void {
     if (this.destroyed || this.solicitudPrincipal()?.id !== id) return;
+    const ancla = this.anclaBuscadorEtapa();
     this.detalleVista.set(detalle && detalle.id === id ? detalle : null);
     this.aplicarAmpliacion(id, detalle?.ampliacionesPlazo ?? null);
+    this.restaurarAnclaEtapa(ancla);
   }
 
   private respuestaRegistrada(solicitud: Solicitud): boolean {

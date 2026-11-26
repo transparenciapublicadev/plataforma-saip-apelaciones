@@ -135,6 +135,40 @@ describe('Panel ciudadano — inicio acreditado de subsanación TTAIP', () => {
     expect(c.filaUrgencia(sinFecha)).toMatchObject({ value: 'En curso', unit: 'segunda calificación' });
     expect(c.timelinePrincipal().map(paso => paso.label)).not.toContain('Tribunal - En Calificacion 2');
   });
+
+  it('mantiene el buscador de la etapa y reconoce el expediente del Tribunal', () => {
+    vi.useFakeTimers();
+    const f = TestBed.createComponent(CiudadanoDashboardComponent);
+    const c = f.componentInstance;
+    const s = solicitud();
+    f.detectChanges();
+    c.todasSolicitudes.set([s]);
+    c.resumen.set({ total: 1, porEstado: { DENEGADA: 1 }, porEtapa: { todas: 1, tribunal: 1 } });
+    c.loading.set(false);
+    c.error.set('');
+    c.onGlobalSearchChange('00001-2026-JUS/TTAIP');
+    expect(c.globalResults().map(item => item.expediente)).toEqual(['SAIP-2026-00001']);
+    c.onGlobalSearchChange('en subsanación');
+    expect(c.globalResults().map(item => item.expediente)).toEqual(['SAIP-2026-00001']);
+    c.onStageSearchChange('SAIP-2026-00001');
+    expect(c.todasSolicitudes()).toEqual([s]);
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[aria-label="Buscar dentro de la etapa Todas"]')).not.toBeNull();
+    c.todasSolicitudes.set([]);
+    f.detectChanges();
+    const texto = f.nativeElement.textContent as string;
+    expect(texto).toContain('Ningún expediente de «Todas» coincide con «SAIP-2026-00001»');
+    expect(texto).not.toContain('Aún no ha presentado solicitudes');
+    f.destroy();
+    vi.useRealTimers();
+  });
+
+  it('una búsqueda de etapa conserva la solicitud que se está viendo', () => {
+    const c = TestBed.createComponent(CiudadanoDashboardComponent).componentInstance;
+    c.selectedSolicitudId.set(4);
+    c.cargarDatos(false);
+    expect(c.selectedSolicitudId()).toBe(4);
+  });
 });
 
 describe('Panel ciudadano — consultas y presentación verificables', () => {
