@@ -12,6 +12,20 @@ import { GuidedTourService } from './core/guided-tour/guided-tour.service';
 @Component({ template: '<h1>Destino sintético</h1>' })
 class Destination {}
 
+function flushBandeja(): void {
+  const http = TestBed.inject(HttpTestingController);
+  const pending = () => http.match(r => /\/panel\/(?:solicitudes|apelaciones)(?:\?|$)|\/configuracion(?:\?|$)/.test(r.url)).filter(req => !req.cancelled);
+  for (let vuelta = 0; vuelta < 4; vuelta++) {
+    const reqs = pending();
+    if (!reqs.length) return;
+    for (const req of reqs) {
+      req.flush(req.request.url.includes('/configuracion')
+        ? { notif: { vencidas: false, proximos: false, umbralProximo: 2 } }
+        : { contenido: [], pagina: 0, tamano: 100, totalElementos: 0, totalPaginas: 0 });
+    }
+  }
+}
+
 describe('V6: contexto y menús del shell (router Angular, no backend real)', () => {
   beforeEach(() => {
     sessionStorage.setItem('saip_splash_shown', 'true'); localStorage.clear();
@@ -22,11 +36,11 @@ describe('V6: contexto y menús del shell (router Angular, no backend real)', ()
     vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
   });
   afterEach(() => {
-    TestBed.inject(HttpTestingController).verify(); TestBed.resetTestingModule();
-    document.body.innerHTML = ''; localStorage.clear(); sessionStorage.clear(); vi.restoreAllMocks();
+    try { flushBandeja(); TestBed.inject(HttpTestingController).verify(); }
+    finally { TestBed.resetTestingModule(); document.body.innerHTML = ''; localStorage.clear(); sessionStorage.clear(); vi.restoreAllMocks(); }
   });
   function page() {
-    const f = TestBed.createComponent(App); f.detectChanges();
+    const f = TestBed.createComponent(App); f.detectChanges(); flushBandeja();
     const tour = TestBed.inject(GuidedTourService);
     return { f, tour, open: () => tour.startTour('saip_tour_done', [{ selector: '[data-missing-tour-target]', title: 'Consulta', body: 'Sin escrituras.' }]) };
   }
@@ -37,7 +51,7 @@ describe('V6: contexto y menús del shell (router Angular, no backend real)', ()
     { usuarioId: 7, tipoUsuario: 'ADMINISTRADOR', token: 'synthetic-a' },
   ])('cambiar actor/rol cancela el tutorial anterior: $tipoUsuario', data => {
     const { f, tour, open } = page(); open(); f.detectChanges(); expect(tour.isOpen()).toBe(true);
-    TestBed.inject(AuthService).guardarSesion({ success: true, ...data }); f.detectChanges();
+    TestBed.inject(AuthService).guardarSesion({ success: true, ...data }); f.detectChanges(); flushBandeja();
     expect(tour.isOpen()).toBe(false); expect(tour.steps()).toEqual([]);
     expect(document.querySelector('app-guided-tour [role="dialog"]')).toBeNull();
   });
@@ -45,7 +59,7 @@ describe('V6: contexto y menús del shell (router Angular, no backend real)', ()
     const auth = TestBed.inject(AuthService);
     auth.guardarSesion({ success: true, usuarioId: 7, funcionarioId: 7, tipoUsuario: 'FUNCIONARIO', entidadId: 3, token: 'synthetic-a' });
     const { f, tour } = page(); tour.startTour('saip_tour_funcionario', [{ selector: '[data-missing-tour-target]', title: 'Entidad', body: 'Consulta' }]); f.detectChanges();
-    auth.guardarSesion({ success: true, usuarioId: 7, funcionarioId: 7, tipoUsuario: 'FUNCIONARIO', entidadId: 4, token: 'synthetic-a' }); f.detectChanges();
+    auth.guardarSesion({ success: true, usuarioId: 7, funcionarioId: 7, tipoUsuario: 'FUNCIONARIO', entidadId: 4, token: 'synthetic-a' }); f.detectChanges(); flushBandeja();
     expect(tour.isOpen()).toBe(false); expect(auth.obtenerSesion()?.entidadId).toBe(4);
   });
   it('retirar la sesión por storage cancela el tutorial sin llamar al backend', () => {

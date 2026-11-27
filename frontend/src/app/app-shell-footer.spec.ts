@@ -12,16 +12,33 @@ import { routes } from './app.routes';
 @Component({template:'<h1>Destino sintético</h1>'})
 class DestinationComponent {}
 
+function flushBandeja(): void {
+  const http = TestBed.inject(HttpTestingController);
+  const pending = () => http.match(r => /\/panel\/(?:solicitudes|apelaciones)(?:\?|$)|\/configuracion(?:\?|$)/.test(r.url)).filter(req => !req.cancelled);
+  for (let vuelta = 0; vuelta < 4; vuelta++) {
+    const reqs = pending();
+    if (!reqs.length) return;
+    for (const req of reqs) {
+      req.flush(req.request.url.includes('/configuracion')
+        ? { notif: { vencidas: false, proximos: false, umbralProximo: 2 } }
+        : { contenido: [], pagina: 0, tamano: 100, totalElementos: 0, totalPaginas: 0 });
+    }
+  }
+}
+
 describe('V2: pie compartido Yaiku', () => {
   beforeEach(() => {
     localStorage.clear(); sessionStorage.setItem('saip_splash_shown', 'true');
     TestBed.configureTestingModule({ imports: [App], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
       { provide: UxMotionService, useValue: { animateShell: vi.fn(), animateRoute: vi.fn(), dispose: vi.fn() } }] });
   });
-  afterEach(() => { TestBed.inject(HttpTestingController).verify({ ignoreCancelled: true }); TestBed.resetTestingModule(); localStorage.clear(); sessionStorage.clear(); vi.restoreAllMocks(); });
+  afterEach(() => {
+    try { flushBandeja(); TestBed.inject(HttpTestingController).verify({ ignoreCancelled: true }); }
+    finally { TestBed.resetTestingModule(); localStorage.clear(); sessionStorage.clear(); vi.restoreAllMocks(); }
+  });
   function page(url: string) {
     vi.spyOn(TestBed.inject(Router), 'url', 'get').mockReturnValue(url);
-    const f = TestBed.createComponent(App); f.detectChanges(); return f;
+    const f = TestBed.createComponent(App); f.detectChanges(); flushBandeja(); return f;
   }
   it('la consulta pública reutiliza el pie Yaiku sin contactos o enlaces de demostración', () => {
     const f = page('/consultar'), footer = f.nativeElement.querySelector('footer');
@@ -61,6 +78,7 @@ describe('V2: pie compartido Yaiku', () => {
     expect(header.querySelector(`a[href="${url}"]`)).not.toBeNull();
     expect(header.querySelector('app-notification-bell')).not.toBeNull();
     expect(f.nativeElement.querySelectorAll('app-landing-footer')).toHaveLength(1);
+    flushBandeja();
     TestBed.inject(HttpTestingController).expectNone(() => true);
   });
   it('todos los destinos internos del pie corresponden a operaciones o páginas existentes, sin fallback legal', () => {

@@ -122,7 +122,7 @@ describe('FuncionarioSolicitudDetalleComponent', () => {
       estado: 'PAGADA',
       estadoLiquidacion: 'PAGADA',
       fechaEmision: '2026-10-15',
-      fechaLimiteRecojo: '2026-11-20'
+      fechaLimiteRecojo: '2027-12-20'
     };
     mockSolicitudService.findByExpediente.mockReturnValue(of({
       ...base,

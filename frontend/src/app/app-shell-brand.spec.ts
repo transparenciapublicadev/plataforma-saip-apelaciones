@@ -9,16 +9,33 @@ import { UxMotionService } from './services/ux-motion.service';
 import { Subject } from 'rxjs';
 import { NavigationEnd } from '@angular/router';
 
+function flushBandeja(): void {
+  const http = TestBed.inject(HttpTestingController);
+  const pending = () => http.match(r => /\/panel\/(?:solicitudes|apelaciones)(?:\?|$)|\/configuracion(?:\?|$)/.test(r.url)).filter(req => !req.cancelled);
+  for (let vuelta = 0; vuelta < 4; vuelta++) {
+    const reqs = pending();
+    if (!reqs.length) return;
+    for (const req of reqs) {
+      req.flush(req.request.url.includes('/configuracion')
+        ? { notif: { vencidas: false, proximos: false, umbralProximo: 2 } }
+        : { contenido: [], pagina: 0, tamano: 100, totalElementos: 0, totalPaginas: 0 });
+    }
+  }
+}
+
 describe('V1: identidad del shell Yaiku', () => {
   beforeEach(() => {
     localStorage.clear(); sessionStorage.setItem('saip_splash_shown', 'true');
     TestBed.configureTestingModule({ imports: [App], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
       { provide: UxMotionService, useValue: { animateShell: vi.fn(), animateRoute: vi.fn(), dispose: vi.fn() } }] });
   });
-  afterEach(() => { TestBed.inject(HttpTestingController).verify({ ignoreCancelled: true }); TestBed.resetTestingModule(); localStorage.clear(); sessionStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+  afterEach(() => {
+    try { flushBandeja(); TestBed.inject(HttpTestingController).verify({ ignoreCancelled: true }); }
+    finally { TestBed.resetTestingModule(); localStorage.clear(); sessionStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals(); }
+  });
   function page(url = '/consultar', beforeRender?: () => void) {
     vi.spyOn(TestBed.inject(Router), 'url', 'get').mockReturnValue(url);
-    const f = TestBed.createComponent(App); beforeRender?.(); f.detectChanges(); return f;
+    const f = TestBed.createComponent(App); beforeRender?.(); f.detectChanges(); flushBandeja(); return f;
   }
   it('la marca compartida lleva al inicio Yaiku sin atribución estatal', () => {
     const f = page(), header = f.nativeElement.querySelector('header');
@@ -72,7 +89,7 @@ describe('V1: identidad del shell Yaiku', () => {
     if(change === 'logout') { localStorage.removeItem('usuario'); window.dispatchEvent(new StorageEvent('storage', { key: 'usuario' })); }
     else auth.guardarSesion({ ...session, ...(change === 'sesion' ? { token: 'new-synthetic', usuarioId: 8, funcionarioId: 8, entidadNombre: undefined }
       : change === 'rol' ? { tipoUsuario: 'CIUDADANO' } : { entidadId: 4, entidadNombre: 'ENTIDAD-ACTUAL' }) });
-    expect(f.componentInstance.entidadEtiqueta()).not.toBe('ENTIDAD-ANTERIOR'); f.detectChanges();
+    expect(f.componentInstance.entidadEtiqueta()).not.toBe('ENTIDAD-ANTERIOR'); f.detectChanges(); flushBandeja();
     expect(f.nativeElement.querySelector('header').textContent).not.toContain('ENTIDAD-ANTERIOR');
     expect(f.componentInstance.menuAbierto()).toBe(false); TestBed.inject(HttpTestingController).expectNone(() => true);
   });
@@ -91,7 +108,7 @@ describe('V1: identidad del shell Yaiku', () => {
     items[0].dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true})); expect(document.activeElement).toBe(items[1]);
     items[1].dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true})); expect(document.activeElement).toBe(items[0]);
     const tab=new KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true}); items[0].dispatchEvent(tab); expect(tab.defaultPrevented).toBe(false);
-    f.nativeElement.querySelector('main').focus(); f.detectChanges(); expect(f.componentInstance.menuAbierto()).toBe(false);
+    f.nativeElement.querySelector('main').focus(); f.detectChanges(); flushBandeja(); expect(f.componentInstance.menuAbierto()).toBe(false);
     TestBed.inject(HttpTestingController).expectNone(() => true);
   });
   it('menú móvil enfoca enlaces y Escape restaura el control sin afectar la navegación', async () => {

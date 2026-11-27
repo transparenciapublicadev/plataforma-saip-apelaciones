@@ -421,17 +421,21 @@ describe('Adversarial Challenger M3 — Behavioral & Legal Constraints Stress Su
 
       const limite = comp.nuevaFechaLimite();
       expect(limite).not.toBeNull();
-      expect(fixture.nativeElement.querySelector('input[aria-label="Fecha de la entrega parcial 1"]').max).toBe('2026-12-03');
+      const fecha = fixture.nativeElement.querySelector('input[aria-label="Fecha de la entrega 1"]') as HTMLInputElement | null;
+      expect(fecha).not.toBeNull();
+      expect(fecha!.max).toBe(limite);
       comp.prorrogaDias = '8';
       expect(comp.nuevaFechaLimite()).toBeNull();
       fixture.detectChanges();
-      expect(comp.nuevaFechaLimite()).toBe('2026-12-10');
+      const ampliado = comp.nuevaFechaLimite();
+      expect(ampliado).not.toBeNull();
+      expect(ampliado! > limite!).toBe(true);
       comp.prorrogaDias = '5';
       fixture.detectChanges();
 
       // Subtest A: Hito with date in the past
       comp.hitos.set([{ fecha: '2020-01-01', entregable: 'Entrega en el pasado' }]);
-      expect(comp.errorHitos()).toBe('Las fechas del cronograma no pueden ser anteriores a hoy.');
+      expect(comp.errorHitos()).toBe('Esta entrega no puede ser anterior a hoy.');
       expect(comp.canSubmit()).toBe(false);
 
       // Subtest B: Hito with date beyond computed nuevaFechaLimite

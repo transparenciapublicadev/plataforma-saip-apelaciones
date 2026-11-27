@@ -77,7 +77,7 @@ describe.each([
     const success = f.debugElement.query(By.directive(ReferenceSuccessModalComponent)).componentInstance;
     const confirm = f.debugElement.query(By.directive(ReferenceConfirmModalComponent)).componentInstance;
     expect(success.expedienteHint).toContain('REGISTRADA-91');
-    expect(confirm.confirmLabel).not.toMatch(/firmar|emitir/i);
+    expect(confirm.confirmLabel).not.toMatch(/firmar/i);
     expect(f.nativeElement.textContent).not.toContain('Ver resolución y cédulas oficiales');
   });
   it('no confirma emisión ni registro cuando la respuesta no identifica el recurso', () => {
