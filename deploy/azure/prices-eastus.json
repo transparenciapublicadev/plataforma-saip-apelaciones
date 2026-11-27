@@ -1,0 +1,116 @@
+{
+  "checkedOn": "2026-10-30",
+  "region": "eastus",
+  "currency": "USD",
+  "kind": "Public consumption retail rates; no student entitlement, quota or capacity verified",
+  "meters": {
+    "vm": {
+      "productName": "Virtual Machines BS Series",
+      "skuName": "B2s",
+      "meterName": "B2s",
+      "unitOfMeasure": "1 Hour",
+      "retailPrice": 0.0416,
+      "effectiveStartDate": "2025-10-01T00:00:00Z",
+      "source": "https://prices.azure.com/api/retail/prices?%24filter=armRegionName+eq+%27eastus%27+and+priceType+eq+%27Consumption%27+and+serviceName+eq+%27Virtual+Machines%27+and+armSkuName+eq+%27Standard_B2s%27&currencyCode=USD"
+    },
+    "disk": {
+      "productName": "Standard SSD Managed Disks",
+      "skuName": "E4 LRS",
+      "meterName": "E4 LRS Disk",
+      "unitOfMeasure": "1/Month",
+      "retailPrice": 2.4,
+      "effectiveStartDate": "2019-01-01T00:00:00Z",
+      "source": "https://prices.azure.com/api/retail/prices?%24filter=armRegionName+eq+%27eastus%27+and+priceType+eq+%27Consumption%27+and+serviceName+eq+%27Storage%27+and+productName+eq+%27Standard+SSD+Managed+Disks%27&currencyCode=USD"
+    },
+    "ip": {
+      "productName": "IP Addresses",
+      "skuName": "Standard",
+      "meterName": "Standard IPv4 Static Public IP",
+      "unitOfMeasure": "1 Hour",
+      "retailPrice": 0.005,
+      "effectiveStartDate": "2018-06-01T00:00:00Z",
+      "source": "https://prices.azure.com/api/retail/prices?%24filter=armRegionName+eq+%27eastus%27+and+priceType+eq+%27Consumption%27+and+serviceName+eq+%27Virtual+Network%27&currencyCode=USD"
+    },
+    "pg": {
+      "productName": "Azure Database for PostgreSQL Flexible Server Burstable BS Series Compute",
+      "skuName": "B1MS",
+      "meterName": "B1MS",
+      "unitOfMeasure": "1 Hour",
+      "retailPrice": 0.017,
+      "effectiveStartDate": "2021-12-01T00:00:00Z",
+      "source": "https://prices.azure.com/api/retail/prices?%24filter=armRegionName+eq+%27eastus%27+and+priceType+eq+%27Consumption%27+and+serviceName+eq+%27Azure+Database+for+PostgreSQL%27&currencyCode=USD"
+    },
+    "pgStorage": {
+      "productName": "Azure Database for PostgreSQL Flex Server Storage",
+      "skuName": "Storage",
+      "meterName": "Storage Data Stored",
+      "unitOfMeasure": "1 GB/Month",
+      "retailPrice": 0.115,
+      "effectiveStartDate": "2021-06-01T00:00:00Z",
+      "source": "https://prices.azure.com/api/retail/prices?%24filter=armRegionName+eq+%27eastus%27+and+priceType+eq+%27Consumption%27+and+serviceName+eq+%27Azure+Database+for+PostgreSQL%27&currencyCode=USD"
+    },
+    "cpu": {
+      "productName": "Azure Container Apps",
+      "skuName": "Standard",
+      "meterName": "Standard vCPU Active Usage",
+      "unitOfMeasure": "1 Second",
+      "retailPrice": 2.4e-05,
+      "effectiveStartDate": "2022-06-01T00:00:00Z",
+      "source": "https://prices.azure.com/api/retail/prices?%24filter=armRegionName+eq+%27eastus%27+and+priceType+eq+%27Consumption%27+and+serviceName+eq+%27Azure+Container+Apps%27&currencyCode=USD"
+    },
+    "memory": {
+      "productName": "Azure Container Apps",
+      "skuName": "Standard",
+      "meterName": "Standard Memory Active Usage",
+      "unitOfMeasure": "1 GiB Second",
+      "retailPrice": 3e-06,
+      "effectiveStartDate": "2022-06-01T00:00:00Z",
+      "source": "https://prices.azure.com/api/retail/prices?%24filter=armRegionName+eq+%27eastus%27+and+priceType+eq+%27Consumption%27+and+serviceName+eq+%27Azure+Container+Apps%27&currencyCode=USD"
+    },
+    "requests": {
+      "productName": "Azure Container Apps",
+      "skuName": "Standard",
+      "meterName": "Standard Requests",
+      "unitOfMeasure": "1M",
+      "retailPrice": 0.4,
+      "effectiveStartDate": "2022-06-01T00:00:00Z",
+      "source": "https://prices.azure.com/api/retail/prices?%24filter=armRegionName+eq+%27eastus%27+and+priceType+eq+%27Consumption%27+and+serviceName+eq+%27Azure+Container+Apps%27&currencyCode=USD"
+    },
+    "diskE1": {
+      "productName": "Standard SSD Managed Disks",
+      "skuName": "E1 LRS",
+      "meterName": "E1 LRS Disk",
+      "unitOfMeasure": "1/Month",
+      "retailPrice": 0.3,
+      "effectiveStartDate": "2020-07-01T00:00:00Z",
+      "source": "https://prices.azure.com/api/retail/prices?%24filter=armRegionName+eq+%27eastus%27+and+priceType+eq+%27Consumption%27+and+serviceName+eq+%27Storage%27+and+productName+eq+%27Standard+SSD+Managed+Disks%27&currencyCode=USD"
+    },
+    "diskE2": {
+      "productName": "Standard SSD Managed Disks",
+      "skuName": "E2 LRS",
+      "meterName": "E2 LRS Disk",
+      "unitOfMeasure": "1/Month",
+      "retailPrice": 0.6,
+      "effectiveStartDate": "2020-07-01T00:00:00Z",
+      "source": "https://prices.azure.com/api/retail/prices?%24filter=armRegionName+eq+%27eastus%27+and+priceType+eq+%27Consumption%27+and+serviceName+eq+%27Storage%27+and+productName+eq+%27Standard+SSD+Managed+Disks%27&currencyCode=USD"
+    },
+    "diskE3": {
+      "productName": "Standard SSD Managed Disks",
+      "skuName": "E3 LRS",
+      "meterName": "E3 LRS Disk",
+      "unitOfMeasure": "1/Month",
+      "retailPrice": 1.2,
+      "effectiveStartDate": "2020-07-01T00:00:00Z",
+      "source": "https://prices.azure.com/api/retail/prices?%24filter=armRegionName+eq+%27eastus%27+and+priceType+eq+%27Consumption%27+and+serviceName+eq+%27Storage%27+and+productName+eq+%27Standard+SSD+Managed+Disks%27&currencyCode=USD"
+    },
+    "vmB2alsv2": {
+      "productName": "Virtual Machines Basv2 Series",
+      "skuName": "B2als v2",
+      "meterName": "B2als v2",
+      "unitOfMeasure": "1 Hour",
+      "retailPrice": 0.0376,
+      "effectiveStartDate": "2023-09-01T00:00:00Z",
+      "source": "https://prices.azure.com/api/retail/prices?%24filter=armRegionName+eq+%27eastus%27+and+priceType+eq+%27Consumption%27+and+serviceName+eq+%27Virtual+Machines%27+and+armSkuName+eq+%27Standard_B2als_v2%27&currencyCode=USD"
+    }
+  }
+}

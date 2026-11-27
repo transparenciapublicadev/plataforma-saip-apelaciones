@@ -1,3 +1,5 @@
+import '@angular/compiler';
+
 const createMemoryStorage = (): Storage => {
   let store: Record<string, string> = {};
 
@@ -23,9 +25,36 @@ const createMemoryStorage = (): Storage => {
   };
 };
 
-if (typeof globalThis.localStorage === 'undefined') {
+try {
+  globalThis.localStorage?.getItem('test');
+} catch {
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
+    writable: true,
+    value: createMemoryStorage(),
+  });
+}
+if (!globalThis.localStorage || typeof globalThis.localStorage.clear !== 'function') {
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    writable: true,
+    value: createMemoryStorage(),
+  });
+}
+
+try {
+  globalThis.sessionStorage?.getItem('test');
+} catch {
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    writable: true,
+    value: createMemoryStorage(),
+  });
+}
+if (!globalThis.sessionStorage || typeof globalThis.sessionStorage.clear !== 'function') {
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    writable: true,
     value: createMemoryStorage(),
   });
 }

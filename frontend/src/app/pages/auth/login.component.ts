@@ -3,10 +3,13 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { LoginRequest } from '../../models/usuario.model';
+import { problemDetailsMessage } from '../../utils/problem-details.util';
 import {
   LucideArrowLeft, LucideShield, LucideLogIn,
-  LucideScale, LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle
+  LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle,
+  LucideLock, LucideBadgeCheck
 } from '@lucide/angular';
+import { YaikuLogoComponent } from '../../shared/yaiku-logo.component';
 
 type TipoUsuarioRole = 'CIUDADANO' | 'FUNCIONARIO' | 'TTAIP' | 'ADMINISTRADOR';
 type InternalRole = Exclude<TipoUsuarioRole, 'CIUDADANO'>;
@@ -18,7 +21,9 @@ type AccessMode = 'citizen' | 'internal';
   imports: [
     FormsModule, RouterLink,
     LucideArrowLeft, LucideShield, LucideLogIn,
-    LucideScale, LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle
+    LucideEye, LucideEyeOff, LucideArrowRight, LucideLoaderCircle,
+    LucideLock, LucideBadgeCheck,
+    YaikuLogoComponent
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
@@ -39,29 +44,25 @@ export class LoginComponent implements OnInit {
   error = signal<string>('');
   mensaje = signal<string>('');
 
-  portalTitle = computed(() => {
-    if (this.accessMode() === 'citizen') return 'Acceso para Administrados';
-    const role = this.requiredRole();
-    return `Acceso ${this.getRoleLabel(role)}`;
-  });
+  formEyebrow = computed(() => this.isCitizenPortal() ? 'Acceso público' : 'Acceso institucional');
 
-  portalSubtitle = computed(() => {
-    if (this.accessMode() === 'citizen') {
-      return 'Portal público para solicitudes SAIP y apelaciones (Persona Natural y Jurídica)';
-    }
-    return 'Portal institucional para personal autorizado';
-  });
+  formTitle = computed(() => this.isCitizenPortal() ? 'Administrado' : this.getRoleLabel(this.requiredRole()));
+
+  formSubtitle = computed(() => this.isCitizenPortal()
+    ? 'Ingrese para presentar y consultar sus solicitudes.'
+    : 'Ingrese al espacio interno de gestión de Yaiku.');
 
   identifierLabel = computed(() => this.isCitizenPortal() ? 'Correo electrónico, DNI o RUC' : 'Usuario institucional');
   identifierPlaceholder = computed(() => this.isCitizenPortal() ? 'correo@ejemplo.com, DNI (8 dígitos) o RUC (11 dígitos)' : 'Usuario o correo institucional');
 
   isCitizenPortal = computed(() => this.accessMode() === 'citizen');
 
+
   constructor() {}
 
   ngOnInit(): void {
-    const accessModeData = this.route.snapshot.data['accessMode'];
-    const requiredRoleData = this.route.snapshot.data['requiredRole'];
+    const accessModeData = this.route.snapshot?.data?.['accessMode'];
+    const requiredRoleData = this.route.snapshot?.data?.['requiredRole'];
     const requiredRole = this.toInternalRole(requiredRoleData);
 
     if (accessModeData === 'internal' && requiredRole) {
@@ -86,6 +87,7 @@ export class LoginComponent implements OnInit {
   }
 
   login(): void {
+    if (this.loading()) return;
     if (!this.email || !this.password) {
       this.error.set('Por favor complete todos los campos');
       return;
@@ -102,28 +104,30 @@ export class LoginComponent implements OnInit {
 
     this.authService.login(credentials).subscribe({
       next: (response) => {
-        this.loading.set(false);
         if (response.success) {
           const userRole = this.toTipoUsuario(response.tipoUsuario);
           if (!userRole) {
+            this.loading.set(false);
             this.error.set('No se pudo validar su tipo de usuario. Intente nuevamente.');
             return;
           }
 
           if (!this.canAccessPortal(userRole)) {
+            this.loading.set(false);
             this.error.set(this.getPortalAccessError(userRole));
             return;
           }
 
           this.authService.guardarSesion(response);
           this.redirigirSegunTipo();
-        } else {
-          this.error.set(response.mensaje || 'Error al iniciar sesión');
+          return;
         }
+        this.loading.set(false);
+        this.error.set(response.mensaje || 'Error al iniciar sesión');
       },
       error: (err) => {
         this.loading.set(false);
-        this.error.set(err.error?.mensaje || 'Error de conexión');
+        this.error.set(problemDetailsMessage(err, 'Usuario o contraseña incorrectos.'));
       }
     });
   }
@@ -191,8 +195,8 @@ export class LoginComponent implements OnInit {
 
   private getRoleLabel(role: InternalRole | null): string {
     if (role === 'FUNCIONARIO') return 'Funcionario';
-    if (role === 'TTAIP') return 'TTAIP';
-    if (role === 'ADMINISTRADOR') return 'Administración';
+    if (role === 'TTAIP') return 'Personal TTAIP';
+    if (role === 'ADMINISTRADOR') return 'Administrador';
     return 'Interno';
   }
 }

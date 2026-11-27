@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { canSendManualResponse, isSilencioAdministrativo } from './silencio-administrativo.util';
 
 describe('silencio-administrativo util', () => {
+  it('no omite una subsanación pendiente para responder', () => {
+    expect(canSendManualResponse({ estado: 'PENDIENTE_INFORMACION', diasRestantes: 3 })).toBe(false);
+  });
   it('detecta silencio administrativo por estado VENCIDA', () => {
     expect(isSilencioAdministrativo({ estado: 'VENCIDA' })).toBe(true);
   });

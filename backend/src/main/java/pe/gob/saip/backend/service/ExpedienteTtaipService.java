@@ -2,6 +2,7 @@ package pe.gob.saip.backend.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.gob.saip.backend.exception.ConflictoEstadoException;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.repository.CedulaNotificacionRepository;
@@ -38,8 +39,6 @@ public class ExpedienteTtaipService {
 
     private static final String PRIMERA_SALA = "PRIMERA SALA";
     private static final String SEGUNDA_SALA = "SEGUNDA SALA";
-    private static final int RESOLUCION_BASE = 1595;
-    private static final int CEDULA_BASE = 15203;
     private static final int DIAS_SUSPENSION_ADICIONAL = 3;
     private static final int DIAS_CUMPLIMIENTO_RESOLUCION_FUNDADA = 7;
 
@@ -54,6 +53,9 @@ public class ExpedienteTtaipService {
     private final DescargoEntidadTtaipRepository descargoRepository;
     private final SuspensionPlazoTtaipRepository suspensionRepository;
     private final CumplimientoResolucionTtaipRepository cumplimientoRepository;
+    private final InicioPlazoSubsanacionTtaipService inicioPlazoSubsanacion;
+    private final DocumentosOficialesTtaipService documentosOficiales;
+    private final CumplimientoDocumentalTtaipService cumplimientoDocumental;
 
     public ExpedienteTtaipService(ExpedienteTtaipRepository expedienteRepository,
                                   SalaTtaipRepository salaRepository,
@@ -65,7 +67,10 @@ public class ExpedienteTtaipService {
                                   HistorialTtaipRepository historialRepository,
                                   DescargoEntidadTtaipRepository descargoRepository,
                                   SuspensionPlazoTtaipRepository suspensionRepository,
-                                  CumplimientoResolucionTtaipRepository cumplimientoRepository) {
+                                  CumplimientoResolucionTtaipRepository cumplimientoRepository,
+                                  InicioPlazoSubsanacionTtaipService inicioPlazoSubsanacion,
+                                  DocumentosOficialesTtaipService documentosOficiales,
+                                  CumplimientoDocumentalTtaipService cumplimientoDocumental) {
         this.expedienteRepository = expedienteRepository;
         this.salaRepository = salaRepository;
         this.miembroService = miembroService;
@@ -77,6 +82,9 @@ public class ExpedienteTtaipService {
         this.descargoRepository = descargoRepository;
         this.suspensionRepository = suspensionRepository;
         this.cumplimientoRepository = cumplimientoRepository;
+        this.inicioPlazoSubsanacion = inicioPlazoSubsanacion;
+        this.documentosOficiales = documentosOficiales;
+        this.cumplimientoDocumental = cumplimientoDocumental;
     }
 
     @Transactional
@@ -100,8 +108,9 @@ public class ExpedienteTtaipService {
         resolucion.setExpedienteTtaip(expediente);
         resolucion.setSalaTtaip(expediente.getSala());
 
+        documentosOficiales.aplicarNumero(resolucion);
         if (resolucion.getNumeroResolucion() == null || resolucion.getNumeroResolucion().isBlank()) {
-            resolucion.setNumeroResolucion(generarNumeroResolucion(expediente));
+            resolucion.setNumeroResolucion(documentosOficiales.numeroResolucion(expediente.getSala()));
         }
 
         return resolucion;
@@ -145,6 +154,7 @@ public class ExpedienteTtaipService {
         if (debeNotificarEntidadPublica(resolucion)) {
             crearCedulaYNotificacionSiFalta(resolucion, expediente, CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA);
         }
+        if (resolucion.isActosDocumentales()) documentosOficiales.publicar(resolucion);
     }
 
     @Transactional
@@ -164,6 +174,21 @@ public class ExpedienteTtaipService {
     public List<NotificacionTtaip> listarNotificaciones(Long expedienteId) {
         buscarExpediente(expedienteId);
         return notificacionRepository.findByExpediente_IdExpedienteTtaipOrderByFechaNotificacionAsc(expedienteId);
+    }
+
+    void verificarNotificacionHistorica(Long expedienteId, Long notificacionId) {
+        verificarNotificacionHistorica(buscarNotificacion(expedienteId, notificacionId));
+    }
+
+    void verificarNotificacionHistorica(String numero, CedulaNotificacion.DestinatarioNotificacion destino) {
+        notificacionRepository.findByCedula_NumeroCedulaAndDestinatario(numero, destino)
+                .ifPresent(this::verificarNotificacionHistorica);
+    }
+
+    private void verificarNotificacionHistorica(NotificacionTtaip n) {
+        if (n.getCedula().getResolucion().isActosDocumentales() || n.getCedula().getTipoActo() != null) {
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException("Use los actos documentales de la notificación");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -244,6 +269,9 @@ public class ExpedienteTtaipService {
         ));
 
         NotificacionTtaip saved = notificacionRepository.save(notificacion);
+        inicioPlazoSubsanacion.registrar(saved, request.fechaAcuse(), "ACUSE_ENTREGADO",
+                saved.getAcuseAutomatico() + "; constancia=" + valorTraza(saved.getConstanciaEnvio())
+                        + "; referencia=" + valorTraza(saved.getReferenciaEvidencia()));
         registrarHistorial(
                 saved.getExpediente(),
                 HistorialTtaip.TipoEvento.ACUSE_NOTIFICACION_REGISTRADO,
@@ -253,6 +281,9 @@ public class ExpedienteTtaipService {
                 responsable,
                 "NOTIFICACION-" + saved.getId() + ":ACUSE:" + estadoAcuse
         );
+        if (esNotificacionFinalPendiente(saved) && "ENTREGADA".equals(saved.getEstado())) {
+            cumplimientoDocumental.alAcreditarNotificacion(saved, request.fechaAcuse());
+        }
         return saved;
     }
 
@@ -284,6 +315,8 @@ public class ExpedienteTtaipService {
         ));
 
         NotificacionTtaip saved = notificacionRepository.save(notificacion);
+        inicioPlazoSubsanacion.registrar(saved, request.fechaEficacia(), "VALIDACION_MANUAL",
+                saved.getObservacionValidacion() + "; referencia=" + valorTraza(saved.getReferenciaEvidencia()));
         registrarHistorial(
                 saved.getExpediente(),
                 HistorialTtaip.TipoEvento.NOTIFICACION_VALIDADA,
@@ -293,7 +326,16 @@ public class ExpedienteTtaipService {
                 responsable,
                 "NOTIFICACION-" + saved.getId() + ":VALIDACION_MANUAL"
         );
+        if (esNotificacionFinalPendiente(saved)) {
+            cumplimientoDocumental.alAcreditarNotificacion(saved, request.fechaEficacia());
+        }
         return saved;
+    }
+
+    private static boolean esNotificacionFinalPendiente(NotificacionTtaip n) {
+        return n.getCedula() != null && n.getCedula().getResolucion() != null
+                && n.getCedula().getResolucion().getTipoResolucion() == Resolucion.TipoResolucion.RESOLUCION_FINAL
+                && CumplimientoDocumentalTtaipService.esperaNotificaciones(n.getExpediente());
     }
 
     @Transactional(readOnly = true)
@@ -314,6 +356,19 @@ public class ExpedienteTtaipService {
     @Transactional
     public DescargoEntidadTtaip requerirDescargos(Long expedienteId, RequerirDescargoEntidadRequest request) {
         ExpedienteTtaip expediente = buscarExpediente(expedienteId);
+        Resolucion admision = resolucionAdmision(expediente);
+        if (admision != null && admision.isActosDocumentales()) {
+            Entidad entidad = entidadRequerida(expediente);
+            var notificacion = notificacionRepository.findByCedula_Resolucion_IdResolucionAndDestinatarioOrderByFechaNotificacionDesc(
+                    admision.getId(), CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA).stream()
+                    .filter(n -> "VALIDADA".equals(n.getEstado()) && n.getFechaEficacia() != null)
+                    .min(java.util.Comparator.comparing(NotificacionTtaip::getFechaEficacia))
+                    .orElseThrow(() -> new ConflictoEstadoException("Valide la notificación de admisión de la entidad"));
+            abrirDescargosPorNotificacion(notificacion, normalizarActor(request.responsableTtaip(), "TTAIP"));
+            var requerimiento = requerimientoDeAdmision(expediente, admision, entidad);
+            if (requerimiento == null) throw new ConflictoEstadoException("La admisión no está abierta para descargos");
+            return requerimiento;
+        }
         validarExpedienteAdmitido(expediente);
 
         if (descargoRepository.existsByExpediente_IdExpedienteTtaipAndEstadoDescargoIn(
@@ -331,8 +386,51 @@ public class ExpedienteTtaipService {
             throw new IllegalArgumentException("El requerimiento de descargos no puede registrarse antes de la admisión válida");
         }
 
-        LocalDate fechaLimite = DiasHabilesUtil.sumarDiasHabiles(fechaRequerimiento, 7);
-        String actor = normalizarActor(request.responsableTtaip(), "TTAIP");
+        return registrarRequerimientoDescargos(expediente, entidad, fechaRequerimiento,
+                normalizarActor(request.responsableTtaip(), "TTAIP"), request.observacion());
+    }
+
+    void abrirDescargosPorNotificacion(NotificacionTtaip notificacion, String actor) {
+        var expediente = notificacion.getExpediente();
+        var admision = resolucionAdmision(expediente);
+        if (admision == null || !admision.isActosDocumentales()
+                || !admision.getId().equals(notificacion.getCedula().getResolucion().getId())
+                || notificacion.getDestinatario() != CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA
+                || notificacion.getFechaEficacia() == null || !"VALIDADA".equals(notificacion.getEstado())
+                || !admisionAbierta(expediente)) return;
+
+        Entidad entidad = expediente.getApelacion().getEntidadApeladaEfectiva();
+        if (entidad == null || requerimientoDeAdmision(expediente, admision, entidad) != null) {
+            recalcularFechaLimiteResolucion(expediente);
+            return;
+        }
+        registrarRequerimientoDescargos(expediente, entidad, notificacion.getFechaEficacia().toLocalDate(), actor, null);
+    }
+
+    DescargoEntidadTtaip requerimientoDeAdmision(ExpedienteTtaip expediente, Resolucion admision, Entidad entidad) {
+        return listarDescargos(expediente.getId()).stream()
+                .filter(d -> entidad.getId().equals(d.getEntidad().getId())
+                        && !d.getFechaRequerimiento().isBefore(admision.getFechaResolucion().toLocalDate())
+                        && d.getEstadoDescargo() != DescargoEntidadTtaip.EstadoDescargo.CANCELADO)
+                .findFirst().orElse(null);
+    }
+
+    static Resolucion resolucionAdmision(ExpedienteTtaip expediente) {
+        Resolucion resolucion = expediente.getApelacion().getResolucionSegundaCalificacion();
+        if (resolucion == null) resolucion = expediente.getApelacion().getResolucionPrimeraCalificacion();
+        if (resolucion == null || (resolucion.getDecision() != Resolucion.DecisionResolucion.ADMISIBLE
+                && resolucion.getDecision() != Resolucion.DecisionResolucion.ADMITIDO)) return null;
+        return resolucion;
+    }
+
+    static boolean admisionAbierta(ExpedienteTtaip expediente) {
+        return expediente.getEstado() == Apelacion.EstadoApelacion.EN_RESOLUCION
+                || expediente.getEstado() == Apelacion.EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION;
+    }
+
+    private DescargoEntidadTtaip registrarRequerimientoDescargos(ExpedienteTtaip expediente, Entidad entidad,
+            LocalDate fechaRequerimiento, String actor, String observacion) {
+        LocalDate fechaLimite = DiasHabilesUtil.sumarDiasHabiles(fechaRequerimiento, DIAS_DESCARGOS);
 
         DescargoEntidadTtaip descargo = new DescargoEntidadTtaip();
         descargo.setExpediente(expediente);
@@ -341,7 +439,7 @@ public class ExpedienteTtaipService {
         descargo.setFechaRequerimiento(fechaRequerimiento);
         descargo.setFechaLimiteDescargo(fechaLimite);
         descargo.setEstadoDescargo(DescargoEntidadTtaip.EstadoDescargo.REQUERIDO);
-        descargo.setObservacion(request.observacion());
+        descargo.setObservacion(observacion);
         descargo.setTrazabilidad("%s - Requerimiento de descargos a %s. Límite: %s."
                 .formatted(LocalDateTime.now(), entidad.getNombre(), fechaLimite));
         DescargoEntidadTtaip savedDescargo = descargoRepository.save(descargo);
@@ -355,10 +453,10 @@ public class ExpedienteTtaipService {
         suspension.setFechaSolicitud(fechaRequerimiento);
         suspension.setFechaInicioSuspension(fechaRequerimiento);
         suspension.setFechaFinSuspension(fechaLimite);
-        suspension.setDiasSuspendidos(7);
+        suspension.setDiasSuspendidos(DIAS_DESCARGOS);
         suspension.setEstadoSuspension(SuspensionPlazoTtaip.EstadoSuspension.ACTIVA);
         suspension.setResponsable(actor);
-        suspension.setObservacion(request.observacion());
+        suspension.setObservacion(observacion);
         suspension.setTrazabilidad("%s - Suspensión activa por descargos de entidad; periodo %s a %s."
                 .formatted(LocalDateTime.now(), fechaRequerimiento, fechaLimite));
         suspensionRepository.save(suspension);
@@ -432,7 +530,7 @@ public class ExpedienteTtaipService {
         ));
         DescargoEntidadTtaip savedDescargo = descargoRepository.save(descargo);
 
-        cerrarSuspensionPorDescargo(expediente, savedDescargo, fechaPresentacion, extemporaneo);
+        cerrarSuspensionPorDescargo(expediente, savedDescargo, extemporaneo);
         recalcularFechaLimiteResolucion(expediente);
         expediente.setTrazabilidadMinima(agregarTraza(
                 expediente.getTrazabilidadMinima(),
@@ -459,43 +557,48 @@ public class ExpedienteTtaipService {
         return savedDescargo;
     }
 
-    @Transactional
-    public List<DescargoEntidadTtaip> procesarDescargosVencidos() {
-        List<DescargoEntidadTtaip> vencidos = descargoRepository.findByEstadoDescargoInAndFechaLimiteDescargoBefore(
-                estadosDescargoActivos(),
-                LocalDate.now()
+    List<Long> expedientesConDescargosVencidos() {
+        return descargoRepository.expedientesConDescargosVencidos(DescargoEntidadTtaip.EstadoDescargo.REQUERIDO,
+                LocalDate.now(pe.gob.saip.backend.config.ClockConfig.ZONA_LIMA));
+    }
+
+    List<DescargoEntidadTtaip> procesarDescargosVencidos(Long expedienteId) {
+        var hoy = LocalDate.now(pe.gob.saip.backend.config.ClockConfig.ZONA_LIMA);
+        var vencidos = listarDescargos(expedienteId).stream()
+                .filter(d -> d.getEstadoDescargo() == DescargoEntidadTtaip.EstadoDescargo.REQUERIDO
+                        && hoy.isAfter(d.getFechaLimiteDescargo()))
+                .toList();
+        vencidos.forEach(this::registrarVencimientoDescargo);
+        return vencidos;
+    }
+
+    private void registrarVencimientoDescargo(DescargoEntidadTtaip descargo) {
+        ExpedienteTtaip expediente = descargo.getExpediente();
+        descargo.setEstadoDescargo(DescargoEntidadTtaip.EstadoDescargo.VENCIDO_SIN_PRESENTACION);
+        descargo.setTrazabilidad(agregarTraza(
+                descargo.getTrazabilidad(),
+                "%s - Descargo vencido sin presentación dentro del plazo de 7 días hábiles."
+                        .formatted(LocalDateTime.now())
+        ));
+
+        cerrarSuspensionVencida(expediente, descargo);
+        recalcularFechaLimiteResolucion(expediente);
+        expediente.setTrazabilidadMinima(agregarTraza(
+                expediente.getTrazabilidadMinima(),
+                "%s - Descargo vencido sin presentación; el expediente continúa su trámite. Fecha límite de resolución: %s."
+                        .formatted(LocalDateTime.now(), expediente.getFechaLimiteResolucion())
+        ));
+        expedienteRepository.save(expediente);
+
+        registrarHistorial(
+                expediente,
+                HistorialTtaip.TipoEvento.DESCARGO_PRESENTADO,
+                "Descargo vencido sin presentación. El expediente puede continuar.",
+                null,
+                expediente.getEstado() != null ? expediente.getEstado().name() : null,
+                "SISTEMA",
+                "DESCARGO-VENCIDO-" + descargo.getId()
         );
-
-        for (DescargoEntidadTtaip descargo : vencidos) {
-            ExpedienteTtaip expediente = descargo.getExpediente();
-            descargo.setEstadoDescargo(DescargoEntidadTtaip.EstadoDescargo.VENCIDO_SIN_PRESENTACION);
-            descargo.setTrazabilidad(agregarTraza(
-                    descargo.getTrazabilidad(),
-                    "%s - Descargo vencido sin presentación dentro del plazo de 7 días hábiles."
-                            .formatted(LocalDateTime.now())
-            ));
-
-            cerrarSuspensionVencida(expediente, descargo);
-            recalcularFechaLimiteResolucion(expediente);
-            expediente.setTrazabilidadMinima(agregarTraza(
-                    expediente.getTrazabilidadMinima(),
-                    "%s - Descargo vencido sin presentación; el expediente continúa su trámite. Fecha límite de resolución: %s."
-                            .formatted(LocalDateTime.now(), expediente.getFechaLimiteResolucion())
-            ));
-            expedienteRepository.save(expediente);
-
-            registrarHistorial(
-                    expediente,
-                    HistorialTtaip.TipoEvento.DESCARGO_PRESENTADO,
-                    "Descargo vencido sin presentación. El expediente puede continuar.",
-                    null,
-                    expediente.getEstado() != null ? expediente.getEstado().name() : null,
-                    "SISTEMA",
-                    "DESCARGO-VENCIDO-" + descargo.getId()
-            );
-        }
-
-        return descargoRepository.saveAll(vencidos);
     }
 
     @Transactional(readOnly = true)
@@ -601,6 +704,11 @@ public class ExpedienteTtaipService {
         ExpedienteTtaip expediente = buscarExpediente(expedienteId);
         Resolucion resolucion = buscarResolucion(resolucionId);
         validarResolucionFundadaDelExpediente(expediente, resolucion);
+        if (expediente.getApelacion().getEstado() == Apelacion.EstadoApelacion.NOTIFICACION_RESOLUCION_FINAL
+                || cumplimientoRepository.findByExpediente_IdExpedienteTtaipAndIdNotificacionInicioIsNotNull(expedienteId).isPresent()) {
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException(
+                    "El seguimiento documental se habilita al acreditar las notificaciones de la resolución final");
+        }
 
         if (cumplimientoRepository.existsByResolucion_IdResolucionAndEstadoCumplimientoIn(
                 resolucionId,
@@ -783,7 +891,7 @@ public class ExpedienteTtaipService {
     @Transactional
     public List<CumplimientoResolucionTtaip> procesarCumplimientosVencidos() {
         List<CumplimientoResolucionTtaip> vencidos = cumplimientoRepository
-                .findByEstadoCumplimientoInAndFechaLimiteCumplimientoBefore(
+                .findByEstadoCumplimientoInAndFechaLimiteCumplimientoBeforeAndIdNotificacionInicioIsNull(
                         estadosCumplimientoActivos(),
                         LocalDate.now());
 
@@ -849,7 +957,7 @@ public class ExpedienteTtaipService {
         return saved;
     }
 
-    private ExpedienteTtaip buscarExpediente(Long expedienteId) {
+    ExpedienteTtaip buscarExpediente(Long expedienteId) {
         return expedienteRepository.findById(expedienteId)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "Expediente TTAIP no encontrado con ID: " + expedienteId));
@@ -904,6 +1012,9 @@ public class ExpedienteTtaipService {
         if (cumplimiento.getExpediente() == null || !expedienteId.equals(cumplimiento.getExpediente().getId())) {
             throw new IllegalArgumentException("El seguimiento de cumplimiento no pertenece al expediente TTAIP indicado");
         }
+        if (cumplimiento.getIdNotificacionInicio() != null) {
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException("Use el flujo de cumplimiento documental del expediente");
+        }
     }
 
     private void validarExpedienteAdmitido(ExpedienteTtaip expediente) {
@@ -918,6 +1029,19 @@ public class ExpedienteTtaipService {
         ExpedienteTtaip expediente = buscarExpediente(expedienteId);
         validarExpedienteAdmitido(expediente);
 
+        return guardarSuspensionAdicional(expediente, motivoSuspension, request);
+    }
+
+    void suspenderPorSolicitudDeInformeOral(ExpedienteTtaip expediente, RegistrarSuspensionTtaipRequest request) {
+        var motivo = SuspensionPlazoTtaip.MotivoSuspension.INFORME_ORAL;
+        if (listarSuspensiones(expediente.getId()).stream().anyMatch(s -> s.getMotivoSuspension() == motivo
+                && s.getEstadoSuspension() != SuspensionPlazoTtaip.EstadoSuspension.CANCELADA)) return;
+        guardarSuspensionAdicional(expediente, motivo, request);
+    }
+
+    private SuspensionPlazoTtaip guardarSuspensionAdicional(ExpedienteTtaip expediente,
+            SuspensionPlazoTtaip.MotivoSuspension motivoSuspension, RegistrarSuspensionTtaipRequest request) {
+        Long expedienteId = expediente.getId();
         if (suspensionRepository.existsByExpediente_IdExpedienteTtaipAndMotivoSuspensionAndEstadoSuspension(
                 expedienteId,
                 motivoSuspension,
@@ -1175,17 +1299,11 @@ public class ExpedienteTtaipService {
 
     private void cerrarSuspensionPorDescargo(ExpedienteTtaip expediente,
                                              DescargoEntidadTtaip descargo,
-                                             LocalDate fechaPresentacion,
                                              boolean extemporaneo) {
         suspensionRepository.findFirstByDescargo_IdDescargoOrderByFechaCreacionDesc(descargo.getId())
                 .ifPresent(suspension -> {
-                    LocalDate fechaFin = extemporaneo
-                            ? descargo.getFechaLimiteDescargo()
-                            : fechaPresentacion;
-                    suspension.setFechaFinSuspension(fechaFin);
-                    suspension.setDiasSuspendidos(calcularDiasSuspendidos(
-                            suspension.getFechaInicioSuspension(),
-                            fechaFin));
+                    suspension.setFechaFinSuspension(descargo.getFechaLimiteDescargo());
+                    suspension.setDiasSuspendidos(DIAS_DESCARGOS);
                     suspension.setEstadoSuspension(SuspensionPlazoTtaip.EstadoSuspension.CERRADA);
                     suspension.setTrazabilidad(agregarTraza(
                             suspension.getTrazabilidad(),
@@ -1212,9 +1330,7 @@ public class ExpedienteTtaipService {
         suspensionRepository.findFirstByDescargo_IdDescargoOrderByFechaCreacionDesc(descargo.getId())
                 .ifPresent(suspension -> {
                     suspension.setFechaFinSuspension(descargo.getFechaLimiteDescargo());
-                    suspension.setDiasSuspendidos(calcularDiasSuspendidos(
-                            suspension.getFechaInicioSuspension(),
-                            descargo.getFechaLimiteDescargo()));
+                    suspension.setDiasSuspendidos(DIAS_DESCARGOS);
                     suspension.setEstadoSuspension(SuspensionPlazoTtaip.EstadoSuspension.VENCIDA);
                     suspension.setTrazabilidad(agregarTraza(
                             suspension.getTrazabilidad(),
@@ -1235,22 +1351,63 @@ public class ExpedienteTtaipService {
                 });
     }
 
-    private int calcularDiasSuspendidos(LocalDate fechaInicio, LocalDate fechaFin) {
-        if (fechaInicio == null || fechaFin == null || !fechaFin.isAfter(fechaInicio)) {
-            return 0;
-        }
-        return Math.max(0, DiasHabilesUtil.contarDiasHabiles(fechaInicio.plusDays(1), fechaFin));
+    void recalcularFechaLimiteResolucion(ExpedienteTtaip expediente) {
+        expediente.setFechaLimiteResolucion(calcularFechaLimiteResolucion(expediente, false));
     }
 
-    private void recalcularFechaLimiteResolucion(ExpedienteTtaip expediente) {
-        LocalDate inicio = fechaInicioPlazoResolucion(expediente);
-        LocalDate base = DiasHabilesUtil.sumarDiasHabiles(inicio, 10);
-        int totalDiasSuspendidos = suspensionRepository
-                .findByExpediente_IdExpedienteTtaipOrderByFechaInicioSuspensionAsc(expediente.getId())
+    LocalDate fechaLimiteResolucionConsultada(ExpedienteTtaip expediente) {
+        if (!admisionAbierta(expediente)) return expediente.getFechaLimiteResolucion();
+        return calcularFechaLimiteResolucion(expediente, true);
+    }
+
+    private LocalDate calcularFechaLimiteResolucion(ExpedienteTtaip expediente, boolean consulta) {
+        Resolucion admision = resolucionAdmision(expediente);
+        boolean documental = admision != null && admision.isActosDocumentales();
+        boolean usarInicioAcreditado = documental || consulta;
+        LocalDate inicio;
+        if (usarInicioAcreditado) {
+            inicio = admision != null ? fechaEficazEntidad(expediente, admision)
+                    : expediente.getFechaApertura() == null ? null : expediente.getFechaApertura().toLocalDate();
+        } else {
+            inicio = fechaInicioPlazoResolucion(expediente);
+        }
+        if (inicio == null) return null;
+        int suspendidos = suspensionRepository.findByExpediente_IdExpedienteTtaipOrderByFechaInicioSuspensionAsc(expediente.getId())
                 .stream()
-                .mapToInt(suspension -> suspension.getDiasSuspendidos() != null ? suspension.getDiasSuspendidos() : 0)
+                .filter(s -> s.getEtapaComplementaria() == null || s.getEtapaComplementaria() == Resolucion.TipoResolucion.RESOLUCION_FINAL)
+                .filter(s -> !usarInicioAcreditado || s.getMotivoSuspension() != SuspensionPlazoTtaip.MotivoSuspension.DESCARGOS_ENTIDAD)
+                .mapToInt(s -> s.getDiasSuspendidos() == null ? 0 : s.getDiasSuspendidos())
                 .sum();
-        expediente.setFechaLimiteResolucion(DiasHabilesUtil.sumarDiasHabiles(base, totalDiasSuspendidos));
+        int diasBase = usarInicioAcreditado && admision != null ? PLAZO_BASE_RESOLUCION : PLAZO_RESOLUCION_SIN_ADMISION;
+        return limiteResolucion(inicio, diasBase, suspendidos);
+    }
+
+    static final int DIAS_DESCARGOS = 7;
+    static final int PLAZO_RESOLUCION_SIN_ADMISION = 10;
+    static final int PLAZO_BASE_RESOLUCION = PLAZO_RESOLUCION_SIN_ADMISION + DIAS_DESCARGOS;
+
+    static LocalDate limiteResolucion(LocalDate inicio, int diasBase, int suspensionesAdicionales) {
+        return DiasHabilesUtil.sumarDiasHabiles(inicio, diasBase + suspensionesAdicionales);
+    }
+
+    private LocalDate fechaEficazEntidad(ExpedienteTtaip expediente, Resolucion admision) {
+        return notificacionRepository.findByCedula_Resolucion_IdResolucionAndDestinatarioOrderByFechaNotificacionDesc(
+                admision.getId(), CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA).stream()
+                .filter(n -> expediente.getId().equals(n.getExpediente().getId())
+                        && n.getCedula().getDestinatario() == CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA
+                        && "VALIDADA".equals(n.getEstado())
+                        && (n.getResultadoNotificacion() == null || !n.getResultadoNotificacion().startsWith("ENTREGADA_POR_")))
+                .map(NotificacionTtaip::getFechaEficacia).filter(java.util.Objects::nonNull)
+                .min(LocalDateTime::compareTo).map(LocalDateTime::toLocalDate).orElse(null);
+    }
+
+    void avanzarSegundaNotificada(ExpedienteTtaip expediente) {
+        var apelacion = expediente.getApelacion();
+        if (apelacion.getEstado() == Apelacion.EstadoApelacion.NOTIFICACION_SEGUNDA_CALIFICACION) {
+            apelacion.setEstado(Apelacion.EstadoApelacion.EN_RESOLUCION);
+            sincronizarEstado(expediente, apelacion);
+        }
+        recalcularFechaLimiteResolucion(expediente);
     }
 
     private LocalDate fechaInicioPlazoResolucion(ExpedienteTtaip expediente) {
@@ -1311,45 +1468,10 @@ public class ExpedienteTtaipService {
         return salaRepository.save(sala);
     }
 
-    private String generarNumeroResolucion(ExpedienteTtaip expediente) {
-        int year = LocalDate.now().getYear();
-        long sequence = RESOLUCION_BASE + resolucionRepository.countByNumeroResolucionContaining("-" + year + "-JUS/TTAIP") + 1;
-        return "RESOLUCIÓN N.° %06d-%d-JUS/TTAIP-%s".formatted(sequence, year, expediente.getSala().getNombre());
-    }
-
     private String obtenerNumeroCedulaParaResolucion(Resolucion resolucion) {
         return cedulaRepository.findFirstByResolucion_IdResolucionOrderByIdCedulaAsc(resolucion.getId())
                 .map(CedulaNotificacion::getNumeroCedula)
-                .orElseGet(this::generarSiguienteNumeroCedula);
-    }
-
-    private String generarSiguienteNumeroCedula() {
-        int year = LocalDate.now().getYear();
-        String suffix = "-" + year + "-JUS/TTAIP";
-        int sequence = cedulaRepository.findByNumeroCedulaEndingWith(suffix)
-                .stream()
-                .map(CedulaNotificacion::getNumeroCedula)
-                .mapToInt(this::extraerSecuenciaCedula)
-                .max()
-                .orElse(CEDULA_BASE - 1) + 1;
-        return "%05d-%d-JUS/TTAIP".formatted(sequence, year);
-    }
-
-    private int extraerSecuenciaCedula(String numeroCedula) {
-        if (numeroCedula == null || numeroCedula.isBlank()) {
-            return CEDULA_BASE - 1;
-        }
-
-        int separator = numeroCedula.indexOf('-');
-        if (separator <= 0) {
-            return CEDULA_BASE - 1;
-        }
-
-        try {
-            return Integer.parseInt(numeroCedula.substring(0, separator));
-        } catch (NumberFormatException e) {
-            return CEDULA_BASE - 1;
-        }
+                .orElseGet(documentosOficiales::numeroCedula);
     }
 
     private void crearCedulaYNotificacionSiFalta(Resolucion resolucion,
@@ -1359,13 +1481,22 @@ public class ExpedienteTtaipService {
             return;
         }
 
-        String numeroCedula = obtenerNumeroCedulaParaResolucion(resolucion);
+        String numeroCedula = resolucion.isActosDocumentales()
+                ? documentosOficiales.numeroReservadoCedula(resolucion, destinatario)
+                : obtenerNumeroCedulaParaResolucion(resolucion);
         CedulaNotificacion cedula = new CedulaNotificacion();
         cedula.setResolucion(resolucion);
         cedula.setNumeroCedula(numeroCedula);
         cedula.setDestinatario(destinatario);
         cedula.setDestinatarioNombre(resolveNombreDestinatario(expediente, destinatario));
         cedula.setDestinatarioEmail(resolveEmailDestinatario(expediente, destinatario));
+        if (resolucion.isActosDocumentales()) {
+            cedula.setTipoActo("CEDULA");
+            Solicitud solicitud = expediente.getApelacion().getSolicitud();
+            cedula.setCanal(destinatario == CedulaNotificacion.DestinatarioNotificacion.CIUDADANO
+                    && solicitud != null && solicitud.getCanalNotificacion() != null
+                    ? solicitud.getCanalNotificacion().name() : "CORREO_ELECTRONICO");
+        }
         cedula.setDocumentoReferencia("CÉDULA DE NOTIFICACIÓN N.° " + numeroCedula);
         CedulaNotificacion savedCedula = cedulaRepository.save(cedula);
         sincronizarCedulaEnResolucion(resolucion, savedCedula);
@@ -1386,6 +1517,9 @@ public class ExpedienteTtaipService {
             notificacion.setDestinatario(destinatario);
             notificacion.setDestinatarioNombre(savedCedula.getDestinatarioNombre());
             notificacion.setDestinatarioEmail(savedCedula.getDestinatarioEmail());
+            if (resolucion.isActosDocumentales() && "FISICA".equals(savedCedula.getCanal())) {
+                notificacion.setDireccionDestino(expediente.getApelacion().getCiudadano().getDireccion());
+            }
             notificacion.setMedio(savedCedula.getCanal());
             notificacion.setMedioNotificacion(savedCedula.getCanal());
             notificacion.setEstado("PENDIENTE");
@@ -1447,12 +1581,13 @@ public class ExpedienteTtaipService {
 
         CedulaNotificacion nuevaCedula = new CedulaNotificacion();
         nuevaCedula.setResolucion(resolucion);
-        nuevaCedula.setNumeroCedula(generarSiguienteNumeroCedula());
+        nuevaCedula.setNumeroCedula(documentosOficiales.numeroCedula());
         nuevaCedula.setDestinatario(destinatario);
         nuevaCedula.setDestinatarioNombre(cedulaOriginal.getDestinatarioNombre());
         nuevaCedula.setDestinatarioEmail(cedulaOriginal.getDestinatarioEmail());
         nuevaCedula.setCanal(cedulaOriginal.getCanal());
-        nuevaCedula.setEstado("EMITIDA_REPROCESO");
+        nuevaCedula.setTipoActo(cedulaOriginal.getTipoActo());
+        nuevaCedula.setEstado(nuevaCedula.getTipoActo() != null ? "BORRADOR_REPROCESO" : "EMITIDA_REPROCESO");
         nuevaCedula.setDocumentoReferencia("CÉDULA DE NOTIFICACIÓN N.° " + nuevaCedula.getNumeroCedula());
         CedulaNotificacion savedCedula = cedulaRepository.save(nuevaCedula);
 
@@ -1463,6 +1598,7 @@ public class ExpedienteTtaipService {
         nuevaNotificacion.setDestinatarioNombre(savedCedula.getDestinatarioNombre());
         nuevaNotificacion.setDestinatarioEmail(savedCedula.getDestinatarioEmail());
         nuevaNotificacion.setMedio(notificacionOriginal.getMedio());
+        nuevaNotificacion.setDireccionDestino(notificacionOriginal.getDireccionDestino());
         nuevaNotificacion.setMedioNotificacion(normalizarNullable(notificacionOriginal.getMedioNotificacion()) != null
                 ? notificacionOriginal.getMedioNotificacion()
                 : notificacionOriginal.getMedio());

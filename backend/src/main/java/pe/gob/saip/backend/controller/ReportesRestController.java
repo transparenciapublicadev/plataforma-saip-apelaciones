@@ -9,6 +9,7 @@ import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.service.*;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -22,17 +23,23 @@ public class ReportesRestController {
     private final EntidadService entidadService;
     private final CiudadanoService ciudadanoService;
     private final FuncionarioService funcionarioService;
+    private final UsuarioService usuarioService;
+    private final ResolucionService resolucionService;
 
     public ReportesRestController(SolicitudService solicitudService,
                                    ApelacionService apelacionService,
                                    EntidadService entidadService,
                                    CiudadanoService ciudadanoService,
-                                   FuncionarioService funcionarioService) {
+                                   FuncionarioService funcionarioService,
+                                   UsuarioService usuarioService,
+                                   ResolucionService resolucionService) {
         this.solicitudService = solicitudService;
         this.apelacionService = apelacionService;
         this.entidadService = entidadService;
         this.ciudadanoService = ciudadanoService;
         this.funcionarioService = funcionarioService;
+        this.usuarioService = usuarioService;
+        this.resolucionService = resolucionService;
     }
 
     @Operation(summary = "Reporte de solicitudes", description = "Filtrable por estado, entidad y rango de fechas")
@@ -88,7 +95,10 @@ public class ReportesRestController {
                     item.put("expediente", s.getExpediente());
                     item.put("asunto", s.getAsunto());
                     item.put("estado", s.getEstado() != null ? s.getEstado().name() : null);
-                    item.put("fechaSolicitud", s.getFechaPresentacion() != null ? s.getFechaPresentacion().toString() : null);
+                    item.put("fechaSolicitud", s.getFechaPresentacion() != null ? s.getFechaPresentacion().toLocalDate().toString() : null);
+                    item.put("fechaLimite", s.getFechaLimite() != null ? s.getFechaLimite().toString() : null);
+                    item.put("fechaRespuesta", s.getRespuesta() != null && s.getRespuesta().getFechaRespuesta() != null
+                            ? s.getRespuesta().getFechaRespuesta().toLocalDate().toString() : null);
                     item.put("entidad", s.getEntidad() != null ? s.getEntidad().getNombre() : null);
                     item.put("ciudadano", s.getCiudadano() != null ? s.getCiudadano().getNombreCompleto() : null);
                     item.put("tieneRespuesta", s.getRespuesta() != null);
@@ -139,19 +149,20 @@ public class ReportesRestController {
                 "hasta", hasta != null ? hasta : "sin límite"
         ));
 
+        Set<Long> conResolucionFinal = resolucionService.idsDeApelacionesConResolucionFinal();
         List<Map<String, Object>> datos = apelaciones.stream()
                 .map(a -> {
                     Map<String, Object> item = new HashMap<>();
                     item.put("id", a.getId());
                     item.put("expediente", a.getExpediente());
                     item.put("estado", a.getEstado() != null ? a.getEstado().name() : null);
-                    item.put("fechaApelacion", a.getFechaApelacion() != null ? a.getFechaApelacion().toString() : null);
+                    item.put("fechaApelacion", a.getFechaApelacion() != null ? a.getFechaApelacion().toLocalDate().toString() : null);
                     item.put("solicitudExpediente", a.getSolicitud() != null ? a.getSolicitud().getExpediente() : null);
                     item.put("tipoOrigen", a.getTipoOrigenEfectivo().name());
                     item.put("numeroSolicitudExterna", a.getNumeroSolicitudExterna());
                     item.put("entidad", a.getEntidadNombreEfectivo());
                     item.put("ciudadano", a.getCiudadano() != null ? a.getCiudadano().getNombreCompleto() : null);
-                    item.put("tieneResolucion", a.getResolucion() != null);
+                    item.put("tieneResolucion", a.getId() != null && conResolucionFinal.contains(a.getId()));
                     return item;
                 })
                 .collect(Collectors.toList());
@@ -161,9 +172,19 @@ public class ReportesRestController {
         return ResponseEntity.ok(reporte);
     }
 
-    @Operation(summary = "Reporte de entidades", description = "Incluye solicitudes pendientes y respondidas por entidad")
+    @Operation(summary = "Reporte de entidades", description = "Incluye solicitudes pendientes, respondidas y vencidas por entidad")
     @GetMapping("/entidades")
     public ResponseEntity<Map<String, Object>> reporteEntidades() {
+        return ResponseEntity.ok(reporteDeEntidades());
+    }
+
+    @Operation(summary = "Tiempos de respuesta por entidad", description = "Promedio en días corridos entre la presentación y la respuesta registrada")
+    @GetMapping("/tiempos")
+    public ResponseEntity<Map<String, Object>> reporteTiempos() {
+        return ResponseEntity.ok(reporteDeEntidades());
+    }
+
+    private Map<String, Object> reporteDeEntidades() {
         Map<String, Object> reporte = new HashMap<>();
         List<Entidad> entidades = entidadService.findAll();
 
@@ -187,52 +208,46 @@ public class ReportesRestController {
                                     || Solicitud.EstadoSolicitud.PENDIENTE_INFORMACION.equals(s.getEstado()))
                             .count());
                     item.put("solicitudesRespondidas", solicitudes.stream()
-                            .filter(s -> Solicitud.EstadoSolicitud.RESPONDIDA.equals(s.getEstado()))
+                            .filter(s -> Solicitud.EstadoSolicitud.RESPONDIDA.equals(s.getEstado())
+                                    || Solicitud.EstadoSolicitud.CONCLUIDA.equals(s.getEstado()))
                             .count());
+                    item.put("vencidas", solicitudes.stream()
+                            .filter(s -> Solicitud.EstadoSolicitud.VENCIDA.equals(s.getEstado()))
+                            .count());
+                    List<Long> dias = solicitudes.stream()
+                            .filter(s -> s.getFechaPresentacion() != null && s.getRespuesta() != null
+                                    && s.getRespuesta().getFechaRespuesta() != null)
+                            .map(s -> ChronoUnit.DAYS.between(
+                                    s.getFechaPresentacion().toLocalDate(),
+                                    s.getRespuesta().getFechaRespuesta().toLocalDate()))
+                            .filter(diasCorridos -> diasCorridos >= 0)
+                            .toList();
+                    LongSummaryStatistics tiempos = dias.stream().mapToLong(Long::longValue).summaryStatistics();
+                    item.put("respuestasConFecha", dias.size());
+                    item.put("promedioDiasRespuesta", dias.isEmpty() ? null : Math.round(tiempos.getAverage() * 10.0) / 10.0);
+                    item.put("minimoDiasRespuesta", dias.isEmpty() ? null : tiempos.getMin());
+                    item.put("maximoDiasRespuesta", dias.isEmpty() ? null : tiempos.getMax());
 
                     return item;
                 })
                 .collect(Collectors.toList());
 
         reporte.put("datos", datos);
-
-        return ResponseEntity.ok(reporte);
+        return reporte;
     }
 
     @Operation(summary = "Reporte de funcionarios", description = "Filtrable por entidad, incluye respuestas emitidas")
     @GetMapping("/funcionarios")
     public ResponseEntity<Map<String, Object>> reporteFuncionarios(
             @RequestParam(required = false) Long entidadId) {
-
         Map<String, Object> reporte = new HashMap<>();
-        List<Funcionario> funcionarios = funcionarioService.obtenerTodosLosFuncionarios();
-
-        if (entidadId != null) {
-            funcionarios = funcionarios.stream()
-                    .filter(f -> f.getEntidad() != null && f.getEntidad().getId().equals(entidadId))
-                    .collect(Collectors.toList());
-        }
+        List<Map<String, Object>> datos = funcionarioService.filasReporte(entidadId);
 
         reporte.put("fechaGeneracion", LocalDateTime.now().toString());
-        reporte.put("totalRegistros", funcionarios.size());
+        reporte.put("totalRegistros", datos.size());
         reporte.put("filtros", Map.of(
                 "entidadId", entidadId != null ? entidadId : "todas"
         ));
-
-        List<Map<String, Object>> datos = funcionarios.stream()
-                .map(f -> {
-                    Map<String, Object> item = new HashMap<>();
-                    item.put("id", f.getId());
-                    item.put("nombreCompleto", f.getNombreCompleto());
-                    item.put("cargo", f.getCargo());
-                    item.put("email", f.getEmail());
-                    item.put("activo", f.getActivo());
-                    item.put("entidad", f.getEntidad() != null ? f.getEntidad().getNombre() : null);
-                    item.put("respuestasEmitidas", f.getRespuestas() != null ? f.getRespuestas().size() : 0);
-                    return item;
-                })
-                .collect(Collectors.toList());
-
         reporte.put("datos", datos);
 
         return ResponseEntity.ok(reporte);
@@ -242,26 +257,10 @@ public class ReportesRestController {
     @GetMapping("/ciudadanos")
     public ResponseEntity<Map<String, Object>> reporteCiudadanos() {
         Map<String, Object> reporte = new HashMap<>();
-        List<Ciudadano> ciudadanos = ciudadanoService.obtenerTodosLosCiudadanos();
+        List<Map<String, Object>> datos = ciudadanoService.filasReporte();
 
         reporte.put("fechaGeneracion", LocalDateTime.now().toString());
-        reporte.put("totalRegistros", ciudadanos.size());
-
-        List<Map<String, Object>> datos = ciudadanos.stream()
-                .map(c -> {
-                    Map<String, Object> item = new HashMap<>();
-                    item.put("id", c.getId());
-                    item.put("nombreCompleto", c.getNombreCompleto());
-                    item.put("dni", c.getDni());
-                    item.put("email", c.getEmail());
-                    item.put("activo", c.getActivo());
-                    item.put("fechaRegistro", c.getFechaRegistro() != null ? c.getFechaRegistro().toString() : null);
-                    item.put("totalSolicitudes", c.getSolicitudes() != null ? c.getSolicitudes().size() : 0);
-                    item.put("totalApelaciones", c.getApelaciones() != null ? c.getApelaciones().size() : 0);
-                    return item;
-                })
-                .collect(Collectors.toList());
-
+        reporte.put("totalRegistros", datos.size());
         reporte.put("datos", datos);
 
         return ResponseEntity.ok(reporte);
@@ -317,7 +316,8 @@ public class ReportesRestController {
         resumen.put("usuarios", Map.of(
                 "ciudadanos", ciudadanoService.obtenerTodosLosCiudadanos().size(),
                 "funcionarios", funcionarioService.obtenerTodosLosFuncionarios().size(),
-                "entidades", entidades.size()
+                "entidades", entidades.size(),
+                "total", usuarioService.obtenerTodosLosUsuarios().size()
         ));
 
         return ResponseEntity.ok(resumen);

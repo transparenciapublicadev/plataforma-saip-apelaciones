@@ -11,10 +11,11 @@ public record ApelacionDTO(
     @Schema(description = "Número de expediente TTAIP", example = "01560-2025-JUS/TTAIP")
     String expediente,
     String fundamentos,
-    @Schema(description = "Estado de la apelación", example = "EN_CALIFICACION_1", implementation = Apelacion.EstadoApelacion.class, allowableValues = {"PENDIENTE_ELEVACION", "EN_CALIFICACION_1", "EN_SUBSANACION", "EN_CALIFICACION_2", "NOTIFICACION_SEGUNDA_CALIFICACION", "EN_RESOLUCION", "RESUELTO", "TENER_POR_NO_PRESENTADO", "CONCLUSION_SUSTRACCION_MATERIA", "CONCLUSION_DESISTIMIENTO", "RESUELTO_FUNDADO", "RESUELTO_FUNDADO_EN_PARTE", "RESUELTO_INFUNDADO", "RESUELTO_INFUNDADO_EN_PARTE", "RESUELTO_IMPROCEDENTE", "RESUELTO_ESTESE_A_LO_RESUELTO", "RESUELTO_NULIDAD_ACTO"})
+    @Schema(description = "Estado de la apelación", example = "EN_CALIFICACION_1", implementation = Apelacion.EstadoApelacion.class, allowableValues = {"PENDIENTE_ELEVACION", "EN_CALIFICACION_1", "EN_SUBSANACION", "EN_CALIFICACION_2", "NOTIFICACION_SEGUNDA_CALIFICACION", "EN_RESOLUCION", "NOTIFICACION_RESOLUCION_FINAL", "EN_CUMPLIMIENTO", "RESUELTO", "TENER_POR_NO_PRESENTADO", "CONCLUSION_SUSTRACCION_MATERIA", "CONCLUSION_DESISTIMIENTO", "RESUELTO_FUNDADO", "RESUELTO_FUNDADO_EN_PARTE", "RESUELTO_INFUNDADO", "RESUELTO_INFUNDADO_EN_PARTE", "RESUELTO_IMPROCEDENTE", "RESUELTO_ESTESE_A_LO_RESUELTO", "RESUELTO_NULIDAD_ACTO"})
     String estado,
     String resultado,
     String fechaApelacion,
+    @Schema(description="Fecha histórica del requerimiento; no acredita notificación eficaz ni debe usarse para calcular plazos", deprecated=true)
     String fechaSubsanacion,
     Integer diasSubsanacion,
     @Schema(description = "Calificación de primera instancia", example = "ADMITIDO", implementation = Apelacion.Calificacion.class, allowableValues = {"ADMISIBLE", "INADMISIBLE", "IMPROCEDENTE", "ADMITIDO"})
@@ -60,9 +61,14 @@ public record ApelacionDTO(
     List<DocumentoDTO> documentos,
     @Schema(description = "Metadatos documentales seguros asociados directamente a la apelación")
     List<DocumentoMetadataDTO> documentosMetadata,
-    Boolean resuelta
+    Boolean resuelta,
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    PlazoSubsanacionTtaipDTO plazoSubsanacion
 ) {
     public static ApelacionDTO from(Apelacion a) {
+        if (a == null) {
+            return null;
+        }
         return new ApelacionDTO(
             a.getId(),
             a.getExpediente(),
@@ -104,7 +110,8 @@ public record ApelacionDTO(
             a.getResoluciones() != null ? a.getResoluciones().stream().map(ResolucionDTO::from).toList() : List.of(),
             DocumentoDTO.fromActive(a.getDocumentos()),
             DocumentoMetadataDTO.fromActive(a.getDocumentos()),
-            a.isResuelta()
+            a.isResuelta(),
+            PlazoSubsanacionTtaipDTO.from(a)
         );
     }
 }

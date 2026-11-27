@@ -1,2 +1,146 @@
-/* Estilos solicitud detalle */
-
+/* RequestDetail uses the reference's editorial hero, 4/8 grid and brand tokens.
+   These adaptations stay local to the citizen detail, including Timeline's host. */
+:host { display: block; }
+.request-detail :is(h1, p, .code-chip, .detail-panel, .detail-notice) { overflow-wrap: anywhere; }
+.request-detail :is(button, a, [role="tabpanel"]):focus-visible {
+  outline: 2px solid var(--brand-700);
+  outline-offset: 3px;
+}
+.detail-tabs { overflow-x: auto; }
+.detail-tabs [role="tab"] { min-width: 0; }
+.detail-row > :first-child, .detail-notice > .flex-1 { min-width: 0; }
+.detail-row .truncate { white-space: normal; overflow-wrap: anywhere; }
+.detail-doc-actions { flex-wrap: wrap; }
+.detail-timeline app-timeline { display: block; }
+@media (max-width: 639px) {
+  .detail-tabs [role="tab"] { padding-inline: .75rem; font-size: .8125rem; }
+  .detail-panel { padding: 1.25rem; }
+  .detail-row { flex-wrap: wrap; align-items: flex-start; }
+  .detail-row > :first-child { flex: 1 1 100%; }
+  .detail-doc-actions { margin-left: auto; }
+  .detail-notice { flex-wrap: wrap; }
+  .detail-notice > .flex-1 { flex-basis: calc(100% - 4rem); }
+  .detail-notice > a { margin-left: 3.5rem; }
+  .detail-panel .p-12 { padding: 1.5rem .25rem; }
+}
+.coupon {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 168px;
+  grid-template-areas:
+    "main stub"
+    "foot foot";
+  background:
+    radial-gradient(circle at 18px 18px, transparent 7px, var(--card) 8px) left top / 100% 100% no-repeat,
+    var(--card);
+  border: 1px solid #E4D3A4;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(90, 62, 18, 0.08);
+}
+.coupon-main { grid-area: main; padding: 1.5rem 1.5rem 1.25rem; min-width: 0; }
+.coupon-kicker { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+.coupon-state {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  background: #FAF3E2;
+  color: #7A5A1F;
+  border: 1px solid #EAD8A8;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+.coupon-code {
+  margin: 0.85rem 0 0;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--foreground);
+}
+.coupon-concept {
+  margin: 0.7rem 0 0;
+  color: color-mix(in srgb, var(--foreground) 82%, transparent);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+.coupon-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1.1rem 0 0;
+}
+.coupon-meta div {
+  padding-top: 0.65rem;
+  border-top: 1px dashed #E4D3A4;
+}
+.coupon-meta dt {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.coupon-meta dd {
+  margin: 0.2rem 0 0;
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+.coupon-rule {
+  margin: 1rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+.coupon-stub {
+  grid-area: stub;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 1.4rem 1.15rem 1.4rem 1.35rem;
+  background: #1A1410;
+  color: #FBF9F6;
+}
+.coupon-stub::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  border-left: 1.5px dashed rgba(251, 249, 246, 0.38);
+}
+.coupon-stub-label, .coupon-stub-note {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #E4D3A4;
+}
+.coupon-amount {
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 1.65rem;
+  font-weight: 560;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.coupon-foot {
+  grid-area: foot;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 0.9rem 1.5rem 1.1rem;
+  border-top: 1px dashed #E4D3A4;
+  background: rgba(176, 136, 66, 0.06);
+}
+@media (max-width: 720px) {
+  .coupon { grid-template-columns: 1fr; grid-template-areas: "stub" "main" "foot"; }
+  .coupon-stub { padding: 1.15rem 1.25rem; }
+  .coupon-stub::before { left: 12px; right: 12px; top: auto; bottom: 0; border-left: 0; border-bottom: 1.5px dashed rgba(251, 249, 246, 0.38); }
+  .coupon-meta { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .request-detail .animate-pulse, .request-detail .animate-spin { animation: none; }
+  .request-detail .transition-colors { transition: none; }
+}

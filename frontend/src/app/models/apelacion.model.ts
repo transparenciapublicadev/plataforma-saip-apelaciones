@@ -50,7 +50,8 @@ export interface ElevacionApelacionTtaip {
     trazabilidad?: string | null;
 }
 
-export type Apelacion = Required<ApelacionDTO> & {
+export type Apelacion = Required<Omit<ApelacionDTO, 'plazoSubsanacion'>> & {
+    plazoSubsanacion?: ApelacionDTO['plazoSubsanacion'];
     tipoOrigen?: TipoOrigenApelacion | string | null;
     entidadExternaNombre?: string | null;
     entidadExternaRuc?: string | null;
@@ -89,6 +90,11 @@ export type Apelacion = Required<ApelacionDTO> & {
         descargosEntidad?: DescargoEntidadTtaip[];
         suspensionesPlazo?: SuspensionPlazoTtaip[];
         cumplimientosResolucion?: CumplimientoResolucionTtaip[];
+        cumplimientoDocumental?: {
+            fechaEntrega: string;
+            fechaRemision?: string | null;
+            fechaCierre?: string | null;
+        } | null;
     } | null;
     resoluciones?: Resolucion[];
     fundamentosSubsanacion?: string;

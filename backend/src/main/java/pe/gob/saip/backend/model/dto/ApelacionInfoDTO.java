@@ -7,14 +7,17 @@ import pe.gob.saip.backend.model.entity.Apelacion;
 public record ApelacionInfoDTO(
     Long id,
     String expediente,
-    @Schema(description = "Estado de la apelación", example = "EN_CALIFICACION_1", implementation = Apelacion.EstadoApelacion.class, allowableValues = {"PENDIENTE_ELEVACION", "EN_CALIFICACION_1", "EN_SUBSANACION", "EN_CALIFICACION_2", "NOTIFICACION_SEGUNDA_CALIFICACION", "EN_RESOLUCION", "RESUELTO", "TENER_POR_NO_PRESENTADO", "CONCLUSION_SUSTRACCION_MATERIA", "CONCLUSION_DESISTIMIENTO", "RESUELTO_FUNDADO", "RESUELTO_FUNDADO_EN_PARTE", "RESUELTO_INFUNDADO", "RESUELTO_INFUNDADO_EN_PARTE", "RESUELTO_IMPROCEDENTE", "RESUELTO_ESTESE_A_LO_RESUELTO", "RESUELTO_NULIDAD_ACTO"})
+    @Schema(description = "Estado de la apelación", example = "EN_CALIFICACION_1", implementation = Apelacion.EstadoApelacion.class, allowableValues = {"PENDIENTE_ELEVACION", "EN_CALIFICACION_1", "EN_SUBSANACION", "EN_CALIFICACION_2", "NOTIFICACION_SEGUNDA_CALIFICACION", "EN_RESOLUCION", "NOTIFICACION_RESOLUCION_FINAL", "EN_CUMPLIMIENTO", "RESUELTO", "TENER_POR_NO_PRESENTADO", "CONCLUSION_SUSTRACCION_MATERIA", "CONCLUSION_DESISTIMIENTO", "RESUELTO_FUNDADO", "RESUELTO_FUNDADO_EN_PARTE", "RESUELTO_INFUNDADO", "RESUELTO_INFUNDADO_EN_PARTE", "RESUELTO_IMPROCEDENTE", "RESUELTO_ESTESE_A_LO_RESUELTO", "RESUELTO_NULIDAD_ACTO"})
     String estado,
     String resultado,
     String fechaApelacion,
+    @Schema(description="Fecha histórica del requerimiento; no acredita notificación eficaz ni debe usarse para calcular plazos", deprecated=true)
     String fechaSubsanacion,
     Integer diasSubsanacion,
     ElevacionApelacionTtaipDTO elevacion,
-    Boolean resuelta
+    Boolean resuelta,
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    PlazoSubsanacionTtaipDTO plazoSubsanacion
 ) {
     public static ApelacionInfoDTO from(Apelacion a) {
         return new ApelacionInfoDTO(
@@ -26,7 +29,8 @@ public record ApelacionInfoDTO(
             a.getFechaSubsanacion() != null ? a.getFechaSubsanacion().toString() : null,
             a.getDiasSubsanacion(),
             a.getElevacion() != null ? ElevacionApelacionTtaipDTO.from(a.getElevacion()) : null,
-            a.isResuelta()
+            a.isResuelta(),
+            PlazoSubsanacionTtaipDTO.from(a)
         );
     }
 }

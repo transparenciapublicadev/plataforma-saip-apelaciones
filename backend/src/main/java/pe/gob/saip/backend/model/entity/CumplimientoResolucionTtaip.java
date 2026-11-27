@@ -10,6 +10,7 @@ import lombok.ToString;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -92,6 +93,37 @@ public class CumplimientoResolucionTtaip {
 
     @Column(name = "fecha_actualizacion")
     private LocalDateTime fechaActualizacion;
+
+    @Column(name = "id_notificacion_inicio")
+    private Long idNotificacionInicio;
+    @Column(name = "operacion_entrega")
+    private UUID operacionEntrega;
+    @Column(name = "fecha_entrega")
+    private LocalDateTime fechaEntrega;
+    @Column(name = "id_actor_entrega")
+    private Long idActorEntrega;
+    @Column(name = "operacion_validacion_entrega")
+    private UUID operacionValidacionEntrega;
+    @Column(name = "fecha_eficacia_entrega")
+    private LocalDate fechaEficaciaEntrega;
+    @Column(name = "fecha_validacion_entrega")
+    private LocalDateTime fechaValidacionEntrega;
+    @Column(name = "id_actor_validacion")
+    private Long idActorValidacion;
+    @Column(name = "operacion_remision")
+    private UUID operacionRemision;
+    @Column(name = "numero_oficio", length = 120)
+    private String numeroOficio;
+    @Column(name = "id_actor_remision")
+    private Long idActorRemision;
+
+    public enum Adjunto {
+        RESPUESTA, ANEXO_RESPUESTA, CARGO, ACUSE, OFICIO, ANEXO_OFICIO;
+
+        public boolean visibleAlAdministrado() {
+            return this == RESPUESTA || this == ANEXO_RESPUESTA;
+        }
+    }
 
     @PrePersist
     protected void onCreate() {

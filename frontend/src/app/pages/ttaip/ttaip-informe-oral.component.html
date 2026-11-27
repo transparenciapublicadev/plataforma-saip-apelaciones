@@ -1,0 +1,500 @@
+<div class="rounded-lg p-5 space-y-4" style="background: var(--card); border: 1px solid var(--border)">
+  <!-- Cabecera Institucional del Subproceso -->
+  <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border/70">
+    <div>
+      <div class="flex items-center gap-2">
+        <svg aria-hidden="true" lucideMonitor class="w-4 h-4 text-brand"></svg>
+        <h3 class="font-display text-base tracking-wide text-foreground">Audiencias e Informe Oral</h3>
+      </div>
+      <p class="text-xs text-muted-foreground mt-0.5">
+        Trámite colegiado ante el Tribunal. Suspende el plazo de resolución final por 3 días hábiles.
+      </p>
+    </div>
+
+    @if (audiencia()) {
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+          [ngClass]="{
+            'bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20': configEstado().tone === 'amber',
+            'bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20': configEstado().tone === 'info',
+            'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20': configEstado().tone === 'success',
+            'bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20': configEstado().tone === 'rose',
+            'bg-muted/40 text-muted-foreground border border-border': configEstado().tone === 'slate' || configEstado().tone === 'dark'
+          }">
+          {{ configEstado().label }}
+        </span>
+      </div>
+    }
+  </div>
+
+  <!-- Estado 0: No Solicitada -->
+  @if (!audiencia() || estadoActual() === 'NO_SOLICITADA') {
+    <div class="rounded-md p-6 text-center space-y-3" style="background: var(--background); border: 1px dashed var(--border)">
+      <div class="inline-flex p-3 rounded-full bg-brand-subtle text-brand mx-auto">
+        <svg aria-hidden="true" lucideMonitor class="w-5 h-5"></svg>
+      </div>
+      <div class="max-w-md mx-auto space-y-1">
+        <div class="font-medium text-sm text-foreground">Sin solicitud de informe oral</div>
+        <p class="text-xs text-muted-foreground">
+          No se ha presentado pedido de informe oral para este expediente. El Tribunal deliberará y resolverá con el mérito probatorio de los autos escritos.
+        </p>
+      </div>
+
+      @if (puedeSolicitar()) {
+        <div class="pt-2">
+          <button type="button" class="btn-ghost-brand text-xs justify-center mx-auto" (click)="abrirModal('SOLICITAR')">
+            <svg aria-hidden="true" lucideMonitor class="w-3.5 h-3.5 mr-1.5"></svg>
+            Solicitar informe oral
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Audiencia Existente (Estados 1-7) -->
+  @if (audiencia(); as aud) {
+    <div class="space-y-4">
+      <!-- Tarjeta Resumen de Estado -->
+      <div class="rounded-md p-4 space-y-3" style="background: var(--background); border: 1px solid var(--border)">
+        <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-1.5">
+            <svg aria-hidden="true" lucideUser class="w-3.5 h-3.5 text-brand"></svg>
+            <span class="text-muted-foreground">Solicitante:</span>
+            <span class="font-medium capitalize text-foreground">{{ aud.solicitante.toLowerCase().replaceAll('_', ' ') }}</span>
+          </div>
+          <div class="flex items-center gap-1.5 text-muted-foreground">
+            <svg aria-hidden="true" lucideCalendar class="w-3.5 h-3.5"></svg>
+            <span>Presentada:</span>
+            <span class="font-mono">{{ aud.fechaSolicitud || '—' }}</span>
+          </div>
+        </div>
+
+        @if (aud.motivoSolicitud) {
+          <p class="text-xs text-foreground/85 leading-relaxed rounded p-2.5 bg-card border border-border/60">
+            <span class="font-semibold text-foreground/90">Sustento del pedido:</span> {{ aud.motivoSolicitud }}
+          </p>
+        }
+
+        <!-- Detalle de Programación (si está programada o reprogramada) -->
+        @if (aud.estado === 'CONCEDIDA_PROGRAMADA' || aud.estado === 'REPROGRAMADA') {
+          <div class="rounded-md p-3.5 space-y-2.5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="eyebrow" style="color: var(--brand-700)">Audiencia Virtual Convocada</span>
+              <span class="text-xs font-mono font-medium px-2 py-0.5 rounded bg-card border border-border">
+                {{ aud.plataforma || 'TEAMS' }}
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs text-foreground/80">
+              <div>
+                <span class="text-muted-foreground block text-[11px]">Fecha de audiencia</span>
+                <span class="font-mono font-medium text-foreground text-sm">{{ aud.fechaAudiencia }}</span>
+              </div>
+              <div>
+                <span class="text-muted-foreground block text-[11px]">Horario y duración</span>
+                <span class="font-mono font-medium text-foreground">{{ aud.horaInicio }} – {{ aud.horaFin }} ({{ aud.duracionMinutosParte || 10 }}m/parte)</span>
+              </div>
+              <div>
+                <span class="text-muted-foreground block text-[11px]">Sala designada</span>
+                <span class="font-medium text-foreground">{{ aud.salaNombre || 'Primera Sala TTAIP' }}</span>
+              </div>
+            </div>
+
+            @if (aud.enlaceVirtual) {
+              <div class="pt-1 flex flex-wrap items-center gap-2">
+                <a [href]="aud.enlaceVirtual" target="_blank" rel="noopener noreferrer"
+                  class="btn-primary-brand !py-1.5 !px-3 text-xs inline-flex items-center gap-1.5">
+                  <svg aria-hidden="true" lucideVideo class="w-3.5 h-3.5"></svg>
+                  <span>Acceder a sala virtual ({{ aud.plataforma }})</span>
+                  <svg aria-hidden="true" lucideExternalLink class="w-3 h-3"></svg>
+                </a>
+                <span class="text-[11px] font-mono text-muted-foreground truncate max-w-xs">{{ aud.enlaceVirtual }}</span>
+              </div>
+            }
+
+            @if (aud.estado === 'REPROGRAMADA' && aud.fechaReprogramadaAnterior) {
+              <div class="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 pt-1">
+                <svg aria-hidden="true" lucideAlertTriangle class="w-3.5 h-3.5 flex-shrink-0"></svg>
+                <span>Reprogramada de fecha original: {{ aud.fechaReprogramadaAnterior }}. Motivo: {{ aud.motivoReprogramacion }}</span>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Detalle de Realización y Acta (cuando REALIZADA) -->
+        @if (aud.estado === 'REALIZADA') {
+          <div class="rounded-md p-3.5 space-y-2.5 bg-emerald-500/5 border border-emerald-500/20 text-xs">
+            <div class="flex items-center justify-between gap-2">
+              <span class="eyebrow text-emerald-800 dark:text-emerald-400 font-medium">Audiencia Concluida · Causa al Voto</span>
+              <span class="text-muted-foreground font-mono">{{ aud.fechaRealizacion || 'Fecha no informada' }}</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-foreground/85">
+              <div>
+                <span class="text-muted-foreground block text-[11px]">Asistencia Recurrente</span>
+                <span class="font-medium">{{ aud.asistioRecurrente ? 'Concurrió' : 'Inasistencia' }}</span>
+                @if (aud.letradoRecurrenteNombre) {
+                  <span class="block text-muted-foreground text-[11px]">Letrado: {{ aud.letradoRecurrenteNombre }} ({{ aud.colegiaturaLetrado || 'Col. no indicada' }})</span>
+                }
+              </div>
+              <div>
+                <span class="text-muted-foreground block text-[11px]">Asistencia Entidad</span>
+                <span class="font-medium">{{ aud.asistioEntidad ? 'Concurrió' : 'Inasistencia' }}</span>
+                @if (aud.representanteEntidadNombre) {
+                  <span class="block text-muted-foreground text-[11px]">Apoderado: {{ aud.representanteEntidadNombre }}</span>
+                }
+              </div>
+            </div>
+
+            @if (aud.resumenAlegatos) {
+              <div class="rounded p-2 bg-card border border-border/60">
+                <span class="font-semibold block text-[11px] text-muted-foreground uppercase">Resumen de alegatos orales:</span>
+                <p class="leading-relaxed mt-0.5 text-foreground/90">{{ aud.resumenAlegatos }}</p>
+              </div>
+            }
+
+            @if (aud.actaDocumentoId) {
+              <div class="text-[11px] flex items-center gap-1.5 text-muted-foreground">
+                <svg aria-hidden="true" lucideFileText class="w-3.5 h-3.5 text-brand"></svg>
+                <span>Acta de audiencia incorporada al expediente</span>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Detalle de Estados Terminales Especiales -->
+        @if (aud.estado === 'NO_REALIZADA') {
+          <div class="rounded-md p-3 bg-rose-500/5 border border-rose-500/20 text-xs space-y-1 text-rose-800 dark:text-rose-300">
+            <span class="font-semibold block">Audiencia no realizada por inasistencia</span>
+            <p>{{ aud.incidencias || 'La parte solicitante no concurrió a la audiencia convocada. La causa pasa a resolver según mérito de los autos escritos.' }}</p>
+          </div>
+        }
+
+        @if (aud.estado === 'DESISTIDA') {
+          <div class="rounded-md p-3 bg-muted/30 border border-border text-xs space-y-1">
+            <span class="font-semibold block text-muted-foreground">Solicitud de informe oral desistida</span>
+            <p class="text-foreground/80">{{ aud.motivoDesistimiento || 'La parte solicitante retiró formalmente su pedido de informe oral.' }}</p>
+          </div>
+        }
+
+        @if (aud.estado === 'PRESCINDIDA_DENEGADA') {
+          <div class="rounded-md p-3 bg-muted/40 border border-border text-xs space-y-1">
+            <span class="font-semibold block text-muted-foreground">Informe oral prescindido por el Colegiado</span>
+            <p class="text-foreground/80">{{ aud.fundamentoPrescindencia || 'El Tribunal consideró innecesaria la audiencia por mérito probatorio documental suficiente en el expediente.' }}</p>
+          </div>
+        }
+      </div>
+
+      <!-- Barra de Acciones Procesales (Tribunal / Autorizados) -->
+      @if (puedeGestionar() && !esTerminal()) {
+        <div class="flex flex-wrap items-center gap-2 pt-1">
+          <!-- Desde SOLICITADA -->
+          @if (puedeProgramar()) {
+            <button type="button" class="btn-brand text-xs !py-1.5 !px-3" (click)="abrirModal('PROGRAMAR')">
+              <svg aria-hidden="true" lucideCalendar class="w-3.5 h-3.5 mr-1"></svg>
+              Programar audiencia
+            </button>
+          }
+
+          <!-- Desde CONCEDIDA_PROGRAMADA o REPROGRAMADA -->
+          @if (puedeRealizar()) {
+            <button type="button" class="btn-primary-brand text-xs !py-1.5 !px-3" (click)="abrirModal('ACTA')">
+              <svg aria-hidden="true" lucideCheckCircle2 class="w-3.5 h-3.5 mr-1"></svg>
+              Registrar acta (Realizada)
+            </button>
+          }
+
+          @if (puedeReprogramar()) {
+            <button type="button" class="btn-ghost-brand text-xs !py-1.5 !px-3" (click)="abrirModal('REPROGRAMAR')">
+              <svg aria-hidden="true" lucideClock class="w-3.5 h-3.5 mr-1"></svg>
+              Reprogramar
+            </button>
+          }
+
+          @if (puedeInasistencia()) {
+            <button type="button" class="btn-ghost-brand text-xs !py-1.5 !px-3 text-rose-700 dark:text-rose-400" (click)="abrirModal('INASISTENCIA')">
+              <svg aria-hidden="true" lucideXCircle class="w-3.5 h-3.5 mr-1"></svg>
+              Declarar inasistencia
+            </button>
+          }
+
+          <!-- Prescindir (desde SOLICITADA) -->
+          @if (puedePrescindir()) {
+            <button type="button" class="btn-ghost-brand text-xs !py-1.5 !px-3" (click)="abrirModal('PRESCINDIR')">
+              Prescindir informe oral
+            </button>
+          }
+
+          <!-- Desistir -->
+          @if (puedeDesistir()) {
+            <button type="button" class="btn-ghost-brand text-xs !py-1.5 !px-3 text-muted-foreground" (click)="abrirModal('DESISTIR')">
+              Desistir solicitud
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Modales Dinámicos Accesibles -->
+  @if (modalActivo()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs" role="dialog" aria-modal="true">
+      <div class="w-full max-w-lg rounded-xl p-6 space-y-4 shadow-2xl bg-card border border-border animate-in fade-in zoom-in-95 duration-150">
+        <!-- Error en modal -->
+        @if (modalError()) {
+          <div class="alert alert-error p-3 text-xs leading-relaxed" role="alert">
+            {{ modalError() }}
+          </div>
+        }
+
+        <!-- 1. Modal Solicitar -->
+        @if (modalActivo() === 'SOLICITAR') {
+          <div class="space-y-3">
+            <h4 class="font-display text-lg text-foreground">Solicitud de Informe Oral</h4>
+            <p class="text-xs text-muted-foreground">
+              Presentación formal de solicitud de uso de la palabra ante el Tribunal Colegiado.
+            </p>
+
+            <div class="space-y-3 pt-2">
+              <div>
+                <label for="solicitante-select" class="field-label">Parte Solicitante</label>
+                <select id="solicitante-select" class="field-input text-xs" [(ngModel)]="solicitanteSeleccionado">
+                  <option value="CIUDADANO">Ciudadano (Recurrente)</option>
+                  <option value="ENTIDAD_PUBLICA">Entidad pública apelada</option>
+                  <option value="AMBAS_PARTES">Ambas partes de mutuo acuerdo</option>
+                  <option value="TTAIP">De oficio por el Tribunal TTAIP</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="motivo-solicitud" class="field-label">Motivo o Sustento del Informe Oral</label>
+                <textarea id="motivo-solicitud" rows="3" class="field-input text-xs"
+                  placeholder="Detalle los puntos de controversia sobre los cuales rendirá informe oral…"
+                  [(ngModel)]="motivoSolicitudInput"></textarea>
+              </div>
+
+              <div>
+                <label for="responsable-solicitud" class="field-label">Responsable del Registro</label>
+                <input id="responsable-solicitud" class="field-input text-xs" [(ngModel)]="responsableSolicitudInput" />
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
+              <button type="button" class="btn-ghost-brand text-xs" (click)="cerrarModal()">Cancelar</button>
+              <button type="button" class="btn-brand text-xs" (click)="enviarSolicitud()">Registrar Solicitud</button>
+            </div>
+          </div>
+        }
+
+        <!-- 2. Modal Programar -->
+        @if (modalActivo() === 'PROGRAMAR') {
+          <div class="space-y-3">
+            <h4 class="font-display text-lg text-foreground">Programar Audiencia Virtual</h4>
+            <p class="text-xs text-muted-foreground">
+              Asigne fecha, hora y enlace oficial para la sesión de informe oral.
+            </p>
+
+            <div class="space-y-3 pt-2 text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label for="prog-fecha" class="field-label">Fecha (AAAA-MM-DD)</label>
+                  <input id="prog-fecha" type="date" class="field-input text-xs" [(ngModel)]="progFecha" />
+                </div>
+                <div>
+                  <label for="prog-hora-ini" class="field-label">Hora inicio</label>
+                  <input id="prog-hora-ini" type="time" class="field-input text-xs" [(ngModel)]="progHoraInicio" />
+                </div>
+                <div>
+                  <label for="prog-hora-fin" class="field-label">Hora fin</label>
+                  <input id="prog-hora-fin" type="time" class="field-input text-xs" [(ngModel)]="progHoraFin" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label for="prog-plataforma" class="field-label">Plataforma virtual</label>
+                  <select id="prog-plataforma" class="field-input text-xs" [(ngModel)]="progPlataforma">
+                    <option value="TEAMS">Microsoft Teams</option>
+                    <option value="MEET">Google Meet</option>
+                    <option value="ZOOM">Zoom Cloud</option>
+                    <option value="SALA_MINJUS">Sala Virtual MINJUS</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="prog-duracion" class="field-label">Duración por parte (min)</label>
+                  <input id="prog-duracion" type="number" min="5" max="30" class="field-input text-xs" [(ngModel)]="progDuracionMin" />
+                </div>
+              </div>
+
+              <div>
+                <label for="prog-enlace" class="field-label">Enlace virtual oficial (https://…)</label>
+                <input id="prog-enlace" class="field-input text-xs font-mono"
+                  placeholder="https://teams.microsoft.com/l/meetup-join/…"
+                  [(ngModel)]="progEnlace" />
+              </div>
+
+              <div>
+                <label for="prog-sala" class="field-label">Sala Colegiada TTAIP</label>
+                <input id="prog-sala" class="field-input text-xs" [(ngModel)]="progSala" />
+              </div>
+
+              <div>
+                <label for="prog-responsable" class="field-label">Operador responsable</label>
+                <input id="prog-responsable" class="field-input text-xs" [(ngModel)]="progResponsable" />
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
+              <button type="button" class="btn-ghost-brand text-xs" (click)="cerrarModal()">Cancelar</button>
+              <button type="button" class="btn-brand text-xs" (click)="ejecutarProgramacion()">Conceder y Programar</button>
+            </div>
+          </div>
+        }
+
+        <!-- 3. Modal Reprogramar -->
+        @if (modalActivo() === 'REPROGRAMAR') {
+          <div class="space-y-3">
+            <h4 class="font-display text-lg text-foreground">Reprogramar Audiencia</h4>
+            <p class="text-xs text-muted-foreground">
+              Diferir la fecha de la audiencia virtual consignando el motivo fundado.
+            </p>
+
+            <div class="space-y-3 pt-2 text-xs">
+              <div>
+                <label for="reprog-motivo" class="field-label">Motivo de Reprogramación</label>
+                <textarea id="reprog-motivo" rows="2" class="field-input text-xs"
+                  placeholder="Justifique la causa de la reprogramación…"
+                  [(ngModel)]="reprogMotivo"></textarea>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label for="reprog-fecha" class="field-label">Nueva Fecha</label>
+                  <input id="reprog-fecha" type="date" class="field-input text-xs" [(ngModel)]="reprogFecha" />
+                </div>
+                <div>
+                  <label for="reprog-hora-ini" class="field-label">Hora inicio</label>
+                  <input id="reprog-hora-ini" type="time" class="field-input text-xs" [(ngModel)]="reprogHoraInicio" />
+                </div>
+                <div>
+                  <label for="reprog-hora-fin" class="field-label">Hora fin</label>
+                  <input id="reprog-hora-fin" type="time" class="field-input text-xs" [(ngModel)]="reprogHoraFin" />
+                </div>
+              </div>
+
+              <div>
+                <label for="reprog-enlace" class="field-label">Nuevo Enlace Virtual</label>
+                <input id="reprog-enlace" class="field-input text-xs font-mono" [(ngModel)]="reprogEnlace" />
+              </div>
+
+              <div>
+                <label for="reprog-responsable" class="field-label">Responsable</label>
+                <input id="reprog-responsable" class="field-input text-xs" [(ngModel)]="reprogResponsable" />
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
+              <button type="button" class="btn-ghost-brand text-xs" (click)="cerrarModal()">Cancelar</button>
+              <button type="button" class="btn-brand text-xs" (click)="ejecutarReprogramacion()">Confirmar Reprogramación</button>
+            </div>
+          </div>
+        }
+
+        <!-- 4. Modal Acta de Realización -->
+        @if (modalActivo() === 'ACTA') {
+          <div class="space-y-3">
+            <h4 class="font-display text-lg text-foreground">Acta de Informe Oral Realizado</h4>
+            <p class="text-xs text-muted-foreground">
+              Registre la asistencia de las partes, letrados colegiados y síntesis de los alegatos orales.
+            </p>
+
+            <div class="space-y-3 pt-2 text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded bg-muted/20 border border-border">
+                <div class="space-y-2">
+                  <label class="flex items-center gap-2 font-medium cursor-pointer">
+                    <input type="checkbox" [(ngModel)]="actaAsistioRecurrente" />
+                    <span>Asistió parte recurrente</span>
+                  </label>
+                  @if (actaAsistioRecurrente) {
+                    <input class="field-input text-xs" placeholder="Nombre de letrado o recurrente" [(ngModel)]="actaLetradoNombre" />
+                    <input class="field-input text-xs" placeholder="N° Colegiatura (ej. CAL 12345)" [(ngModel)]="actaColegiatura" />
+                  }
+                </div>
+
+                <div class="space-y-2">
+                  <label class="flex items-center gap-2 font-medium cursor-pointer">
+                    <input type="checkbox" [(ngModel)]="actaAsistioEntidad" />
+                    <span>Asistió entidad pública</span>
+                  </label>
+                  @if (actaAsistioEntidad) {
+                    <input class="field-input text-xs" placeholder="Representante / Procurador público" [(ngModel)]="actaRepresentanteEntidad" />
+                  }
+                </div>
+              </div>
+
+              <div>
+                <label for="acta-resumen" class="field-label">Resumen Sustancial de Alegatos Orales</label>
+                <textarea id="acta-resumen" rows="3" class="field-input text-xs"
+                  placeholder="Síntesis de los argumentos expuestos ante los vocales de la Sala…"
+                  [(ngModel)]="actaResumenAlegatos"></textarea>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label for="acta-doc-id" class="field-label">Acta ya archivada (opcional)</label>
+                  <input id="acta-doc-id" type="number" class="field-input text-xs" placeholder="Número del documento del acta" [(ngModel)]="actaDocumentoIdInput" />
+                </div>
+                <div>
+                  <label for="acta-responsable" class="field-label">Relator / Secretario responsable</label>
+                  <input id="acta-responsable" class="field-input text-xs" [(ngModel)]="actaResponsable" />
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
+              <button type="button" class="btn-ghost-brand text-xs" (click)="cerrarModal()">Cancelar</button>
+              <button type="button" class="btn-primary-brand text-xs" (click)="ejecutarActa()">Suscribir Acta y Poner al Voto</button>
+            </div>
+          </div>
+        }
+
+        <!-- 5. Modal Inasistencia / Desistir / Prescindir -->
+        @if (modalActivo() === 'INASISTENCIA' || modalActivo() === 'DESISTIR' || modalActivo() === 'PRESCINDIR') {
+          <div class="space-y-3">
+            <h4 class="font-display text-lg text-foreground">
+              {{ modalActivo() === 'INASISTENCIA' ? 'Declarar Inasistencia a Audiencia' : modalActivo() === 'DESISTIR' ? 'Desistimiento de Informe Oral' : 'Prescindir Informe Oral por Sala' }}
+            </h4>
+            <p class="text-xs text-muted-foreground">
+              {{ modalActivo() === 'INASISTENCIA' ? 'Registra constancia de inasistencia de la parte convocada. El expediente pasa a resolver.' : modalActivo() === 'DESISTIR' ? 'Retira la solicitud a pedido de parte interesada.' : 'El Tribunal colegiado prescinde de la audiencia por mérito documental suficiente.' }}
+            </p>
+
+            <div class="space-y-3 pt-2 text-xs">
+              <div>
+                <label for="term-motivo" class="field-label">Fundamento o Detalle</label>
+                <textarea id="term-motivo" rows="3" class="field-input text-xs"
+                  placeholder="Fundamente la decisión o circunstancia formal…"
+                  [(ngModel)]="desistirPrescindirMotivo"></textarea>
+              </div>
+
+              <div>
+                <label for="term-resp" class="field-label">Responsable</label>
+                <input id="term-resp" class="field-input text-xs" [(ngModel)]="desistirPrescindirResponsable" />
+              </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-border">
+              <button type="button" class="btn-ghost-brand text-xs" (click)="cerrarModal()">Cancelar</button>
+              @if (modalActivo() === 'INASISTENCIA') {
+                <button type="button" class="btn-ghost-brand text-xs text-rose-700 dark:text-rose-400" (click)="ejecutarInasistencia()">Registrar Inasistencia</button>
+              } @else if (modalActivo() === 'DESISTIR') {
+                <button type="button" class="btn-brand text-xs" (click)="ejecutarDesistimiento()">Confirmar Desistimiento</button>
+              } @else {
+                <button type="button" class="btn-brand text-xs" (click)="ejecutarPrescindencia()">Confirmar Prescindencia</button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

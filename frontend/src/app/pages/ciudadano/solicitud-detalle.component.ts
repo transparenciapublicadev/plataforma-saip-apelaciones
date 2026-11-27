@@ -1,255 +1,702 @@
-import { Component, ChangeDetectionStrategy, OnInit, computed, signal, inject } from '@angular/core';
+import { PresentacionesAdmisionComponent } from '../ttaip/shared/presentaciones-admision.component';
+import { CumplimientoDocumentalComponent } from '../ttaip/shared/cumplimiento-documental.component';
+import { admisionFinal } from '../ttaip/ttaip-resolver.model';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, DestroyRef, ElementRef, computed, effect, untracked, signal, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subscription } from 'rxjs';
+import { Apelacion } from '../../models/apelacion.model';
+import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { SolicitudService } from '../../services/solicitud.service';
 import { ApelacionService } from '../../services/apelacion.service';
 import { AuthService } from '../../services/auth.service';
-import { ElevacionApelacionTtaip } from '../../models/apelacion.model';
-import { AmpliacionPlazoSolicitud, EncauzamientoSolicitud, LiquidacionCostoSolicitud, ObservacionSolicitud, Solicitud } from '../../models/solicitud.model';
+import { DocumentoService } from '../../services/documento.service';
+import { aISO, hoyLima } from '../../models/calendario.model';
+import { ampliacionPermiteApelar, AmpliacionPlazoSolicitud, DECISIONES_ENTREGA, diasApelacionCronograma, entregaApelable, EncauzamientoSolicitud, LiquidacionCostoSolicitud, ObservacionSolicitud, Solicitud, tienePlazoAmpliadoVigente } from '../../models/solicitud.model';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
-import { DocumentoRelation } from '../../models/documento.model';
+import { DocumentoRelation, DocumentoListItem, DOCUMENTO_RELATION_KEYS, getDocumentoRelationEntry } from '../../models/documento.model';
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
+import { TimelineComponent, TimelineEvent } from '../../shared/timeline.component';
 import { DocumentListComponent } from '../../shared/document-list.component';
-import { DocumentUploadComponent } from '../../shared/document-upload.component';
+import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
+import {
+  LucideAlertCircle,
+  LucideArrowLeft,
+  LucideBellRing,
+  LucideCalendar,
+  LucideCalendarClock,
+  LucideClock,
+  LucideDownload,
+  LucideEye,
+  LucideFileText,
+  LucideHelpCircle,
+  LucideScale,
+  LucideUser
+} from '@lucide/angular';
 
-interface RequestTab {
-  id: 'solicitud' | 'respuesta' | 'encauzamiento' | 'liquidacion' | 'ampliacion' | 'adjuntos' | 'apelacion';
+import { descripcionSinNotasInternas, entregaFisicaSinPublicacionDigital, esEvidenciaRecojo, formatosEntregaSolicitados } from '../../utils/modalidad-entrega.util';
+import { avisoDocumentosEncauzados, procedenciaEncauzada, ProcedenciaDocumental } from '../../utils/procedencia-encauzada';
+
+export type RequestTabId = 'solicitud' | 'precision' | 'respuesta' | 'entrega' | 'notificaciones' | 'apelacion' | 'encauzamiento' | 'solicitudes-tribunal';
+
+export interface RequestTabItem {
+  id: RequestTabId;
   label: string;
 }
 
-interface TimelineEvent {
-  title: string;
-  description: string;
-  date?: string;
-  status: 'completed' | 'current' | 'pending';
-  icon: 'mail' | 'search' | 'check';
+export interface DocumentoDetalleItem {
+  id?: number;
+  contentType?: string;
+  nombre: string;
+  tamano: string;
+  fecha: string;
+  esSubsanacion: boolean;
+  tipoOrigen: 'ciudadano' | 'subsanacion' | 'entidad' | 'resolucion';
+  procedencia?: string;
+  expedienteOrigen?: string;
+  entidadOrigen?: string;
 }
 
-import { LucideArrowLeft, LucideLock } from '@lucide/angular';
+export interface NotifStageItem {
+  stage: string;
+  num: string;
+  label: string;
+  resultado: string;
+  docs: {
+    id?: number;
+    contentType?: string;
+    tipo: 'resolucion' | 'cedula';
+    titulo: string;
+    subtitulo: string;
+    tamano: string;
+    fecha: string;
+    nombre: string;
+  }[];
+}
 
 @Component({
   selector: 'app-solicitud-detalle',
   imports: [
-    CommonModule, FormsModule, RouterLink, DocumentListComponent, DocumentUploadComponent,
-    LucideArrowLeft, LucideLock
+    CommonModule,
+    CumplimientoDocumentalComponent,
+    RouterLink,
+    StatusBadgeComponent,
+    YaikuCargandoComponent,
+    TimelineComponent,
+    LucideAlertCircle,
+    LucideArrowLeft,
+    LucideBellRing,
+    LucideCalendar,
+    LucideCalendarClock,
+    LucideClock,
+    LucideDownload,
+    LucideEye,
+    LucideFileText,
+    LucideHelpCircle,
+    LucideScale,
+    LucideUser,
+    DocumentListComponent,
+    DocumentPreviewModalComponent,
+    PresentacionesAdmisionComponent
   ],
   templateUrl: './solicitud-detalle.component.html',
   styleUrl: './solicitud-detalle.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class SolicitudDetalleComponent implements OnInit {
+export class SolicitudDetalleComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly solicitudService = inject(SolicitudService);
   private readonly apelacionService = inject(ApelacionService);
   private readonly authService = inject(AuthService);
+  private readonly documentoService = inject(DocumentoService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   solicitud = signal<Solicitud | null>(null);
   loading = signal<boolean>(true);
   error = signal<string>('');
-  activeTab = signal<RequestTab['id']>('solicitud');
-  subsanacionComentario = signal<string>('');
-  subsanacionDocumentoNombre = signal<string>('');
-  subsanacionLoading = signal<boolean>(false);
-  subsanacionError = signal<string>('');
-  subsanacionSuccess = signal<string>('');
-  omisionElevacionPrueba = signal<string>('');
-  omisionElevacionObservacion = signal<string>('');
-  omisionElevacionLoading = signal<boolean>(false);
-  omisionElevacionError = signal<string>('');
-  omisionElevacionSuccess = signal<string>('');
+  activeTab = signal<RequestTabId>('solicitud');
 
-  readonly tabs: RequestTab[] = [
-    { id: 'solicitud', label: 'Solicitud' },
-    { id: 'respuesta', label: 'Respuesta' },
-    { id: 'encauzamiento', label: 'Encauzamiento' },
-    { id: 'liquidacion', label: 'Liquidación' },
-    { id: 'ampliacion', label: 'Ampliación' },
-    { id: 'adjuntos', label: 'Adjuntos' },
-    { id: 'apelacion', label: 'Apelación' }
-  ];
+  previewTarget = signal<DocumentPreviewTarget | null>(null);
+  isPreviewOpen = signal<boolean>(false);
 
-  readonly solicitudDocumentoRelation = computed<DocumentoRelation | null>(() => {
-    const solicitudId = this.solicitud()?.id;
-    return solicitudId ? { solicitudId } : null;
+  readonly enApelacion = computed<boolean>(() => {
+    const sol = this.solicitud();
+    return !!(sol?.apelacion?.expediente || sol?.apelacion?.id);
   });
 
-  readonly respuestaDocumentoRelation = computed<DocumentoRelation | null>(() => {
-    const respuestaId = this.solicitud()?.respuesta?.id;
-    return respuestaId ? { respuestaId } : null;
+  readonly expedienteTTAIP = computed<string>(() => {
+    return this.solicitud()?.apelacion?.expediente || '';
   });
 
-  readonly puedeAdjuntarDocumentos = computed<boolean>(() => {
-    const estado = this.solicitud()?.estado;
-    return estado !== 'RESPONDIDA' && estado !== 'VENCIDA' && estado !== 'DENEGADA' && estado !== 'CONCLUIDA';
+  readonly estadoTTAIPLabel = computed<string>(() => {
+    const est = this.solicitud()?.apelacion?.estado;
+    return est ? this.getEstadoDisplay(est) : 'Sin estado registrado';
   });
+
+  readonly estadoSaipLabel = computed(() => {
+    const sol = this.solicitud();
+    if (sol && tienePlazoAmpliadoVigente(sol)) return 'Plazo ampliado';
+    return this.getEstadoDisplay(sol?.estado);
+  });
+
+  readonly estadoBadge = computed<string>(() => {
+    const sol = this.solicitud();
+    if (!sol) return 'Sin estado registrado';
+    if (this.enApelacion()) {
+      const res = sol.apelacion?.resultado;
+      const est = sol.apelacion?.estado;
+      if (res || est?.startsWith('RESUELTO')) {
+        return res ? this.getEstadoDisplay(res) : 'Resuelto';
+      }
+      if (est === 'EN_SUBSANACION') {
+        return 'En subsanación';
+      }
+      if (est === 'EN_CALIFICACION_1' || est === 'PENDIENTE_ELEVACION') {
+        return 'En 1ra Calificación';
+      }
+      if (est === 'EN_CALIFICACION_2' || est === 'NOTIFICACION_SEGUNDA_CALIFICACION') {
+        return 'En 2da Calificación';
+      }
+      if (est === 'EN_RESOLUCION') {
+        return 'En Resolución';
+      }
+      return this.getEstadoDisplay(est);
+    }
+    if (this.liquidacionActiva()) return 'Información puesta a disposición';
+    return this.estadoSaipLabel();
+  });
+
+  readonly tabs = computed<RequestTabItem[]>(() => {
+    return [
+      { id: 'solicitud', label: 'Solicitud' },
+      ...((this.observacionPendiente() || this.observacionSubsanada()) ? [{ id: 'precision' as const, label: 'Precisión' }] : []),
+      ...(this.encauzamientos().length ? [{ id: 'encauzamiento' as const, label: 'Encauzamiento' }] : []),
+      { id: 'respuesta', label: 'Respuesta de la entidad' },
+      ...(this.liquidacionVisible() ? [{ id: 'entrega' as const, label: 'Entrega física' }] : []),
+      ...(this.enApelacion()
+        ? [{ id: 'notificaciones' as const, label: 'Resoluciones y cédulas' }]
+        : [{ id: 'apelacion' as const, label: 'Apelación' }]),
+      ...(this.expedienteParaSolicitudes() && this.solicitudesTribunalDisponibles()
+        ? [{ id: 'solicitudes-tribunal' as const, label: 'Solicitudes al Tribunal' }]
+        : []),
+    ];
+  });
+
+  readonly yaRespondio = computed<boolean>(() => {
+    return this.idValido(this.solicitud()?.respuesta?.id);
+  });
+
+  readonly apelable = computed<boolean>(() => {
+    return this.puedeApelar();
+  });
+
+  readonly respDenegada = computed<boolean>(() => {
+    const sol = this.solicitud();
+    return sol?.respuesta?.tipoRespuesta === 'DENEGACION_TOTAL';
+  });
+
+  readonly respParcial = computed<boolean>(() => {
+    return this.solicitud()?.respuesta?.tipoRespuesta === 'ENTREGA_PARCIAL';
+  });
+
+  readonly respLabel = computed<string>(() => {
+    if (this.respDenegada()) return 'Denegación total';
+    if (this.respParcial()) return 'Entrega parcial';
+    if (this.solicitud()?.respuesta?.tipoRespuesta === 'ENTREGA_TOTAL') return 'Entrega total';
+    return 'Tipo no registrado';
+  });
+
+  readonly misDocumentos = computed<DocumentoDetalleItem[]>(() => {
+    const sol = this.solicitud();
+    return sol
+      ? this.mapDocumentos(sol.documentosMetadata ?? sol.documentos ?? [], 'ciudadano', { solicitudId: sol.id })
+        .filter(doc => !esEvidenciaRecojo(doc.nombre))
+      : [];
+  });
+
+  readonly avisoProcedencia = computed(() => avisoDocumentosEncauzados(this.misDocumentos(), 'ciudadano'));
+
+  readonly gruposMisDocumentos = computed(() => {
+    const docs = this.misDocumentos();
+    const solicitud = docs.filter(d => !d.esSubsanacion && !esEvidenciaRecojo(d.nombre));
+    const precision = docs.filter(d => d.esSubsanacion);
+    return [
+      { key: 'sol', title: solicitud.some(d => d.procedencia) ? 'Documentos presentados ante la otra entidad' : 'Adjuntos de la solicitud', docs: solicitud },
+      { key: 'sub', title: precision.some(d => d.procedencia) ? 'Precisión presentada ante la otra entidad' : 'Subsanaciones presentadas', docs: precision }
+    ].filter(grupo => grupo.docs.length > 0);
+  });
+
+  readonly adjuntosRespuesta = computed<DocumentoDetalleItem[]>(() => {
+    const respuesta = this.solicitud()?.respuesta;
+    return respuesta && this.idValido(respuesta.id)
+      ? this.mapDocumentos(respuesta.documentosMetadata ?? respuesta.documentos ?? [], 'entidad', { respuestaId: respuesta.id }) : [];
+  });
+
+  readonly documentosSolicitudIncompletos = computed(() => {
+    const sol = this.solicitud();
+    const docs = sol?.documentosMetadata ?? sol?.documentos;
+    if (!Array.isArray(docs)) return true;
+    const propios = docs.filter(doc => !esEvidenciaRecojo(
+      ('nombreOriginal' in doc && doc.nombreOriginal) || ('nombreArchivo' in doc && doc.nombreArchivo) || ''
+    ));
+    return propios.length !== this.misDocumentos().length;
+  });
+  readonly documentosRespuestaIncompletos = computed(() => {
+    const resp = this.solicitud()?.respuesta;
+    const docs = resp?.documentosMetadata ?? resp?.documentos;
+    return !Array.isArray(docs) || docs.length !== this.adjuntosRespuesta().length;
+  });
+
+  // La SAIP contiene solo el resumen de la apelación. Los archivos y sus IDs
+  // se consultan en el detalle autorizado, nunca se deducen a partir del estado.
+  readonly notifStages = computed<NotifStageItem[]>(() => {
+    const ap = this.apelacionDetalle();
+    if (!ap) return [];
+    const resoluciones = [...(ap.resoluciones ?? []), ap.resolucionPrimeraCalificacion,
+      ap.resolucionSegundaCalificacion, ap.resolucion].filter(r => !!r);
+    const vistos = new Set<number>();
+    return resoluciones.filter(r => {
+      if (!this.idValido(r.id) || vistos.has(r.id)) return false;
+      vistos.add(r.id);
+      return true;
+    }).map(r => ({
+      stage: String(r.id), num: r.numeroResolucion || '—',
+      label: this.getEstadoDisplay(r.tipoResolucion), resultado: this.getEstadoDisplay(r.decision),
+      docs: [
+        ...this.mapDocumentos(r.documentos ?? [], 'resolucion', { resolucionId: r.id! }).map(doc => ({ ...doc,
+          tipo: 'resolucion' as const, titulo: doc.nombre, subtitulo: r.numeroResolucion || 'Resolución registrada' })),
+        ...(r.cedulas ?? []).filter(cedula => this.idValido(cedula.id) && cedula.destinatario === 'CIUDADANO').flatMap(cedula => this.mapDocumentos(cedula.documentos ?? [], 'resolucion', { cedulaNotificacionId: cedula.id! }).map(doc => ({ ...doc,
+          tipo: 'cedula' as const, titulo: doc.nombre, subtitulo: cedula.numeroCedula || 'Cédula registrada' })))
+      ]
+    }));
+  });
+
+  private mapDocumentos(documentos: ReadonlyArray<DocumentoListItem>, origen: DocumentoDetalleItem['tipoOrigen'], relation: DocumentoRelation): DocumentoDetalleItem[] {
+    const [key, id] = getDocumentoRelationEntry(relation);
+    // Legacy DTOs have no relation fields: their association is the authorized nested DTO.
+    // Explicit metadata must agree with that parent; never reinterpret another resource.
+    return (Array.isArray(documentos) ? documentos : []).filter(doc => {
+      if (!doc || !this.idValido(doc.id)) return false;
+      const metadata = doc as Record<string, unknown>;
+      const explicitRelation = DOCUMENTO_RELATION_KEYS.some(field => metadata[field] != null);
+      return !explicitRelation || metadata[key] === id;
+    }).map(doc => {
+      const metadata = 'nombreOriginal' in doc ? doc : null;
+      const legacy = 'nombreArchivo' in doc ? doc : null;
+      const procedenciaDoc = doc as DocumentoListItem & ProcedenciaDocumental;
+      const procedencia = procedenciaEncauzada(procedenciaDoc);
+      return {
+        id: doc.id, nombre: metadata?.nombreOriginal || legacy?.nombreArchivo || 'Documento sin nombre',
+        contentType: metadata?.contentType || legacy?.tipoArchivo,
+        tamano: this.formatBytes(metadata?.sizeBytes ?? legacy?.tamanio),
+        fecha: this.formatTimelineDate(metadata?.fechaCreacion || legacy?.fechaSubida),
+        esSubsanacion: doc.tipoDocumento === 'SUBSANACION', tipoOrigen: origen,
+        procedencia: procedencia || undefined,
+        expedienteOrigen: procedenciaDoc.expedienteOrigen?.trim() || undefined,
+        entidadOrigen: procedenciaDoc.entidadOrigen?.trim() || undefined
+      };
+    });
+  }
+
+  readonly timelineEvents = computed<TimelineEvent[]>(() => {
+    const sol = this.solicitud();
+    if (!sol) return [];
+    return this.timelineDisplayOrder(this.buildCitizenTimeline(sol));
+  });
+
+  readonly estadoConsulta = signal<EstadoConsulta>('cargando');
+  readonly puedeReintentarConsulta = signal(false);
+  readonly documentoError = signal('');
+  readonly apelacionDetalle = signal<Apelacion | null>(null);
+  readonly expedienteParaCumplimiento = computed(() => {
+    const apelacion = this.apelacionDetalle();
+    return apelacion?.estado === 'EN_CUMPLIMIENTO' || apelacion?.estado === 'RESUELTO_FUNDADO'
+      || apelacion?.estado === 'RESUELTO_FUNDADO_EN_PARTE' ? apelacion.expedienteTtaip?.id : null;
+  });
+  readonly expedienteParaSolicitudes = computed(() => {
+    const apelacion = this.apelacionDetalle();
+    const expediente = apelacion?.expedienteTtaip;
+    return this.enApelacion() && admisionFinal(apelacion) && expediente?.numeroExpediente === apelacion?.expediente
+      && this.idValido(expediente?.id) ? expediente.id : null;
+  });
+  readonly solicitudesTribunalDisponibles = signal(false);
+
+  actualizarDisponibilidadSolicitudes(disponibles: boolean): void {
+    this.solicitudesTribunalDisponibles.set(disponibles);
+    if (!disponibles && this.activeTab() === 'solicitudes-tribunal') this.activeTab.set('notificaciones');
+  }
+  readonly loadingApelacion = signal(false);
+  readonly errorApelacion = signal('');
+  readonly reintentarApelacion = signal(false);
+  private readonly destroyRef = inject(DestroyRef);
+  private consultas = new Subscription();
+  private descargas = new Subscription();
+  private generacion = 0;
+  private expedienteActual: string | null = null;
+  private tokenActual = this.authService.getToken();
+  private sesionActual = this.authService.cambiosSesion();
+  private tokenDetalle: string | null = null;
+  private sesionDetalle = -1;
+  private consultaTribunal = new Subscription();
+
+  constructor() {
+    effect(() => {
+      const sesion = this.authService.cambiosSesion();
+      untracked(() => {
+        const token = this.authService.getToken();
+        if (token !== this.tokenActual || sesion !== this.sesionActual) {
+          this.tokenActual = token;
+          this.sesionActual = sesion;
+          if (this.expedienteActual !== null) this.cargarSolicitud(this.expedienteActual);
+        }
+      });
+    });
+  }
 
   ngOnInit(): void {
-    const expediente = this.route.snapshot.paramMap.get('expediente');
-    if (!expediente) {
-      this.error.set('No se recibió el expediente de la solicitud.');
-      this.loading.set(false);
-      return;
-    }
-    this.cargarSolicitud(expediente);
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      this.cargarSolicitud(params.get('expediente') || '');
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.generacion++;
+    this.consultas.unsubscribe();
+    this.descargas.unsubscribe();
+    this.consultaTribunal.unsubscribe();
   }
 
   cargarSolicitud(expediente: string): void {
+    this.expedienteActual = expediente;
+    this.consultas.unsubscribe();
+    this.descargas.unsubscribe();
+    this.consultaTribunal.unsubscribe();
+    this.consultas = new Subscription();
+    this.descargas = new Subscription();
+    const generacion = ++this.generacion;
+    const token = this.authService.getToken();
+    const sesion = this.authService.cambiosSesion();
+    this.tokenDetalle = null;
+    this.sesionDetalle = -1;
+    this.solicitud.set(null);
+    this.apelacionDetalle.set(null);
+    this.actualizarDisponibilidadSolicitudes(false);
+    this.loadingApelacion.set(false);
+    this.errorApelacion.set('');
+    this.documentoError.set('');
+    this.cerrarPreview();
+    this.activeTab.set('solicitud');
+    this.error.set('');
+    this.puedeReintentarConsulta.set(false);
+    this.loading.set(false);
+    if (!expediente.trim()) {
+      this.estadoConsulta.set('validacion');
+      this.error.set('No se recibió el identificador de la solicitud.');
+      return;
+    }
+    if (!token) {
+      this.estadoConsulta.set('autenticacion');
+      if (this.authService.cerrandoSesion?.()) { this.loading.set(true); return; }
+      this.error.set('Su sesión no es válida. Inicie sesión nuevamente.');
+      return;
+    }
     this.loading.set(true);
-    this.solicitudService.findByExpediente(expediente).subscribe({
+    this.estadoConsulta.set('cargando');
+    this.consultas.add(this.solicitudService.findByExpediente(expediente).subscribe({
       next: (data) => {
+        if (!this.esConsultaActual(generacion, token, sesion)) return;
+        this.loading.set(false);
+        if (!data) {
+          this.estadoConsulta.set('vacio');
+          this.puedeReintentarConsulta.set(true);
+          return;
+        }
+        if (!this.idValido(data.id) || data.expediente !== expediente ||
+          (data.ciudadanoId != null && data.ciudadanoId !== this.authService.obtenerSesion()?.usuarioId)) {
+          this.estadoConsulta.set('error');
+          this.error.set('El servidor devolvió una solicitud que no corresponde al recurso consultado.');
+          this.puedeReintentarConsulta.set(true);
+          return;
+        }
         this.solicitud.set(data);
-        this.loading.set(false);
+        if (this.observacionPendiente()) this.activeTab.set('precision');
+        else if (this.encauzamientoActivo() && !this.yaRespondio()) this.activeTab.set('encauzamiento');
+        this.tokenDetalle = token;
+        this.sesionDetalle = sesion;
+        this.estadoConsulta.set('disponible');
+        this.cargarDocumentosTribunal();
       },
-      error: () => {
-        this.error.set('Error al cargar la solicitud');
+      error: (error: unknown) => {
+        if (!this.esConsultaActual(generacion, token, sesion)) return;
+        const fallo = falloConsulta(error, 'la solicitud');
+        this.estadoConsulta.set(fallo.estado);
+        this.error.set(fallo.mensaje);
+        this.puedeReintentarConsulta.set(fallo.reintentable);
         this.loading.set(false);
+      }
+    }));
+  }
+
+  reintentarConsulta(): void {
+    if (this.expedienteActual !== null) this.cargarSolicitud(this.expedienteActual);
+  }
+
+  cargarDocumentosTribunal(): void {
+    const id = this.solicitud()?.apelacion?.id;
+    if (!this.idValido(id) || !this.detalleActual()) return;
+    this.consultaTribunal.unsubscribe();
+    const generacion = this.generacion;
+    const token = this.authService.getToken();
+    const sesion = this.authService.cambiosSesion();
+    this.apelacionDetalle.set(null);
+    this.actualizarDisponibilidadSolicitudes(false);
+    this.errorApelacion.set('');
+    this.loadingApelacion.set(true);
+    this.reintentarApelacion.set(false);
+    this.consultaTribunal = this.apelacionService.findById(id).subscribe({
+      next: data => {
+        if (!this.esConsultaActual(generacion, token, sesion)) return;
+        this.loadingApelacion.set(false);
+        if (!data || data.id !== id ||
+          (data.solicitudId != null && data.solicitudId !== this.solicitud()?.id) ||
+          (data.ciudadanoId != null && data.ciudadanoId !== this.authService.obtenerSesion()?.usuarioId)) {
+          this.errorApelacion.set('El servidor no devolvió el detalle documental de esta apelación.');
+          this.reintentarApelacion.set(true);
+          return;
+        }
+        this.apelacionDetalle.set(data);
+      },
+      error: (error: unknown) => {
+        if (!this.esConsultaActual(generacion, token, sesion)) return;
+        const fallo = falloConsulta(error, 'los documentos del Tribunal');
+        this.errorApelacion.set(fallo.mensaje);
+        this.reintentarApelacion.set(fallo.reintentable);
+        this.loadingApelacion.set(false);
       }
     });
   }
 
-  onDocumentoSubido(): void {
-    const expediente = this.solicitud()?.expediente;
-    if (expediente) {
-      this.cargarSolicitud(expediente);
+  private esConsultaActual(generacion: number, token: string | null, sesion = this.sesionDetalle): boolean {
+    return generacion === this.generacion && token === this.authService.getToken() && sesion === this.authService.cambiosSesion();
+  }
+
+  private idValido(id: unknown): id is number { return typeof id === 'number' && Number.isSafeInteger(id) && id > 0; }
+
+  private detalleActual(): boolean {
+    return !!this.solicitud() && !!this.tokenDetalle && this.tokenDetalle === this.authService.getToken() &&
+      this.sesionDetalle === this.authService.cambiosSesion();
+  }
+
+  cambiarTab(tab: RequestTabId): void {
+    if (this.detalleActual() && this.tabs().some(item => item.id === tab)) this.activeTab.set(tab);
+  }
+
+  navegarTabs(event: KeyboardEvent, tab: RequestTabId): void {
+    const tabs = this.tabs();
+    const index = tabs.findIndex(item => item.id === tab);
+    let next: number;
+    switch (event.key) {
+      case 'ArrowRight': next = (index + 1) % tabs.length; break;
+      case 'ArrowLeft': next = (index - 1 + tabs.length) % tabs.length; break;
+      case 'Home': next = 0; break;
+      case 'End': next = tabs.length - 1; break;
+      default: return;
     }
+    event.preventDefault();
+    this.cambiarTab(tabs[next].id);
+    this.host.nativeElement.querySelector<HTMLButtonElement>(`#tab-${tabs[next].id}`)?.focus();
   }
 
-  cambiarTab(tab: RequestTab['id']): void {
-    this.activeTab.set(tab);
+  private documentoActual(id: number | undefined): boolean {
+    const docsCronograma = (this.ampliacionActiva()?.cronograma ?? [])
+      .flatMap(h => (h.documentos ?? []).filter(d => this.idValido(d?.id)))
+      .map(d => ({ id: d.id }));
+    return this.detalleActual() && this.idValido(id) && [
+      ...this.misDocumentos(), ...this.adjuntosRespuesta(), ...docsCronograma, ...this.notifStages().flatMap(stage => stage.docs)
+    ].some(doc => doc.id === id);
   }
 
-  isTabActive(tab: RequestTab['id']): boolean {
+  isTabActive(tab: RequestTabId): boolean {
     return this.activeTab() === tab;
   }
 
-  getEstadoClass(estado: string): string {
-    const classes: Record<string, string> = {
-      RECEPCIONADA: 'pill pill-medium',
-      EN_REVISION: 'pill pill-medium',
-      PENDIENTE_INFORMACION: 'pill pill-medium',
-      RESPONDIDA: 'pill pill-low',
-      DENEGADA: 'pill pill-high',
-      VENCIDA: 'pill pill-high',
-      CONCLUIDA: 'pill'
-    };
-    return classes[estado] || 'pill';
+  abrirModalPreview(doc: { id?: number; nombre: string; contentType?: string }): void {
+    this.documentoError.set('');
+    this.cerrarPreview();
+    if (!this.documentoActual(doc.id)) {
+      this.documentoError.set('Este documento no dispone de un archivo recuperable.');
+      return;
+    }
+    this.previewTarget.set({ id: doc.id, nombre: doc.nombre, tipo: doc.contentType });
+    this.isPreviewOpen.set(true);
   }
 
-  getApelacionEstadoClass(estado: string): string {
-    const classes: Record<string, string> = {
-      PENDIENTE_ELEVACION: 'pill pill-medium',
-      EN_CALIFICACION_1: 'pill pill-medium',
-      EN_CALIFICACION_2: 'pill pill-medium',
-      EN_SUBSANACION: 'pill pill-medium',
-      NOTIFICACION_SEGUNDA_CALIFICACION: 'pill pill-medium',
-      EN_RESOLUCION: 'pill pill-medium',
-      RESUELTO: 'pill pill-low',
-      RESUELTO_FUNDADO: 'pill pill-low',
-      RESUELTO_FUNDADO_EN_PARTE: 'pill pill-low',
-      RESUELTO_INFUNDADO: 'pill',
-      RESUELTO_INFUNDADO_EN_PARTE: 'pill',
-      RESUELTO_IMPROCEDENTE: 'pill pill-high',
-      RESUELTO_ESTESE_A_LO_RESUELTO: 'pill',
-      RESUELTO_NULIDAD_ACTO: 'pill pill-high',
-      TENER_POR_NO_PRESENTADO: 'pill pill-high',
-      CONCLUSION_SUSTRACCION_MATERIA: 'pill pill-low',
-      CONCLUSION_DESISTIMIENTO: 'pill'
-    };
-    return classes[estado] || 'pill';
+  cerrarPreview(): void {
+    this.previewTarget.set(null);
+    this.isPreviewOpen.set(false);
+  }
+
+  descargarDoc(doc: { id?: number; nombre: string }): void {
+    this.documentoError.set('');
+    if (!this.documentoActual(doc.id)) {
+      this.documentoError.set('Este documento no dispone de un archivo recuperable.');
+      return;
+    }
+    const generacion = this.generacion;
+    const token = this.authService.getToken();
+    this.descargas.add(this.documentoService.download(doc.id!, doc.nombre).subscribe({
+      next: ({ blob, filename }) => {
+        if (!this.esConsultaActual(generacion, token)) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || doc.nombre;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: (error: unknown) => {
+        if (this.esConsultaActual(generacion, token)) this.documentoError.set(falloConsulta(error, 'el documento').mensaje);
+      }
+    }));
   }
 
   getEstadoDisplay(value: string | undefined): string {
-    if ((value || '').toUpperCase() === 'PENDIENTE_ELEVACION') {
-      return 'PENDIENTE DE ELEVACION AL TTAIP';
-    }
+    if (!value) return 'Sin estado registrado';
+    const upper = value.toUpperCase();
+    if (upper === 'PENDIENTE_ELEVACION') return 'En 1ra Calificación';
+    if (upper === 'EN_CALIFICACION_1') return 'En 1ra Calificación';
+    if (upper === 'EN_CALIFICACION_2') return 'En 2da Calificación';
+    if (upper === 'EN_SUBSANACION' || upper === 'SUBSANACION') return 'En subsanación';
+    if (upper === 'EN_RESOLUCION') return 'En Resolución';
+    if (upper === 'RESUELTO_FUNDADO' || upper === 'FUNDADO') return 'Fundado';
+    if (upper === 'RESUELTO_INFUNDADO' || upper === 'INFUNDADO') return 'Infundado';
+    if (upper === 'RESUELTO_FUNDADO_EN_PARTE' || upper === 'FUNDADO_EN_PARTE') return 'Fundado en parte';
+    if (upper === 'RESUELTO_IMPROCEDENTE' || upper === 'IMPROCEDENTE') return 'Improcedente';
+    if (upper === 'RECEPCIONADA') return 'Recepcionada';
+    if (upper === 'EN_REVISION') return 'En revisión';
+    if (this.enPrecisionSaip(upper)) return 'En precisión';
+    if (upper === 'DENEGADA') return 'Denegada';
+    if (upper === 'VENCIDA') return 'Vencida';
+    if (upper === 'RESPONDIDA') return 'Respondida';
+    if (upper === 'APELADA') return 'Apelada';
     return (value || '').replaceAll('_', ' ').trim() || 'Sin estado';
   }
 
-  elevacionApelacion(): ElevacionApelacionTtaip | null {
-    return (this.solicitud()?.apelacion?.elevacion as ElevacionApelacionTtaip | undefined) || null;
-  }
-
-  puedeComunicarOmisionElevacion(): boolean {
-    const elevacion = this.elevacionApelacion();
-    if (!elevacion || elevacion.estadoElevacion === 'COMUNICADA_POR_CIUDADANO') {
-      return false;
-    }
-    if (elevacion.estadoElevacion === 'VENCIDA_NO_ELEVADA') {
-      return true;
-    }
-    return elevacion.estadoElevacion === 'PENDIENTE'
-      && new Date(`${elevacion.fechaLimiteElevacion}T23:59:59`).getTime() < Date.now();
-  }
-
-  comunicarOmisionElevacion(): void {
-    const apelacionId = this.solicitud()?.apelacion?.id;
-    const referencia = this.omisionElevacionPrueba().trim();
-    if (!apelacionId || !this.puedeComunicarOmisionElevacion()) {
-      return;
-    }
-    if (!referencia) {
-      this.omisionElevacionError.set('Adjunte o registre la referencia de su prueba de presentación.');
-      return;
-    }
-
-    this.omisionElevacionLoading.set(true);
-    this.omisionElevacionError.set('');
-    this.omisionElevacionSuccess.set('');
-    this.apelacionService.comunicarOmision(apelacionId, {
-      referenciaPruebaOmision: referencia,
-      observacion: this.omisionElevacionObservacion().trim() || undefined
-    }).subscribe({
-      next: () => {
-        this.omisionElevacionLoading.set(false);
-        this.omisionElevacionPrueba.set('');
-        this.omisionElevacionObservacion.set('');
-        this.omisionElevacionSuccess.set('Comunicación enviada al TTAIP con su prueba de presentación.');
-        const expediente = this.solicitud()?.expediente;
-        if (expediente) this.cargarSolicitud(expediente);
-      },
-      error: (error) => {
-        this.omisionElevacionLoading.set(false);
-        this.omisionElevacionError.set(error?.error?.detail || 'No se pudo comunicar la omisión al TTAIP.');
-      }
-    });
-  }
-
   observaciones(): ObservacionSolicitud[] {
-    return this.solicitud()?.observaciones || [];
+    const sol = this.solicitud();
+    return (sol?.observaciones ?? []).filter(item => this.idValido(item.id) &&
+      (item.solicitudId == null || item.solicitudId === sol?.id));
   }
 
   observacionPendiente(): ObservacionSolicitud | null {
     return this.observaciones().find((item) => item.estado === 'PENDIENTE_SUBSANACION') || null;
   }
 
-  esSubsanacionObservacionVencida(obs: ObservacionSolicitud | null): boolean {
-    if (!obs || !obs.fechaLimiteSubsanacion) return false;
-    try {
-      const fechaLimite = new Date(obs.fechaLimiteSubsanacion);
-      return new Date().getTime() > fechaLimite.getTime();
-    } catch {
-      return false;
-    }
+  observacionSubsanada(): ObservacionSolicitud | null {
+    return this.observaciones().find((item) => item.estado === 'SUBSANADA') || null;
   }
 
   ampliaciones(): AmpliacionPlazoSolicitud[] {
-    return this.solicitud()?.ampliacionesPlazo || [];
+    const sol = this.solicitud();
+    return (sol?.ampliacionesPlazo ?? []).filter(item => this.idValido(item.id) && item.solicitudId === sol?.id);
   }
 
   ampliacionActiva(): AmpliacionPlazoSolicitud | null {
-    return this.ampliaciones().find((item) => item.estadoAmpliacion === 'REGISTRADA' || item.estadoAmpliacion === 'NOTIFICADA') || null;
+    return this.ampliaciones().find(item => item.estadoAmpliacion !== 'CANCELADA') || null;
+  }
+
+  cronogramaEntregasOrdenadas() {
+    return [...(this.ampliacionActiva()?.cronograma ?? [])].sort((a, b) => a.numeroEntrega - b.numeroEntrega);
+  }
+
+  cronogramaTotalCount(): number {
+    return this.cronogramaEntregasOrdenadas().length;
+  }
+
+  cronogramaEntregadasCount(): number {
+    return this.cronogramaEntregasOrdenadas().filter(h => h.estado === 'ENTREGADA').length;
+  }
+
+  cronogramaIncumplido(): boolean {
+    const ampliacion = this.ampliacionActiva();
+    return ampliacion?.cronograma?.some(h => h.ampliacionId === ampliacion.id && h.incumplida === true) ?? false;
+  }
+
+  readonly etiquetasDecisionHito = DECISIONES_ENTREGA;
+
+  diasCronogramaParaApelar(): number | null {
+    const dias = diasApelacionCronograma(this.ampliacionActiva());
+    return dias !== null && dias >= 0 ? dias : null;
+  }
+
+  recibioEntregaApelable(): boolean {
+    return entregaApelable(this.ampliacionActiva()) != null;
+  }
+
+  tituloEsperaApelacion(): string {
+    const ancla = aISO(this.ampliacionActiva()?.fechaLimiteOriginal);
+    if (!ancla) return 'Aún no puede apelar';
+    return hoyLima() <= ancla ? 'El plazo ordinario sigue abierto' : 'El plazo para apelar el cronograma terminó';
+  }
+
+  textoEsperaApelacion(): string | null {
+    const ancla = aISO(this.ampliacionActiva()?.fechaLimiteOriginal);
+    if (!ancla) return null;
+    if (hoyLima() <= ancla) {
+      return `Puede apelar el cronograma desde el día hábil siguiente al ${this.textoFecha(ancla)}, durante 15 días hábiles. Recibió la ampliación, así que no es silencio administrativo.`;
+    }
+    return 'Esos 15 días hábiles ya terminaron. Podrá presentar su apelación cuando reciba una entrega.';
   }
 
   encauzamientos(): EncauzamientoSolicitud[] {
-    return this.solicitud()?.encauzamientos || [];
+    const sol = this.solicitud();
+    return (sol?.encauzamientos ?? []).filter(item => this.idValido(item.id) && (item.solicitudId == null || item.solicitudId === sol?.id));
   }
 
   encauzamientoActivo(): EncauzamientoSolicitud | null {
     return this.encauzamientos().find((item) => item.estadoEncauzamiento === 'REGISTRADO' || item.estadoEncauzamiento === 'DERIVADO') || null;
   }
 
+  denegatoriaEncauzada(): boolean {
+    const sol = this.solicitud();
+    const enc = this.encauzamientoActivo();
+    return !!sol && (sol.estado || '').toUpperCase() === 'DENEGADA' && this.respDenegada() && enc?.alcance === 'TOTAL';
+  }
+
+  origenDenegatoria(): string {
+    return this.encauzamientoActivo()?.entidadOrigenNombre?.trim() || 'la entidad de origen';
+  }
+
+  destinoEncauzado(): string {
+    return this.encauzamientoActivo()?.entidadDestinoNombre?.trim() || 'la entidad competente';
+  }
+
+  expedienteDestino(): string {
+    const enc = this.encauzamientoActivo();
+    const directo = enc?.expedienteDerivado?.trim();
+    if (directo) return directo;
+    return /Expediente de destino: (SAIP-\d{4}-\d+)/.exec(enc?.trazabilidad ?? '')?.[1] ?? '';
+  }
+
+  textoContinuacion(enc?: EncauzamientoSolicitud | null): string {
+    const destino = enc?.entidadDestinoNombre?.trim() || this.destinoEncauzado();
+    const numero = enc?.expedienteDerivado?.trim()
+      || /Expediente de destino: (SAIP-\d{4}-\d+)/.exec(enc?.trazabilidad ?? '')?.[1]
+      || this.expedienteDestino();
+    return numero
+      ? `${destino} abrió el expediente ${numero}, que empieza desde su ingreso. Este expediente conserva el historial hasta el encauzamiento.`
+      : `${destino} abre un expediente nuevo, que empieza desde su ingreso. Este expediente conserva el historial hasta el encauzamiento.`;
+  }
+
   liquidaciones(): LiquidacionCostoSolicitud[] {
-    return this.solicitud()?.liquidacionesCosto || [];
+    const sol = this.solicitud();
+    return (sol?.liquidacionesCosto ?? []).filter(item => this.idValido(item.id) && item.solicitudId === sol?.id);
+  }
+
+  entregaFisicaEnPersona(): boolean {
+    return entregaFisicaSinPublicacionDigital(this.solicitud());
   }
 
   liquidacionActiva(): LiquidacionCostoSolicitud | null {
@@ -257,50 +704,19 @@ export class SolicitudDetalleComponent implements OnInit {
       item.estadoLiquidacion === 'EMITIDA' || item.estadoLiquidacion === 'NOTIFICADA' || item.estadoLiquidacion === 'PAGADA') || null;
   }
 
-  subsanarObservacion(): void {
-    const sol = this.solicitud();
-    const observacion = this.observacionPendiente();
-    const comentario = this.subsanacionComentario().trim();
-    const documento = this.subsanacionDocumentoNombre().trim();
+  liquidacionVisible(): LiquidacionCostoSolicitud | null {
+    return this.liquidacionActiva()
+      || this.liquidaciones().find((item) => item.estadoLiquidacion === 'RECOGIDA')
+      || null;
+  }
 
-    if (!sol || !observacion) {
-      return;
-    }
-    if (this.esSubsanacionObservacionVencida(observacion)) {
-      this.subsanacionError.set('El plazo legal de subsanación ha vencido.');
-      return;
-    }
-    if (!comentario && !documento) {
-      this.subsanacionError.set('Ingrese un comentario o referencia de documento para subsanar.');
-      return;
-    }
-
-    this.subsanacionLoading.set(true);
-    this.subsanacionError.set('');
-    this.subsanacionSuccess.set('');
-
-    this.solicitudService.subsanar(sol.id, observacion.id, {
-      comentarioSubsanacion: comentario || undefined,
-      documentoSubsanacionNombre: documento || undefined,
-      responsable: this.getSolicitanteNombre()
-    }).subscribe({
-      next: () => {
-        this.subsanacionComentario.set('');
-        this.subsanacionDocumentoNombre.set('');
-        this.subsanacionSuccess.set('Subsanación enviada. La solicitud volvió a revisión de la entidad.');
-        this.subsanacionLoading.set(false);
-        this.cargarSolicitud(sol.expediente);
-      },
-      error: (error) => {
-        this.subsanacionError.set(error?.error?.detail || error?.error?.mensaje || 'No se pudo registrar la subsanación.');
-        this.subsanacionLoading.set(false);
-      }
-    });
+  descripcionVisible(): string {
+    return descripcionSinNotasInternas(this.solicitud()?.descripcion) || 'Descripción no registrada';
   }
 
   getSolicitanteNombre(): string {
     const sol = this.solicitud();
-    return sol?.ciudadanoNombre || this.authService.obtenerSesion()?.nombre || 'Ciudadano';
+    return sol?.ciudadanoNombre || 'No registrado';
   }
 
   getSolicitanteIniciales(): string {
@@ -310,197 +726,231 @@ export class SolicitudDetalleComponent implements OnInit {
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase())
       .join('');
-    return base || 'CI';
+    return base || '—';
   }
 
   getSolicitanteDni(): string {
-    return this.solicitud()?.ciudadanoDni || this.authService.obtenerSesion()?.dni || 'No disponible';
+    return this.solicitud()?.ciudadanoDni || 'No registrado';
   }
 
   getSolicitanteEmail(): string {
-    return this.authService.obtenerSesion()?.email || 'No disponible';
+    return this.solicitud()?.ciudadanoEmail || 'No registrado';
+  }
+
+  esEmpresa(): boolean {
+    const dni = (this.getSolicitanteDni() || '').replace(/\D/g, '');
+    return dni.length === 11;
+  }
+
+  docLabel(): string {
+    return this.esEmpresa() ? 'RUC' : 'DNI';
   }
 
   formatosSeleccionados(): string[] {
-    const sol = this.solicitud();
-    if (!sol) {
-      return [];
-    }
+    return formatosEntregaSolicitados(this.solicitud());
+  }
 
-    const selected: string[] = [];
-    if (sol.formatoDigital) selected.push('Digital');
-    if (sol.formatoFisico) selected.push('Físico');
-    if (sol.copiaSimple) selected.push('Copia simple');
-    if (sol.copiaCertificada) selected.push('Copia certificada');
-    return selected;
+  respuestaAunNoEmitida(): boolean {
+    if (this.yaRespondio()) return false;
+    const estado = (this.solicitud()?.estado || '').toUpperCase();
+    return estado === 'RECEPCIONADA'
+      || estado === 'EN_REVISION'
+      || estado === 'EN_PROCESO'
+      || this.enPrecisionSaip(estado);
   }
 
   puedeApelar(): boolean {
     const sol = this.solicitud();
-    return !!sol && (sol.estado === 'RESPONDIDA' || sol.estado === 'DENEGADA' || sol.estado === 'VENCIDA') && !sol.apelacion;
+    if (!sol || this.enApelacion()) return false;
+    const estado = (sol.estado || '').toUpperCase();
+    return estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'VENCIDA'
+      || this.esSilencioAdministrativo() || this.cronogramaIncumplido()
+      || ampliacionPermiteApelar(this.ampliacionActiva());
   }
 
   esSilencioAdministrativo(): boolean {
-    return isSilencioAdministrativo(this.solicitud());
-  }
-
-  puedeVerRespuesta(): boolean {
     const sol = this.solicitud();
-    return !!sol?.respuesta || this.esSilencioAdministrativo();
+    return !!sol && !this.observacionPendiente() && !this.enPrecisionSaip(sol.estado)
+      && isSilencioAdministrativo(sol);
   }
 
-  getTipoRespuestaDisplay(): string {
-    const sol = this.solicitud();
-    if (!sol) {
-      return '';
-    }
-
-    return sol.respuesta?.tipoRespuesta || (this.esSilencioAdministrativo() ? 'SILENCIO_ADMINISTRATIVO' : '');
-  }
-
-  getRespuestaResumenTitulo(): string {
-    const tipo = this.getTipoRespuestaDisplay();
-    const titles: Record<string, string> = {
-      DENEGACION_TOTAL: 'Solicitud denegada',
-      ENTREGA_TOTAL: 'Solicitud atendida',
-      ENTREGA_PARCIAL: 'Entrega parcial de información',
-      SILENCIO_ADMINISTRATIVO: 'Silencio administrativo automático'
-    };
-    return titles[tipo] || 'Respuesta de la entidad';
-  }
-
-  getRespuestaResumenDescripcion(): string {
-    const tipo = this.getTipoRespuestaDisplay();
-    if (tipo === 'SILENCIO_ADMINISTRATIVO') {
-      return 'La entidad no respondió dentro del plazo legal de 10 días hábiles.';
-    }
-    if (tipo === 'DENEGACION_TOTAL') {
-      return 'La entidad denegó el acceso a la información solicitada.';
-    }
-    if (tipo === 'ENTREGA_PARCIAL') {
-      return 'La entidad entregó parcialmente la información solicitada.';
-    }
-    if (tipo === 'ENTREGA_TOTAL') {
-      return 'La entidad atendió su solicitud y remitió la información.';
-    }
-    return 'La entidad emitió una respuesta para su solicitud.';
-  }
-
-  getTimelineEvents(): TimelineEvent[] {
-    const sol = this.solicitud();
-    if (!sol) {
-      return [];
-    }
-
-    const hasRespuesta = !!sol.respuesta || this.esSilencioAdministrativo();
-
-    const events: TimelineEvent[] = [
-      {
-        title: 'Solicitud presentada',
-        description: 'SAIP registrada y notificada a la entidad.',
-        date: sol.fechaPresentacion,
-        status: 'completed',
-        icon: 'mail'
-      },
-      {
-        title: 'En revisión',
-        description: 'La entidad evalúa la solicitud.',
-        date: sol.fechaPresentacion,
-        status: hasRespuesta ? 'completed' : 'current',
-        icon: 'search'
-      },
-      {
-        title: 'Respuesta emitida',
-        description: hasRespuesta ? this.getRespuestaResumenTitulo() : 'Pendiente de respuesta',
-        date: sol.respuesta?.fechaRespuesta,
-        status: hasRespuesta ? 'completed' : 'pending',
-        icon: 'check'
-      }
-    ];
-
-    for (const observacion of this.observaciones()) {
-      events.push({
-        title: observacion.estado === 'SUBSANADA' ? 'Observación subsanada' : 'Observación registrada',
-        description: observacion.estado === 'SUBSANADA'
-          ? 'La entidad recibió su subsanación y volvió a revisar la SAIP.'
-          : `Debe subsanar hasta ${observacion.fechaLimiteSubsanacion || 'la fecha indicada'}.`,
-        date: observacion.fechaSubsanacion || observacion.fechaObservacion,
-        status: observacion.estado === 'SUBSANADA' ? 'completed' : 'current',
-        icon: observacion.estado === 'SUBSANADA' ? 'check' : 'search'
-      });
-    }
-
-    for (const ampliacion of this.ampliaciones()) {
-      events.push({
-        title: 'Ampliación notificada',
-        description: `La entidad notificó un cronograma de ${ampliacion.cronograma.length} entrega(s) parcial(es).`,
-        date: ampliacion.fechaNotificacionAmpliacion,
-        status: ampliacion.estadoAmpliacion === 'COMPLETADA' ? 'completed' : 'current',
-        icon: ampliacion.estadoAmpliacion === 'COMPLETADA' ? 'check' : 'search'
-      });
-    }
-
-    for (const encauzamiento of this.encauzamientos()) {
-      events.push({
-        title: `Encauzamiento ${this.getEstadoDisplay(encauzamiento.alcance)}`,
-        description: `${encauzamiento.entidadOrigenNombre} derivó competencia hacia ${encauzamiento.entidadDestinoNombre}.`,
-        date: encauzamiento.fechaEncauzamiento,
-        status: encauzamiento.estadoEncauzamiento === 'ATENDIDO' ? 'completed' : 'current',
-        icon: encauzamiento.estadoEncauzamiento === 'ATENDIDO' ? 'check' : 'search'
-      });
-    }
-
-    for (const liquidacion of this.liquidaciones()) {
-      events.push({
-        title: `Liquidación ${this.getEstadoDisplay(liquidacion.estadoLiquidacion)}`,
-        description: `Cupón ${liquidacion.codigoLiquidacion}. Recojo físico hasta ${liquidacion.fechaLimiteRecojo}.`,
-        date: liquidacion.fechaNotificacion,
-        status: liquidacion.estadoLiquidacion === 'RECOGIDA' ? 'completed' : 'current',
-        icon: liquidacion.estadoLiquidacion === 'RECOGIDA' ? 'check' : 'search'
-      });
-    }
-
-    const elevacion = this.elevacionApelacion();
-    if (elevacion) {
-      const finalizada = elevacion.estadoElevacion === 'ELEVADA'
-        || elevacion.estadoElevacion === 'ADMITIDA_EXCEPCIONALMENTE';
-      events.push({
-        title: finalizada ? 'Apelación elevada al TTAIP' : 'Elevación de apelación pendiente',
-        description: finalizada
-          ? 'La apelación ingresó al Tribunal para primera calificación.'
-          : `La entidad debe elevar su apelación hasta ${elevacion.fechaLimiteElevacion}.`,
-        date: elevacion.fechaElevacionTtaip || elevacion.fechaPresentacionAnteEntidad,
-        status: finalizada ? 'completed' : 'current',
-        icon: finalizada ? 'check' : 'search'
-      });
-    }
-
-    return events;
-  }
-
-  getApelacionResultadoDisplay(): string {
-    const resultado = this.solicitud()?.apelacion?.resultado;
-    return this.getEstadoDisplay(resultado);
+  private enPrecisionSaip(estado?: string): boolean {
+    return ['PENDIENTE_INFORMACION', 'EN_PRECISION', 'OBSERVADA'].includes((estado || '').toUpperCase());
   }
 
   isApelacionResuelta(): boolean {
     const estado = this.solicitud()?.apelacion?.estado || '';
-    return estado.startsWith('RESUELTO') || estado.startsWith('CONCLUSION') || estado === 'TENER_POR_NO_PRESENTADO';
+    return estado.startsWith('RESUELTO') || estado.startsWith('CONCLUSION') || estado === 'TENER_POR_NO_PRESENTADO' || !!this.solicitud()?.apelacion?.resultado;
   }
 
   showSubsanarAction(): boolean {
     return this.solicitud()?.apelacion?.estado === 'EN_SUBSANACION';
   }
 
-  esSubsanacionApelacionVencida(apelacion: any): boolean {
-    if (!apelacion || apelacion.estado !== 'EN_SUBSANACION') return false;
-    const fechaNotif = apelacion.fechaSubsanacion || apelacion.fechaNotificacion || apelacion.fechaApelacion || apelacion.createdAt;
-    if (!fechaNotif) return false;
-
-    const notifDate = new Date(fechaNotif);
-    const hoy = new Date();
-    const diffMs = hoy.getTime() - notifDate.getTime();
-    const diffDays = diffMs / (1000 * 60 * 60 * 24);
-    return diffDays >= 2;
+  private formatTimelineDate(dateStr?: string | null): string {
+    return fechaVisible(dateStr, 'corta') || dateStr || '—';
   }
+
+  textoFecha(dateStr?: string | null): string {
+    return fechaVisible(dateStr, 'numerica');
+  }
+
+  private formatBytes(bytes?: number): string {
+    if (bytes === undefined || bytes === null) return 'Tamaño no registrado';
+    if (bytes === 0) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  // Only recorded acts enter this view. Current status is a separate summary,
+  // not evidence that intermediate acts, delivery or notifications occurred.
+  buildCitizenTimeline(sol: Solicitud): TimelineEvent[] {
+    const events: (TimelineEvent & { fechaOrden: number | null; secuencia: number })[] = [];
+    const add = (title: string, description: string, date: string | null | undefined,
+      icon: TimelineEvent['icon'], secuencia: number, instancia: 1 | 2 = 1) => {
+      events.push({
+        title, description, date: this.formatTimelineDate(date), icon, instancia, status: 'completed',
+        fechaOrden: diaCalendario(date), secuencia
+      });
+    };
+    const respondida = this.idValido(sol.respuesta?.id);
+    const encTotal = (sol.encauzamientos ?? []).find(enc =>
+      this.idValido(enc.id)
+      && (enc.solicitudId == null || enc.solicitudId === sol.id)
+      && enc.alcance === 'TOTAL'
+      && (enc.estadoEncauzamiento === 'DERIVADO' || enc.estadoEncauzamiento === 'REGISTRADO'));
+    if (sol.fechaPresentacion) add('Solicitud presentada', 'Registro de la solicitud.', sol.fechaPresentacion, 'mail', 10);
+    for (const obs of sol.observaciones ?? []) {
+      if (!this.idValido(obs.id) || (obs.solicitudId != null && obs.solicitudId !== sol.id)) continue;
+      add('Solicitud de precisión', this.resumenPrecision(obs.estado), obs.fechaObservacion, 'search', 20);
+      if (obs.estado === 'SUBSANADA') add('Precisión registrada', 'Precisión registrada.', obs.fechaSubsanacion, 'filecheck', 30);
+    }
+    for (const enc of sol.encauzamientos ?? []) {
+      if (!this.idValido(enc.id) || (enc.solicitudId != null && enc.solicitudId !== sol.id)) continue;
+      const origen = enc.entidadOrigenNombre || 'la entidad de origen';
+      const destino = enc.entidadDestinoNombre || 'la entidad de destino';
+      const numero = enc.expedienteDerivado?.trim()
+        || /Expediente de destino: (SAIP-\d{4}-\d+)/.exec(enc.trazabilidad ?? '')?.[1];
+      add('Encauzamiento registrado', numero ? `De ${origen} a ${destino}. Continúa en ${numero}.` : `De ${origen} a ${destino}.`, enc.fechaEncauzamiento, 'search', respondida ? 92 : 40);
+    }
+    for (const amp of sol.ampliacionesPlazo ?? []) {
+      if (!this.idValido(amp.id) || amp.solicitudId !== sol.id) continue;
+      add('Ampliación registrada', 'Plazo ampliado.', amp.fechaSolicitudAmpliacion || amp.fechaNotificacionAmpliacion, 'search', 50);
+      for (const hito of [...(amp.cronograma ?? [])].sort((a, b) => a.numeroEntrega - b.numeroEntrega)) {
+        if (hito.estado !== 'ENTREGADA') continue;
+        const docsCount = (hito.documentos ?? []).filter(d => this.idValido(d?.id)).length;
+        const suffix = docsCount > 0 ? ` · ${docsCount} ${docsCount === 1 ? 'documento' : 'documentos'}` : '';
+        const programada = this.textoFecha(hito.fechaProgramada);
+        const cuando = programada ? ` Programada para el ${programada}.` : '';
+        add(
+          `Entrega parcial ${hito.numeroEntrega}`,
+          `${hito.decision ? DECISIONES_ENTREGA[hito.decision] + ' · ' : ''}${hito.descripcion || 'Entrega programada registrada'}.${cuando}${suffix}`,
+          hito.fechaEntregaReal || hito.fechaProgramada,
+          'filecheck',
+          60 + (hito.numeroEntrega || 0)
+        );
+      }
+    }
+    for (const liq of sol.liquidacionesCosto ?? []) {
+      if (!this.idValido(liq.id) || liq.solicitudId !== sol.id) continue;
+      add('Liquidación registrada', liq.concepto || 'Concepto no registrado.', liq.fechaEmision, 'mail', 95);
+      if (liq.estadoLiquidacion === 'PAGADA' && liq.fechaPago) add('Pago registrado', 'Pago registrado por la entidad.', liq.fechaPago, 'filecheck', 96);
+      if (liq.estadoLiquidacion === 'RECOGIDA') add('Recojo registrado', 'Recojo registrado por la entidad.', liq.fechaRecojo, 'filecheck', 97);
+    }
+    if (this.idValido(sol.respuesta?.id)) {
+      const denegada = sol.respuesta?.tipoRespuesta === 'DENEGACION_TOTAL';
+      const origen = encTotal?.entidadOrigenNombre?.trim();
+      add(
+        denegada ? 'Denegatoria total' : 'Respuesta de la entidad',
+        denegada ? (origen ? `Denegatoria de ${origen}.` : 'Denegatoria total.') : this.respLabel(),
+        sol.respuesta?.fechaRespuesta,
+        'filecheck',
+        90
+      );
+    }
+    const ap = sol.apelacion;
+    if (this.idValido(ap?.id)) {
+      add('Apelación registrada', ap?.expediente || 'Numeración TTAIP no registrada.', ap?.fechaApelacion, 'gavel', 100, 2);
+      const detalle = this.apelacionDetalle();
+      if (detalle) {
+        const vistos = new Set<number>();
+        for (const res of [...(detalle.resoluciones ?? []), detalle.resolucionPrimeraCalificacion,
+          detalle.resolucionSegundaCalificacion, detalle.resolucion]) {
+          if (!res || !this.idValido(res.id) || vistos.has(res.id)) continue;
+          vistos.add(res.id);
+          add(this.getEstadoDisplay(res.tipoResolucion), res.decision ? this.getEstadoDisplay(res.decision) : 'Decisión no registrada.', res.fechaResolucion, 'scale', 110, 2);
+        }
+        let subsanacionRegistrada = false;
+        for (const evento of detalle.expedienteTtaip?.historial ?? []) {
+          if (evento?.tipoEvento !== 'SUBSANACION' || !this.idValido(evento.id)) continue;
+          subsanacionRegistrada = true;
+          add('Subsanación presentada', 'El Tribunal recibió el escrito de subsanación.', evento.fechaEvento, 'filecheck', 115, 2);
+        }
+        const estadoApelacion = (detalle.estado || ap?.estado || '').toUpperCase();
+        if (!subsanacionRegistrada && estadoApelacion === 'EN_CALIFICACION_2') {
+          add('Subsanación presentada', 'El Tribunal recibió el escrito de subsanación.', detalle.fechaSubsanacion, 'filecheck', 115, 2);
+        }
+        const cumplimiento = detalle.expedienteTtaip?.cumplimientoDocumental;
+        if (cumplimiento?.fechaEntrega) {
+          const entidad = detalle.entidadNombre || detalle.entidadExternaNombre || 'La entidad';
+          add('Cumplimiento', cumplimiento.fechaRemision ? `${entidad} cumplió con lo dispuesto por el Tribunal.`
+            : `${entidad} puso su respuesta a disposición del administrado.`, cumplimiento.fechaEntrega, 'filecheck', 120, 2);
+        }
+      }
+    }
+    if (respondida && encTotal) {
+      const actual = events.find(event => event.secuencia === 92 && event.title === 'Encauzamiento registrado');
+      if (actual) actual.status = 'current';
+    }
+    const dated = events.filter(event => event.fechaOrden !== null)
+      .sort((a, b) => a.fechaOrden! - b.fechaOrden! || a.secuencia - b.secuencia);
+    const undated = events.filter(event => event.fechaOrden === null).sort((a, b) => a.secuencia - b.secuencia);
+    return [...dated, ...undated].map(({ fechaOrden, secuencia, ...event }) => event);
+  }
+
+  timelineDisplayOrder(steps: TimelineEvent[]): TimelineEvent[] {
+    return [...steps].reverse();
+  }
+
+  private resumenPrecision(estado: string): string {
+    switch (estado) {
+      case 'PENDIENTE_SUBSANACION': return 'En espera de su precisión.';
+      case 'SUBSANADA': return 'Precisión solicitada.';
+      case 'NO_SUBSANADA': return 'Precisión sin subsanar.';
+      case 'ARCHIVADA': return 'Precisión archivada.';
+      default: return 'Precisión solicitada.';
+    }
+  }
+}
+
+function diaCalendario(valor?: string | null): number | null {
+  const iso = fechaIsoCalendario(valor);
+  if (iso) return Number(iso.anio) * 10000 + Number(iso.mes) * 100 + Number(iso.dia);
+  if (!valor) return null;
+  const parsed = new Date(valor);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const partes = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima', year: 'numeric', month: '2-digit', day: '2-digit' }).format(parsed);
+  const [anio, mes, dia] = partes.split('-');
+  return Number(anio) * 10000 + Number(mes) * 100 + Number(dia);
+}
+
+function fechaVisible(valor: string | null | undefined, formato: 'corta' | 'numerica'): string {
+  const iso = fechaIsoCalendario(valor);
+  if (iso) {
+    if (formato === 'numerica') return `${iso.dia}/${iso.mes}/${iso.anio}`;
+    const fecha = new Date(Date.UTC(Number(iso.anio), Number(iso.mes) - 1, Number(iso.dia), 12));
+    return fecha.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  }
+  if (!valor) return '';
+  const parsed = new Date(valor);
+  if (Number.isNaN(parsed.getTime())) return valor;
+  return parsed.toLocaleDateString('es-PE', formato === 'numerica'
+    ? { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Lima' }
+    : { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'America/Lima' });
+}
+
+function fechaIsoCalendario(valor?: string | null): { anio: string; mes: string; dia: string } | null {
+  const iso = valor ? /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(valor.trim()) : null;
+  return iso ? { anio: iso[1], mes: iso[2], dia: iso[3] } : null;
 }

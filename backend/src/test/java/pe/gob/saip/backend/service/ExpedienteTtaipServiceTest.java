@@ -88,6 +88,9 @@ class ExpedienteTtaipServiceTest {
     @Mock
     CumplimientoResolucionTtaipRepository cumplimientoRepository;
 
+    @Mock
+    InicioPlazoSubsanacionTtaipService inicioPlazoSubsanacion;
+
     @InjectMocks
     ExpedienteTtaipService service;
 
@@ -145,7 +148,7 @@ class ExpedienteTtaipServiceTest {
     }
 
     @Test
-    void presentarDescargo_debeCerrarSuspensionYRecalcularPlazoConDiasEfectivos() {
+    void presentarDescargoTemprano_conservaLosSieteDiasDeSuspension() {
         LocalDate fechaAdmision = LocalDate.of(2026, 5, 4);
         LocalDate fechaRequerimiento = LocalDate.of(2026, 5, 5);
         LocalDate fechaPresentacion = LocalDate.of(2026, 5, 7);
@@ -175,9 +178,10 @@ class ExpedienteTtaipServiceTest {
         LocalDate limiteBaseResolucion = DiasHabilesUtil.sumarDiasHabiles(fechaAdmision, 10);
         assertThat(resultado.getEstadoDescargo()).isEqualTo(DescargoEntidadTtaip.EstadoDescargo.PRESENTADO);
         assertThat(suspension.getEstadoSuspension()).isEqualTo(SuspensionPlazoTtaip.EstadoSuspension.CERRADA);
-        assertThat(suspension.getDiasSuspendidos()).isEqualTo(2);
+        assertThat(suspension.getDiasSuspendidos()).isEqualTo(7);
+        assertThat(suspension.getFechaFinSuspension()).isEqualTo(descargo.getFechaLimiteDescargo());
         assertThat(expediente.getFechaLimiteResolucion())
-                .isEqualTo(DiasHabilesUtil.sumarDiasHabiles(limiteBaseResolucion, 2));
+                .isEqualTo(DiasHabilesUtil.sumarDiasHabiles(limiteBaseResolucion, 7));
     }
 
     @Test
@@ -189,15 +193,13 @@ class ExpedienteTtaipServiceTest {
         descargo.setFechaLimiteDescargo(LocalDate.now().minusDays(1));
         SuspensionPlazoTtaip suspension = crearSuspension(expediente, descargo);
 
-        when(descargoRepository.findByEstadoDescargoInAndFechaLimiteDescargoBefore(anyList(), any(LocalDate.class)))
+        when(descargoRepository.findByExpediente_IdExpedienteTtaipOrderByFechaRequerimientoDesc(100L))
                 .thenReturn(List.of(descargo));
         when(suspensionRepository.findFirstByDescargo_IdDescargoOrderByFechaCreacionDesc(200L))
                 .thenReturn(Optional.of(suspension));
         when(suspensionRepository.findByExpediente_IdExpedienteTtaipOrderByFechaInicioSuspensionAsc(100L))
                 .thenReturn(List.of(suspension));
-        when(descargoRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
-
-        List<DescargoEntidadTtaip> resultado = service.procesarDescargosVencidos();
+        List<DescargoEntidadTtaip> resultado = service.procesarDescargosVencidos(100L);
 
         assertThat(resultado).hasSize(1);
         assertThat(resultado.getFirst().getEstadoDescargo())
@@ -502,7 +504,7 @@ class ExpedienteTtaipServiceTest {
         CumplimientoResolucionTtaip cumplimiento = crearCumplimiento(expediente);
         cumplimiento.setFechaLimiteCumplimiento(LocalDate.now().minusDays(1));
 
-        when(cumplimientoRepository.findByEstadoCumplimientoInAndFechaLimiteCumplimientoBefore(
+        when(cumplimientoRepository.findByEstadoCumplimientoInAndFechaLimiteCumplimientoBeforeAndIdNotificacionInicioIsNull(
                 anyList(),
                 any(LocalDate.class))).thenReturn(List.of(cumplimiento));
         when(cumplimientoRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));

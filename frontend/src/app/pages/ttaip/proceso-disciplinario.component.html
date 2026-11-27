@@ -1,229 +1,96 @@
-<div class="min-h-screen bg-background">
+<div class="disciplinary-page min-h-screen bg-background">
   <div class="relative bg-brand-gradient text-white overflow-hidden">
     <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
     <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
-      <a routerLink="/ttaip" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
-        <svg lucideArrowLeft class="w-4 h-4"></svg>
-        Volver al panel TTAIP
-      </a>
-
-      <span class="eyebrow !text-[color:var(--gold-soft)]">Tribunal · Regimen disciplinario</span>
-      <h1 class="font-display mt-2" style="font-size: clamp(30px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -0.025em">
-        Procesos <span class="italic" style="color: var(--gold-soft)">disciplinarios</span>
-      </h1>
-      <p class="text-white/75 mt-2 text-sm">Gestion de incumplimientos y sanciones a funcionarios publicos</p>
+      <a routerLink="/ttaip" class="back-link back-link--dark"><svg aria-hidden="true" lucideArrowLeft class="w-4 h-4"></svg>Volver al panel TTAIP</a>
+      <span class="eyebrow !text-[color:var(--gold-soft)]">Tribunal · Régimen disciplinario</span>
+      <h1 class="font-display mt-2" style="font-size: clamp(30px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -0.025em">Procesos <span class="italic" style="color: var(--gold-soft)">disciplinarios</span></h1>
+      <p class="text-white/75 mt-2 text-sm">Consulta de antecedentes de resoluciones. El registro y seguimiento de procedimientos disciplinarios no están disponibles.</p>
     </div>
     <div class="brand-divider"></div>
   </div>
-
-  <div class="max-w-7xl mx-auto px-6 md:px-10 py-10">
+  <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6" [attr.aria-busy]="loading()">
+    <section class="rounded-lg p-5 flex items-start gap-4" aria-labelledby="disciplinary-availability" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--info)">
+      <svg aria-hidden="true" lucideAlertTriangle class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--info)"></svg>
+      <div class="min-w-0"><h2 id="disciplinary-availability" class="font-display text-lg">Consulta de procedimientos no disponible</h2>
+        <p class="text-sm text-foreground/85 mt-2">El indicador registrado en una resolución no acredita apertura, remisión, investigación, decisión ni sanción. Esta pantalla no ejecuta esas actuaciones ni abre procesos por incumplimiento o vencimiento.</p>
+        <a routerLink="/ttaip/cumplimiento" class="btn-ghost-brand mt-3">Consultar seguimiento de cumplimiento</a>
+        <p class="text-xs text-muted-foreground mt-2">El cierre operativo del cumplimiento es distinto de la entrega total. Su base temporal y la emisión documental conservan sus limitaciones propias.</p>
+      </div>
+    </section>
     @if (loading()) {
-      <div class="form-shell p-16 text-center">
-        <div class="w-8 h-8 border-2 border-[var(--brand-700)] border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p class="mt-4 text-muted-foreground">Cargando procesos disciplinarios...</p>
-      </div>
+      <app-yaiku-cargando mensaje="Cargando antecedentes de resoluciones…" />
     } @else if (error()) {
-      <div class="rounded-lg p-6 text-center" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
-        <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
-      </div>
-    } @else if (!selectedCase()) {
-      <div class="form-shell p-12 text-center">
-        <div class="w-14 h-14 mx-auto rounded-md flex items-center justify-center mb-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-          <svg lucideScale class="w-6 h-6" style="color: var(--brand-700)"></svg>
-        </div>
-        <h2 class="font-display" style="font-size: 22px">Sin procesos disciplinarios activos</h2>
-        <p class="text-sm text-muted-foreground mt-2 max-w-xl mx-auto">El backend no registra resoluciones finales con orden de iniciar proceso disciplinario.</p>
-      </div>
-    } @else if (selectedCase(); as item) {
-    <div
-      class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6"
-      data-motion-stagger
-      data-motion-y="14"
-      data-motion-duration="0.4"
-      data-motion-delay-step="0.06"
-    >
-      <aside class="form-shell h-fit lg:sticky lg:top-28" data-motion-item>
-        <div class="form-section-header">
-          <span class="eyebrow">Etapas</span>
-          <h2 class="form-section-title">Proceso</h2>
-        </div>
-
-        <div class="p-6">
-          <ol class="relative">
-            @for (evento of timeline(); track evento.title; let i = $index) {
-              <li class="relative pl-8 pb-6 last:pb-0" data-table-row>
-                @if (i < timeline().length - 1) {
-                  <span class="absolute left-[12px] top-6 bottom-0 border-l border-dashed" style="border-color: var(--brand-200)"></span>
-                }
-
-                <span class="absolute left-0 top-0 w-[26px] h-[26px] rounded-full flex items-center justify-center" [style.background]="timelineBackground(evento.status)" [style.border]="timelineBorder(evento.status)" [style.boxShadow]="timelineShadow(evento.status)">
-                  @switch (evento.icon) {
-                    @case ('mail') { <svg lucideMail class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
-                    @case ('gavel') { <svg lucideGavel class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
-                    @case ('scale') { <svg lucideScale class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
-                    @default { <svg lucideFileText class="w-3.5 h-3.5" [style.color]="evento.status === 'pending' ? 'var(--muted-foreground)' : '#fff'"></svg> }
-                  }
-                </span>
-
-                <div class="font-display text-sm font-semibold tracking-wide leading-tight">{{ evento.title }}</div>
-                <div class="font-mono text-[11px] mt-0.5" [style.color]="timelineColor(evento.status)">{{ evento.date }}</div>
-                <p class="text-xs text-foreground/75 mt-1.5 leading-relaxed">{{ evento.desc }}</p>
-              </li>
-            }
-          </ol>
-        </div>
-      </aside>
-
-      <div class="space-y-6">
-        <div class="form-shell" data-motion-item>
-          <div class="flex border-b overflow-x-auto" style="border-color: var(--border)">
-            @for (tab of tabs; track tab.id) {
-              <button type="button" (click)="cambiarTab(tab.id)" class="flex-1 min-w-[140px] px-4 py-3.5 text-sm relative whitespace-nowrap" [style.color]="activeTab() === tab.id ? 'var(--brand-700)' : 'var(--muted-foreground)'" [style.fontWeight]="activeTab() === tab.id ? 600 : 400">
-                {{ tab.label }}
-                @if (activeTab() === tab.id) {
-                  <span class="absolute left-0 right-0 bottom-[-1px] h-[2px]" style="background: var(--brand-700)"></span>
-                }
-              </button>
-            }
-          </div>
-
-          @if (activeTab() === 'resolucion') {
-            <div class="p-6 space-y-5 text-sm animate-fade-in">
-              <div class="rounded-md p-4 flex items-start gap-3" style="background: rgba(5,150,105,0.06); border: 1px solid rgba(5,150,105,0.25); border-left: 3px solid var(--success)">
-                <svg lucideCheckCircle2 class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)"></svg>
-                <div>
-                  <div class="font-display tracking-wider font-semibold">RESOLUCIÓN · {{ item.apelacion.expediente }} · {{ formatDecision(item.resolucion.decision) }}</div>
-                  <p class="text-xs text-foreground/80 mt-1">{{ item.resolucion.fundamentos || 'Resolución final registrada por el backend.' }}</p>
-                </div>
-              </div>
-
-              <div>
-                <span class="eyebrow" style="color: var(--brand-700)">Motivo del proceso</span>
-                <div class="mt-2 rounded-md p-4" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)">
-                  <p class="leading-relaxed">La resolución final marcó <span class="font-semibold">iniciar proceso disciplinario</span>. El seguimiento específico de descargos y sanciones queda pendiente de registro backend.</p>
-                </div>
-              </div>
-
-              <div class="rule-ornament"></div>
-
-              <div>
-                <span class="eyebrow">Entidad vinculada</span>
-                <div class="flex items-center gap-3 mt-2">
-                  <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">EP</div>
-                  <div>
-                    <div class="font-medium">{{ item.apelacion.entidadNombre || 'Entidad pública' }}</div>
-                    <div class="text-xs text-muted-foreground">Miembro TTAIP · {{ item.resolucion.miembroTTAIPNombre || 'No registrado' }}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <span class="eyebrow">Base legal</span>
-                <p class="mt-2 text-foreground/85 leading-relaxed">Articulo 4° de la Ley N° 27806 — El incumplimiento de las disposiciones del TTAIP constituye <span class="font-semibold">falta administrativa grave</span>.</p>
-              </div>
-            </div>
-          }
-
-          @if (activeTab() === 'notificacion') {
-            <div class="p-6 space-y-5 text-sm animate-fade-in">
-              <div class="rounded-md p-4 flex items-start gap-3" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
-                <svg lucideClock class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--warning)"></svg>
-                <div>
-                  <div class="font-display tracking-wider font-semibold" style="color: var(--warning)">PLAZO PARA DESCARGOS</div>
-                  <p class="text-xs text-foreground/80 mt-1">Plazo de descargos pendiente de registro por el backend.</p>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
-                  <div class="eyebrow">Fecha de notificacion</div>
-                  <div class="font-mono mt-1">{{ formatDate(item.resolucion.fechaResolucion) }}</div>
-                </div>
-                <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
-                  <div class="eyebrow" [style.color]="colorEstadoNotificacion()">Estado</div>
-                  <div class="mt-1 inline-flex items-center gap-1.5 text-xs" [style.color]="colorEstadoNotificacion()">
-                    <svg lucideCheckCircle2 class="w-3.5 h-3.5"></svg>
-                    {{ estadoNotificacion() }}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <span class="eyebrow">Medio de notificacion</span>
-                <p class="mt-1.5 text-foreground/85">No registrado por el backend.</p>
-              </div>
-
-              <button type="button" class="btn-ghost-brand w-full justify-center !py-3">
-                <svg lucideFileText class="w-4 h-4"></svg>
-                Descargar notificacion
-              </button>
-            </div>
-          }
-
-          @if (activeTab() === 'descargos') {
-            <div class="p-6 space-y-5 animate-fade-in">
-              <div class="rounded-lg py-10 text-center reference-upload-zone" style="background: var(--brand-subtle); border: 1px dashed var(--brand-200)">
-                <div class="w-14 h-14 mx-auto rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
-                  <svg lucideFolderOpen class="w-6 h-6" style="color: var(--brand-700)"></svg>
-                </div>
-                <h3 class="font-display tracking-wide mt-4" style="font-size: 18px">Aun no se han presentado descargos</h3>
-                <p class="text-sm text-muted-foreground mt-1">El backend aún no registra descargos asociados a este proceso.</p>
-              </div>
-
-              <div class="rule-ornament"></div>
-
-              <div>
-                <span class="eyebrow">Portal del funcionario · vista previa</span>
-                <div class="mt-3 space-y-4 opacity-60 pointer-events-none">
-                  <div class="field">
-                    <label class="field-label">Descargos del funcionario</label>
-                    <textarea class="field-input" rows="6" placeholder="El funcionario debe explicar los motivos del incumplimiento..." disabled></textarea>
-                  </div>
-                  <div class="rounded-md border border-dashed border-[var(--brand-200)] p-5 text-center reference-upload-zone" style="background: var(--brand-subtle)">
-                    <p class="text-sm text-foreground/80">Documentos de sustento</p>
-                    <p class="text-xs text-muted-foreground mt-1">Evidencias que respalden los descargos.</p>
-                  </div>
-                  <button type="button" class="btn-brand w-full !py-3 justify-center" disabled>
-                    <svg lucideSend class="w-4 h-4"></svg>
-                    Presentar descargos
+      <div class="form-shell p-6 text-sm" role="alert"><p>{{ error() }}</p>@if (reintentable()) { <button type="button" class="btn-ghost-brand mt-3" (click)="cargarProcesos()">Reintentar consulta de antecedentes</button> }</div>
+    } @else {
+      <p class="text-xs text-muted-foreground" role="status">Alcance: {{ resolucionesConsultadas() }} resoluciones finales identificadas de las apelaciones resueltas recuperadas; {{ cases().length }} antecedentes con indicador explícito. Estas cifras no cuentan procedimientos disciplinarios.</p>
+      @if (informacionIncompleta()) { <p class="form-shell p-4 text-sm" role="status">Información incompleta o asociaciones incompatibles en la consulta. No se confirma la ausencia de indicadores ni de procedimientos.</p> }
+      @if (!selectedCase()) {
+        <section class="form-shell p-12 text-center" aria-labelledby="disciplinary-no-antecedents">
+          <div class="w-16 h-16 mx-auto rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)"><svg aria-hidden="true" lucideInbox class="w-7 h-7" style="color: var(--brand-700)"></svg></div>
+          <h2 id="disciplinary-no-antecedents" class="font-display tracking-wide mt-4 text-xl">{{ informacionIncompleta() ? 'No hay antecedentes identificados en el resultado incompleto' : 'Sin indicadores en las resoluciones consultadas' }}</h2>
+          <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">La consulta disponible es de resoluciones, no de procedimientos disciplinarios. Este resultado no acredita que no existan procesos, comunicaciones o sanciones.</p>
+        </section>
+      } @else if (selectedCase(); as item) {
+        <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
+          <aside class="space-y-6 h-fit lg:sticky lg:top-28">
+            <div class="form-shell"><div class="form-section-header"><span class="eyebrow">{{ cases().length }} antecedentes marcados</span><h2 class="form-section-title">Resoluciones consultadas</h2></div>
+              <div class="p-3 space-y-2 max-h-[260px] overflow-y-auto">
+                @for (c of cases(); track c.resolucion.id) {
+                  <button type="button" (click)="selectCase(c)" [attr.aria-pressed]="isCaseSelected(c)" aria-controls="disciplinary-detail" class="w-full text-left rounded-md p-3 transition-colors" [style.background]="isCaseSelected(c) ? 'var(--brand-subtle)' : 'var(--card)'" [style.border]="'1px solid ' + (isCaseSelected(c) ? 'var(--brand-200)' : 'var(--border)')">
+                    <div class="font-mono text-[11px]" style="color: var(--brand-700)">{{ c.apelacion.expediente }}</div><div class="text-sm font-medium mt-0.5">{{ c.resolucion.numeroResolucion || 'Resolución sin numeración' }}</div><div class="text-xs text-muted-foreground">{{ c.apelacion.entidadNombre || c.apelacion.entidadExternaNombre || 'Entidad no informada' }}</div>
                   </button>
-                </div>
+                }
               </div>
             </div>
-          }
-
-          @if (activeTab() === 'sancion') {
-            <div class="p-12 text-center animate-fade-in">
-              <div class="w-16 h-16 mx-auto rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                <svg lucideClock class="w-7 h-7" style="color: var(--brand-700)"></svg>
-              </div>
-              <h3 class="font-display tracking-wide mt-4" style="font-size: 20px">Pendiente de evaluacion</h3>
-              <p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
-                La resolucion sancionatoria se emitira una vez concluido el plazo para descargos y evaluada la documentacion presentada por el funcionario.
-              </p>
-            </div>
-          }
-        </div>
-
-        <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--info)" data-reveal>
-          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(29,78,216,0.08)">
-            <svg lucideAlertTriangle class="w-5 h-5" style="color: var(--info)"></svg>
-          </div>
-
-          <div class="flex-1">
-            <span class="eyebrow" style="color: var(--info)">Posibles sanciones · Ley N° 27806</span>
-            <ul class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm text-foreground/85">
-              @for (sancion of sanciones; track sancion; let i = $index) {
-                <li class="flex items-start gap-2">
-                  <span class="font-mono text-[11px] mt-0.5" style="color: var(--brand-700)">0{{ i + 1 }}</span>
-                  <span>{{ sancion }}</span>
+            <div class="form-shell"><div class="form-section-header"><span class="eyebrow">Antecedente</span><h2 class="form-section-title">Registro consultado</h2></div>
+              <div class="p-6"><ol class="relative">@for (event of timeline(); track event.id) {
+                <li class="relative pl-8"><span class="absolute left-0 top-0 w-[26px] h-[26px] rounded-full flex items-center justify-center" style="background: var(--brand-700); box-shadow: 0 0 0 4px var(--brand-50)"><svg aria-hidden="true" lucideFileText class="w-3.5 h-3.5 text-white"></svg></span>
+                  <div class="font-display text-sm font-semibold tracking-wide leading-tight">{{ event.title }}</div><div class="font-mono text-[11px] mt-0.5" style="color: var(--brand-700)">{{ event.date }}</div><p class="text-xs text-foreground/75 mt-1.5 leading-relaxed">{{ event.desc }}</p>
                 </li>
+              }</ol></div>
+            </div>
+          </aside>
+          <section id="disciplinary-detail" aria-label="Detalle del antecedente seleccionado" class="space-y-6 min-w-0">
+            <div class="form-shell">
+              <div role="tablist" aria-label="Información del antecedente y capacidades disciplinarias" class="flex border-b overflow-x-auto" style="border-color: var(--border)">
+                @for (tab of tabs; track tab.id) {
+                  <button type="button" role="tab" [id]="'disciplinary-tab-' + tab.id" [attr.aria-controls]="'disciplinary-panel-' + tab.id" [attr.aria-selected]="activeTab() === tab.id" [attr.tabindex]="activeTab() === tab.id ? 0 : -1" (keydown)="onTabKey($event, tab.id)" (click)="cambiarTab(tab.id)" class="flex-1 min-w-[140px] px-4 py-3.5 text-sm relative whitespace-nowrap" [style.color]="activeTab() === tab.id ? 'var(--brand-700)' : 'var(--muted-foreground)'" [style.fontWeight]="activeTab() === tab.id ? 600 : 400">{{ tab.label }}@if (activeTab() === tab.id) { <span class="absolute left-0 right-0 bottom-[-1px] h-[2px]" style="background: var(--brand-700)"></span> }</button>
+                }
+              </div>
+              @if (activeTab() === 'resolucion') {
+                <div id="disciplinary-panel-resolucion" role="tabpanel" aria-labelledby="disciplinary-tab-resolucion" class="p-6 space-y-5 text-sm">
+                  <div class="rounded-md p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--brand-700)"><svg aria-hidden="true" lucideFileText class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg><div><h3 class="font-display tracking-wider font-semibold">RESOLUCIÓN · {{ formatDecision(item.resolucion.decision) }}</h3><p class="text-xs text-foreground/80 mt-1">{{ item.resolucion.fundamentos || 'Fundamentos no informados en la consulta.' }}</p></div></div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="rounded-md p-3 bg-card border border-border"><span class="eyebrow">Resolución registrada</span><div class="font-mono mt-1">{{ item.resolucion.numeroResolucion || 'Numeración no informada' }}</div></div>
+                    <div class="rounded-md p-3 bg-card border border-border"><span class="eyebrow">Fecha propia de la resolución</span><div class="font-mono mt-1">{{ formatDate(item.resolucion.fechaResolucion) }}</div></div>
+                  </div>
+                  <div><span class="eyebrow" style="color: var(--brand-700)">Indicador registrado</span><div class="mt-2 rounded-md p-4" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)"><p>La resolución contiene el indicador de iniciar proceso disciplinario. Es un dato de la resolución; no abre un procedimiento ni acredita una actuación posterior.</p></div></div>
+                  <div class="rule-ornament"></div>
+                  <div><span class="eyebrow">Entidad vinculada a la apelación</span><p class="font-medium mt-2">{{ item.apelacion.entidadNombre || item.apelacion.entidadExternaNombre || 'Entidad no informada' }}</p><p class="text-xs text-muted-foreground">{{ item.apelacion.expediente || 'Expediente no informado' }}. No se identifica aquí un funcionario investigado.</p></div>
+                  <div><span class="eyebrow">Miembro TTAIP registrado en la resolución</span><p class="mt-2">{{ item.resolucion.miembroTTAIPNombre || 'Nombre no informado' }}</p><p class="text-xs text-muted-foreground">Esta referencia al miembro del Tribunal no lo identifica como funcionario responsable de un incumplimiento.</p></div>
+                  <div><span class="eyebrow">Fundamento legal registrado en la resolución</span><p class="mt-2 leading-relaxed whitespace-pre-line">{{ item.resolucion.fundamentoLegal || 'No informado en la consulta. No se completa con un catálogo de sanciones.' }}</p></div>
+                  <a class="btn-ghost-brand justify-center" [routerLink]="['/ttaip/resolucion', item.apelacion.expediente]"><svg aria-hidden="true" lucideFolderOpen class="w-4 h-4"></svg>Consultar expediente TTAIP</a>
+                  <p class="text-xs text-muted-foreground">Los archivos se consultan desde el expediente autorizado. No se generan documentos disciplinarios, borradores, firmas ni números oficiales como sustitutos.</p>
+                </div>
+              } @else if (activeTab() === 'notificacion') {
+                <div id="disciplinary-panel-notificacion" role="tabpanel" aria-labelledby="disciplinary-tab-notificacion" class="p-6 space-y-5 text-sm">
+                  <div class="rounded-md p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--border); border-left: 3px solid var(--warning)"><svg aria-hidden="true" lucideMail class="w-5 h-5 flex-shrink-0" style="color: var(--warning)"></svg><div><h3 class="font-display font-semibold">Notificación disciplinaria no consultable</h3><p id="disciplinary-notification-reason" class="text-xs mt-1">No hay una consulta o comando disciplinario disponible que acredite remisión o notificación al funcionario. La fecha de resolución y las notificaciones del expediente de apelación no sustituyen esa evidencia.</p></div></div>
+                  <button type="button" class="btn-ghost-brand w-full justify-center" disabled aria-describedby="disciplinary-notification-reason">Comunicación disciplinaria no disponible</button>
+                </div>
+              } @else if (activeTab() === 'descargos') {
+                <div id="disciplinary-panel-descargos" role="tabpanel" aria-labelledby="disciplinary-tab-descargos" class="p-6 space-y-5">
+                  <div class="rounded-lg py-10 px-4 text-center" style="background: var(--brand-subtle); border: 1px dashed var(--brand-200)"><div class="w-14 h-14 mx-auto rounded-md flex items-center justify-center bg-card border border-border"><svg aria-hidden="true" lucideFolderOpen class="w-6 h-6" style="color: var(--brand-700)"></svg></div><h3 class="font-display tracking-wide mt-4 text-lg">Descargos disciplinarios no disponibles</h3><p id="disciplinary-defense-reason" class="text-sm text-muted-foreground mt-2">No existe una capacidad de consulta o presentación disciplinaria disponible en esta pantalla. No se afirma ausencia de descargos ni se reutilizan los descargos de la entidad en la apelación.</p></div>
+                  <button type="button" class="btn-brand w-full justify-center !py-3" disabled aria-describedby="disciplinary-defense-reason">Presentar descargos no disponible</button>
+                </div>
+              } @else {
+                <div id="disciplinary-panel-sancion" role="tabpanel" aria-labelledby="disciplinary-tab-sancion" class="p-12 text-center"><div class="w-16 h-16 mx-auto rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)"><svg aria-hidden="true" lucideGavel class="w-7 h-7" style="color: var(--brand-700)"></svg></div><h3 class="font-display tracking-wide mt-4 text-xl">Investigación, decisión y sanción no disponibles</h3><p id="disciplinary-sanction-reason" class="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">No hay registros o comandos disciplinarios disponibles para acreditar estas actuaciones. No se presume una evaluación en curso ni se promete una resolución sancionatoria.</p><button type="button" class="btn-ghost-brand mt-4" disabled aria-describedby="disciplinary-sanction-reason">Registrar sanción no disponible</button></div>
               }
-            </ul>
-          </div>
+            </div>
+            <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--info)"><svg aria-hidden="true" lucideScale class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--info)"></svg><div class="min-w-0"><span class="eyebrow" style="color: var(--info)">Capacidades distintas</span><ul class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm text-foreground/85">@for (cap of capacidades; track cap.titulo) { <li><span class="font-medium">{{ cap.titulo }}</span><p class="text-xs text-muted-foreground mt-1">{{ cap.descripcion }}</p></li> }</ul></div></div>
+          </section>
         </div>
-      </div>
-    </div>
+      }
     }
   </div>
 </div>

@@ -31,6 +31,26 @@
   animation: actionPulse 1.6s ease-out;
 }
 
+.citizen-dashboard button:focus-visible,
+.citizen-dashboard a:focus-visible,
+.citizen-dashboard input:focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 3px;
+}
+.citizen-dashboard .form-shell { min-width: 0; }
+.citizen-dashboard button:disabled { cursor: not-allowed; }
+.citizen-actions > div { min-width: 0; }
+@media (max-width: 639px) {
+  .citizen-actions { width: 100%; align-items: flex-start; }
+  .citizen-actions > a, .citizen-actions > button { flex: 1 1 auto; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .citizen-dashboard *, .citizen-dashboard *::before, .citizen-dashboard *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 @keyframes actionPulse {
   0% {
     box-shadow: 0 0 0 0 rgba(178, 34, 34, 0);

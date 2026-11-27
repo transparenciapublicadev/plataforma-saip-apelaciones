@@ -16,6 +16,7 @@ import pe.gob.saip.backend.model.entity.DispositivoNotificacionPush;
 import pe.gob.saip.backend.model.entity.Usuario;
 import pe.gob.saip.backend.repository.DispositivoNotificacionPushRepository;
 import pe.gob.saip.backend.repository.UsuarioRepository;
+import pe.gob.saip.backend.security.IdentidadUsuario;
 import pe.gob.saip.backend.service.notification.FcmPushProveedorNotificacion;
 import pe.gob.saip.backend.service.notification.TokenPushProtector;
 
@@ -41,10 +42,8 @@ public class DispositivoNotificacionPushService {
     }
 
     @Transactional
-    public DispositivoNotificacionPushDTO registrar(RegistrarDispositivoPushRequest request, String email) {
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new AccessDeniedException(
-                        "No existe un usuario asociado a la identidad autenticada"));
+    public DispositivoNotificacionPushDTO registrar(RegistrarDispositivoPushRequest request) {
+        Usuario usuario = obtenerUsuarioActual();
         validarFlavor(usuario, request.appFlavor());
         String tokenNormalizado = request.token().trim();
         String tokenHash = tokenProtector.hash(tokenNormalizado);
@@ -141,7 +140,7 @@ public class DispositivoNotificacionPushService {
 
     private Usuario obtenerUsuarioActual() {
         Authentication authentication = autenticacionActual();
-        return usuarioRepository.findByEmail(authentication.getName())
+        return usuarioRepository.findById(IdentidadUsuario.usuarioId(authentication))
                 .orElseThrow(() -> new AccessDeniedException(
                         "No existe un usuario asociado a la identidad autenticada"));
     }

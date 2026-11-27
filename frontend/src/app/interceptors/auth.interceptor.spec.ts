@@ -38,6 +38,15 @@ describe('authInterceptor', () => {
     req.flush({});
   });
 
+  it('preserves the captured logout Bearer even if another session is now stored', () => {
+    setup('browser');
+    localStorage.setItem('usuario', JSON.stringify({ token: 'new-session' }));
+    http.post('/api/auth/logout', null, { headers: { Authorization: 'Bearer closing-session' } }).subscribe();
+    const req = httpMock.expectOne('/api/auth/logout');
+    expect(req.request.headers.get('Authorization')).toBe('Bearer closing-session');
+    req.flush(null);
+  });
+
   it('should not add header when no token in stored data', () => {
     setup('browser');
     localStorage.setItem('usuario', JSON.stringify({ success: true }));

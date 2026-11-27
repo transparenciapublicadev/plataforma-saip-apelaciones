@@ -6,11 +6,13 @@ import {
   ActualizarLiquidacionCostoPayload,
   AmpliacionPlazoSolicitud,
   CronogramaEntregaParcial,
+  DecisionEntregaProgramada,
   EncauzamientoSolicitud,
   LiquidacionCostoSolicitud,
   ObservacionSolicitud,
   ObservarSolicitudPayload,
   RegistrarAmpliacionPlazoPayload,
+  PrevisionAmpliacion,
   RegistrarEncauzamientoPayload,
   RegistrarLiquidacionCostoPayload,
   Solicitud,
@@ -18,17 +20,18 @@ import {
   SubsanarSolicitudPayload
 } from '../models/solicitud.model';
 import { environment } from '../../environments/environment';
+import type { AltaSaipRecepcionDTO } from '../api/types';
+import type { TipoDocumento } from '../models/documento.model';
 
 export interface ConsultaPublicaSolicitud {
-  expediente: string;
+  expediente: string | null;
   ciudadano: string;
-  entidad: string;
-  fechaPresentacion: string;
-  fechaLimite: string;
-  diasTranscurridos: number;
-  diasRestantes: number;
+  entidad: string | null;
+  fechaPresentacion: string | null;
+  fechaLimite: string | null;
+  diasTranscurridos: number | null;
+  diasRestantes: number | null;
   estado: 'EN_PROCESO' | 'RESPONDIDA' | 'APELADA' | 'DENEGADA' | 'VENCIDA' | 'ARCHIVADA';
-  asunto: string;
   respuestaFecha: string | null;
   respuestaTipo: string | null;
   apelacionExpediente: string | null;
@@ -45,6 +48,23 @@ export class SolicitudService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = `${environment.apiUrl}/solicitudes`;
 
+  registrarAlta(clave: string, datos: SolicitudCreate, declaraVeracidad: boolean,
+    archivos: readonly { file: File; tipo: TipoDocumento }[]): Observable<AltaSaipRecepcionDTO> {
+    const body = new FormData();
+    body.append('claveOperacion', clave);
+    for (const campo of ['entidadId', 'asunto', 'descripcion', 'tipoInformacion', 'formatoDigital', 'formatoFisico',
+      'copiaSimple', 'copiaCertificada', 'consentimientoDatosPersonales', 'canalNotificacion'] as const) {
+      if (datos[campo] != null) body.append(campo, String(datos[campo]));
+    }
+    body.append('declaraVeracidad', String(declaraVeracidad));
+    for (const archivo of archivos) { body.append('tiposDocumento', archivo.tipo); body.append('archivos', archivo.file, archivo.file.name); }
+    return this.http.post<AltaSaipRecepcionDTO>(`${this.apiUrl}/recepciones`, body);
+  }
+
+  obtenerRecepcionAlta(clave: string): Observable<AltaSaipRecepcionDTO> {
+    return this.http.get<AltaSaipRecepcionDTO>(`${this.apiUrl}/recepciones/${encodeURIComponent(clave)}`);
+  }
+
   findAll(): Observable<Solicitud[]> {
     return this.http.get<Solicitud[]>(this.apiUrl);
   }
@@ -58,6 +78,9 @@ export class SolicitudService {
   }
 
   consultarPublicamente(expediente: string): Observable<ConsultaPublicaSolicitud> {
+    if (expediente.endsWith('-JUS/TTAIP')) {
+      return this.http.get<ConsultaPublicaSolicitud>(`${this.apiUrl}/publica/expediente`, { params: { expediente } });
+    }
     return this.http.get<ConsultaPublicaSolicitud>(`${this.apiUrl}/publica/expediente/${encodeURIComponent(expediente)}`);
   }
 
@@ -97,6 +120,10 @@ export class SolicitudService {
     return this.http.patch<Solicitud>(`${this.apiUrl}/${id}/estado`, { estado });
   }
 
+  asignarArea(id: number, payload: { area: string; encargado?: string }): Observable<Solicitud> {
+    return this.http.patch<Solicitud>(`${this.apiUrl}/${id}/area-responsable`, payload);
+  }
+
   observar(id: number, payload: ObservarSolicitudPayload): Observable<ObservacionSolicitud> {
     return this.http.post<ObservacionSolicitud>(`${this.apiUrl}/${id}/observaciones`, payload);
   }
@@ -115,6 +142,12 @@ export class SolicitudService {
 
   registrarAmpliacion(id: number, payload: RegistrarAmpliacionPlazoPayload): Observable<AmpliacionPlazoSolicitud> {
     return this.http.post<AmpliacionPlazoSolicitud>(`${this.apiUrl}/${id}/ampliaciones`, payload);
+  }
+
+  preverAmpliacion(id: number, dias: number): Observable<PrevisionAmpliacion> {
+    return this.http.get<PrevisionAmpliacion>(`${this.apiUrl}/${id}/ampliaciones/prevision`, {
+      params: { diasHabilesAdicionales: dias }
+    });
   }
 
   listarAmpliaciones(id: number): Observable<AmpliacionPlazoSolicitud[]> {
@@ -173,6 +206,28 @@ export class SolicitudService {
     return this.http.patch<CronogramaEntregaParcial>(
       `${this.apiUrl}/${id}/ampliaciones/${ampliacionId}/cronograma/${entregaId}`,
       payload
+    );
+  }
+
+  registrarDocumentosEntregaParcial(
+    id: number,
+    ampliacionId: number,
+    entregaId: number,
+    fechaEntregaReal: string,
+    archivos: File[],
+    decision: DecisionEntregaProgramada,
+    fundamentoDecision: string
+  ): Observable<CronogramaEntregaParcial> {
+    const formData = new FormData();
+    formData.append('fechaEntregaReal', fechaEntregaReal);
+    formData.append('decision', decision);
+    if (fundamentoDecision) formData.append('fundamentoDecision', fundamentoDecision);
+    for (const archivo of archivos) {
+      formData.append('archivos', archivo, archivo.name);
+    }
+    return this.http.post<CronogramaEntregaParcial>(
+      `${this.apiUrl}/${id}/ampliaciones/${ampliacionId}/cronograma/${entregaId}`,
+      formData
     );
   }
 

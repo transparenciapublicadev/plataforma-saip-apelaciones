@@ -5,6 +5,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.gob.saip.backend.security.IdentidadUsuario;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.Ciudadano;
@@ -102,6 +103,26 @@ public class AutorizacionRecursosService {
 
     public void verificarSolicitudAccesible(Long solicitudId) {
         verificarSolicitudAccesible(buscarSolicitud(solicitudId));
+    }
+
+    /** Restricts citizen submissions to the owner of the SAIP request, without privileged bypass. */
+    public void verificarSolicitudCiudadana(Long solicitudId) {
+        Solicitud solicitud = buscarSolicitud(solicitudId);
+        if (solicitud.getCiudadano() == null) {
+            throw new AccessDeniedException("La solicitud no corresponde al ciudadano autenticado");
+        }
+        verificarCiudadanoActual(solicitud.getCiudadano().getId());
+    }
+
+    /** Read of the case file: the current entity, or an entity that sent or received its referral. */
+    public void verificarLecturaExpediente(Solicitud solicitud) {
+        if (esAdministradorOTtaip() || puedeAccederSolicitud(solicitud)) {
+            return;
+        }
+        if (esFuncionario() && solicitud.getId() != null && encauzamientoRelacionado(solicitud.getId())) {
+            return;
+        }
+        throw new AccessDeniedException("La solicitud SAIP no corresponde al usuario autenticado");
     }
 
     public void verificarSolicitudAccesible(Solicitud solicitud) {
@@ -282,8 +303,8 @@ public class AutorizacionRecursosService {
     }
 
     public Usuario obtenerUsuarioActual() {
-        String email = obtenerAutenticacion().getName();
-        return usuarioRepository.findByEmail(email)
+        Long usuarioId = IdentidadUsuario.usuarioId(obtenerAutenticacion());
+        return usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new AccessDeniedException(
                         "No existe un usuario asociado a la identidad autenticada"));
     }
@@ -325,6 +346,15 @@ public class AutorizacionRecursosService {
 
     private boolean esCiudadano() {
         return hasRole(obtenerAutenticacion(), ROLE_CIUDADANO);
+    }
+
+    private boolean encauzamientoRelacionado(Long solicitudId) {
+        Long entidadFuncionarioId = obtenerEntidadFuncionarioActual();
+        return encauzamientoRepository
+                .findBySolicitud_IdSolicitudOrderByFechaEncauzamientoDesc(solicitudId)
+                .stream()
+                .anyMatch(encauzamiento -> entidadCoincide(encauzamiento.getEntidadOrigen(), entidadFuncionarioId)
+                        || entidadCoincide(encauzamiento.getEntidadDestino(), entidadFuncionarioId));
     }
 
     private boolean puedeAccederSolicitud(Solicitud solicitud) {
@@ -382,16 +412,20 @@ public class AutorizacionRecursosService {
         return funcionario.getEntidad().getId();
     }
 
+    public Ciudadano ciudadanoDeLaSesion() {
+        return obtenerCiudadanoActual();
+    }
+
     private Ciudadano obtenerCiudadanoActual() {
-        String email = obtenerAutenticacion().getName();
-        return ciudadanoRepository.findByEmail(email)
+        Long usuarioId = IdentidadUsuario.usuarioId(obtenerAutenticacion());
+        return ciudadanoRepository.findById(usuarioId)
                 .orElseThrow(() -> new AccessDeniedException(
                         "No existe un ciudadano asociado a la identidad autenticada"));
     }
 
     private Funcionario obtenerFuncionarioActual() {
-        String email = obtenerAutenticacion().getName();
-        return funcionarioRepository.findByEmail(email)
+        Long usuarioId = IdentidadUsuario.usuarioId(obtenerAutenticacion());
+        return funcionarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new AccessDeniedException(
                         "No existe un funcionario asociado a la identidad autenticada"));
     }

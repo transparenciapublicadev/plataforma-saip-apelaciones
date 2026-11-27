@@ -78,9 +78,7 @@ public class AuthRestController {
 
         // Generar JWT token
         String token = jwtService.generateToken(
-                usuario.getEmail(),
-                usuario.getTipoUsuario().name(),
-                usuario.getIdUsuario());
+                usuario.getIdUsuario(), usuario.getTipoUsuario().name(), usuario.getVersionAutenticacion());
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);

@@ -1,0 +1,45 @@
+<div class="profile-overlay">
+  <section class="profile-panel" role="dialog" aria-modal="true" aria-labelledby="profile-title"
+    aria-describedby="profile-description" [appModalFocus]="true" (modalEscape)="cerrar()" tabindex="-1">
+    <div class="flex items-start justify-between gap-4 mb-5">
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="profile-icon"><svg lucideUserRound class="w-5 h-5" aria-hidden="true"></svg></span>
+        <div><h2 id="profile-title" class="font-display">Mi perfil</h2>
+          <p id="profile-description" class="text-sm text-muted-foreground">Actualiza tus datos de contacto. Los campos con * son obligatorios.</p></div>
+      </div>
+      <button type="button" class="rounded-md p-1.5 shrink-0" aria-label="Cerrar perfil" (click)="cerrar()"><svg lucideX class="w-5 h-5" aria-hidden="true"></svg></button>
+    </div>
+
+    <div [attr.aria-busy]="loading()">
+      @if (loading()) {
+        <p role="status" class="py-6 text-sm text-muted-foreground">Consultando tu perfil…</p>
+      } @else if (error()) {
+        <div role="alert" class="alert alert-error"><p>{{ error() }}</p>
+          @if (retry()) { <button type="button" class="btn-ghost-brand mt-3" (click)="cargar()">Reintentar consulta</button> }
+        </div>
+      } @else if (perfil(); as p) {
+        <div class="space-y-4">
+          <dl class="profile-summary grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl p-3 text-sm">
+            <div><dt class="text-muted-foreground">DNI registrado</dt><dd class="font-mono font-semibold">{{ p.dni || 'No informado en esta consulta' }}</dd></div>
+            <div><dt class="text-muted-foreground">Cuenta</dt><dd class="font-semibold">Ciudadano</dd></div>
+          </dl>
+          <p class="text-xs text-muted-foreground">Esta consulta no identifica el tipo de persona ni proporciona RUC o datos del representante. El documento y la contraseña no se cambian aquí.</p>
+          <div class="field"><label class="field-label" for="own-profile-name">Nombre completo <span class="req" aria-hidden="true">*</span></label><input id="own-profile-name" class="field-input" [value]="nombre()" (input)="nombre.set(valor($event))" autocomplete="name" maxlength="200" [disabled]="saving()" /></div>
+          <div class="field"><label class="field-label" for="own-profile-email">Correo electrónico <span class="req" aria-hidden="true">*</span></label><input id="own-profile-email" class="field-input" type="email" [value]="email()" (input)="email.set(valor($event))" autocomplete="email" maxlength="100" [disabled]="saving()" /><p class="text-xs text-muted-foreground mt-1">El cambio se aplica al guardar. No se envía un mensaje de confirmación.</p></div>
+          <div class="field"><label class="field-label" for="own-profile-phone">Celular</label><input id="own-profile-phone" class="field-input" type="tel" inputmode="numeric" [value]="telefono()" (input)="telefono.set(valor($event))" autocomplete="tel" maxlength="9" [disabled]="saving()" /><p class="text-xs text-muted-foreground mt-1">9 números y empieza con 9. Déjalo vacío si no quieres registrar uno.</p></div>
+          <div class="field"><label class="field-label" for="own-profile-address">Dirección</label><textarea id="own-profile-address" class="field-input" rows="2" [value]="direccion()" (input)="direccion.set(valor($event))" autocomplete="street-address" maxlength="300" [disabled]="saving()"></textarea></div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="field"><label class="field-label" for="own-profile-departamento">Departamento</label><input id="own-profile-departamento" class="field-input" [value]="departamento()" (input)="departamento.set(valor($event))" autocomplete="address-level1" maxlength="100" [disabled]="saving()" /></div>
+            <div class="field"><label class="field-label" for="own-profile-provincia">Provincia</label><input id="own-profile-provincia" class="field-input" [value]="provincia()" (input)="provincia.set(valor($event))" maxlength="100" [disabled]="saving()" /></div>
+            <div class="field"><label class="field-label" for="own-profile-distrito">Distrito</label><input id="own-profile-distrito" class="field-input" [value]="distrito()" (input)="distrito.set(valor($event))" maxlength="100" [disabled]="saving()" /></div>
+          </div>
+        </div>
+      }
+    </div>
+    @if (aviso()) { <p class="mt-4 text-sm" role="alert" style="color: var(--brand-700)">{{ aviso() }}</p> }
+    <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-6">
+      <button type="button" class="btn-ghost-brand !px-5" (click)="cerrar()" [disabled]="saving()">Cerrar</button>
+      <button type="button" class="btn-brand !px-6" (click)="guardar()" [disabled]="!puedeGuardar()">{{ saving() ? 'Guardando…' : 'Guardar cambios' }}</button>
+    </div>
+  </section>
+</div>

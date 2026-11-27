@@ -1,2 +1,8 @@
-/* Estilos resolucion detalle */
-
+:host { display: block; }
+.detail-page { overflow-wrap: anywhere; }
+.detail-page section, .detail-page .field-input { min-width: 0; }
+.detail-page button:focus-visible, .detail-page a:focus-visible, .detail-page input:focus-visible, .detail-page select:focus-visible { outline: 2px solid var(--brand-600); outline-offset: 3px; }
+.detail-tabs button { min-width: 0; overflow-wrap: anywhere; }
+.detail-page :where(input,textarea,select):disabled { opacity: .65; }
+@media (max-width: 720px) { .detail-tabs { flex-wrap: wrap; } .detail-tabs button { flex: 1 1 45%; padding-inline: .75rem; } }
+@media (prefers-reduced-motion: reduce) { .detail-page *, .detail-page *::before, .detail-page *::after { transition: none !important; animation: none !important; } }

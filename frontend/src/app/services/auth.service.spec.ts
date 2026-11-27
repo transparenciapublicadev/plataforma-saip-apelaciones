@@ -1,9 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { AuthService } from './auth.service';
 import { LoginResponse } from '../models/usuario.model';
+import { authInterceptor } from '../interceptors/auth.interceptor';
+import { authGuard } from '../guards/auth.guard';
+import { ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -14,8 +17,9 @@ describe('AuthService', () => {
     localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
+        { provide: Router, useValue: { navigate: vi.fn().mockResolvedValue(true) } },
         { provide: PLATFORM_ID, useValue: 'browser' },
       ],
     });
@@ -112,6 +116,85 @@ describe('AuthService', () => {
     localStorage.setItem('usuario', JSON.stringify({ token: 'x' }));
     service.cerrarSesion();
     expect(localStorage.getItem('usuario')).toBeNull();
+    const req = httpMock.expectOne(`${apiUrl}/logout`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.headers.get('Authorization')).toBe('Bearer x');
+    req.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('clears and protects the route while logout is pending and after a network failure', async () => {
+    service.guardarSesion({ success: true, token: 'closing-session', tipoUsuario: 'CIUDADANO' });
+    const result = service.cerrarSesion();
+    const guard = () => TestBed.runInInjectionContext(() => authGuard(
+      {} as ActivatedRouteSnapshot, { url: '/ciudadano/dashboard' } as RouterStateSnapshot));
+    expect(guard()).toBe(false);
+    const req = httpMock.expectOne(`${apiUrl}/logout`);
+    expect(req.request.headers.get('Authorization')).toBe('Bearer closing-session');
+    expect(req.request.body).toBeNull();
+    req.error(new ProgressEvent('error'));
+    expect(await result).toBe('local');
+    expect(service.getToken()).toBeNull();
+    expect(guard()).toBe(false);
+    expect(service.avisoCierreSesion()).toBeNull();
+  });
+
+  it('a confirmed logout leaves no banner', async () => {
+    service.guardarSesion({ success: true, token: 'closing-session' });
+    const result = service.cerrarSesion();
+    expect(service.avisoCierreSesion()).toBeNull();
+    httpMock.expectOne(`${apiUrl}/logout`).flush(null, { status: 204, statusText: 'No Content' });
+    expect(await result).toBe('confirmado');
+    expect(service.avisoCierreSesion()).toBeNull();
+    expect(service.estaLogueado()).toBe(false);
+  });
+
+  it.each(['success', 'error'])('a late %s cannot clear or change the new login', async response => {
+    service.guardarSesion({ success: true, token: 'old-session' });
+    const closing = service.cerrarSesion();
+    const oldRequest = httpMock.expectOne(`${apiUrl}/logout`);
+    service.login({ identificador: 'test@mail.com', password: '123456' }).subscribe(data => service.guardarSesion(data));
+    httpMock.expectOne(`${apiUrl}/login`).flush({ success: true, token: 'new-session', tipoUsuario: 'CIUDADANO' });
+    expect(oldRequest.request.headers.get('Authorization')).toBe('Bearer old-session');
+    if (response === 'success') oldRequest.flush(null, { status: 204, statusText: 'No Content' });
+    else oldRequest.error(new ProgressEvent('error'));
+    await closing;
+    expect(service.getToken()).toBe('new-session');
+    expect(service.estaLogueado()).toBe(true);
+    expect(service.avisoCierreSesion()).toBeNull();
+  });
+
+  it('does not send another logout after the local session was already cleared', async () => {
+    service.guardarSesion({ success: true, token: 'closing-session' });
+    const first = service.cerrarSesion();
+    expect(await service.cerrarSesion()).toBe('sin-sesion');
+    httpMock.expectOne(`${apiUrl}/logout`).flush(null, { status: 204, statusText: 'No Content' });
+    await first;
+    httpMock.expectNone(`${apiUrl}/logout`);
+  });
+
+  it('a server rejection leaves only a local logout, without claiming success', async () => {
+    service.guardarSesion({ success: true, token: 'already-invalid' });
+    const closing = service.cerrarSesion();
+    httpMock.expectOne(`${apiUrl}/logout`).flush({}, { status: 401, statusText: 'Unauthorized' });
+    expect(await closing).toBe('local');
+    expect(service.getToken()).toBeNull();
+    expect(service.avisoCierreSesion()).toBeNull();
+    expect(service.cerrandoSesion()).toBe(true);
+  });
+
+  it('bounds a logout request that never responds and keeps the local logout', async () => {
+    vi.useFakeTimers();
+    try {
+      service.guardarSesion({ success: true, token: 'unresponsive' });
+      const closing = service.cerrarSesion();
+      const req = httpMock.expectOne(`${apiUrl}/logout`);
+      await vi.advanceTimersByTimeAsync(10_001);
+      expect(await closing).toBe('local');
+      expect(req.cancelled).toBe(true);
+      expect(service.getToken()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   // --- Auth State ---

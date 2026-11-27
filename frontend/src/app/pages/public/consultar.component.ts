@@ -1,284 +1,265 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import {
-  LucideAlertTriangle,
-  LucideArchive,
-  LucideArrowRight,
-  LucideBuilding2,
-  LucideCalendar,
-  LucideCheckCircle2,
-  LucideClock,
-  LucideEye,
-  LucideFileCheck,
-  LucideFileText,
-  LucideGavel,
-  LucideMail,
-  LucideScale,
-  LucideSearch,
-  LucideShield,
-  LucideXCircle,
+  LucideAlertTriangle, LucideArchive, LucideArrowLeft, LucideArrowRight, LucideBuilding2,
+  LucideCalendar, LucideCheckCircle2, LucideClock, LucideEye, LucideFileText,
+  LucideSearch, LucideShield, LucideXCircle,
 } from '@lucide/angular';
 import { ConsultaPublicaSolicitud, SolicitudService } from '../../services/solicitud.service';
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
+import { TimelineComponent, TimelineEvent } from '../../shared/timeline.component';
+import { CaptchaPoWComponent } from '../../shared/captcha-pow.component';
+import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
 
-interface TimelineEvent {
-  title: string;
-  description: string;
-  date: string;
-  status: 'completed' | 'current' | 'pending';
-  icon: 'mail' | 'search' | 'filecheck' | 'gavel' | 'scale' | 'check';
-}
-
+type EstadoPublico = ConsultaPublicaSolicitud['estado'];
+const NUMERO_SAIP = /^SAIP-\d{4}-\d{5,}$/;
+const NUMERO_TTAIP = /^\d{5,}-\d{4}-JUS\/TTAIP$/;
+const ESTADOS: Record<EstadoPublico, string> = {
+  EN_PROCESO: 'En Proceso', RESPONDIDA: 'Respondida', APELADA: 'Apelada',
+  DENEGADA: 'Denegada', VENCIDA: 'Vencida', ARCHIVADA: 'Archivada',
+};
 interface ConsultaResultado {
   expediente: string;
-  ciudadano: string;
-  entidad: string;
-  fechaPresentacion: string;
-  estado: 'EN_PROCESO' | 'RESPONDIDA' | 'APELADA' | 'DENEGADA' | 'VENCIDA' | 'ARCHIVADA';
-  diasTranscurridos: number;
-  asunto: string;
-  tipoPersona: string;
+  expedienteSaip: string | null;
+  codigoConsultado: string;
+  consultaTtaip: boolean;
+  estado: EstadoPublico;
+  ciudadano: string | null;
+  entidad: string | null;
+  fechaPresentacion: string | null;
+  diasTranscurridos: number | null;
+  apelacionExpediente: string | null;
+  apelacionEstado: string | null;
+  apelacionFecha: string | null;
+  resolucionResultado: string | null;
   timeline: TimelineEvent[];
+  faltantes: string[];
 }
 
 @Component({
   selector: 'app-consultar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    RouterLink,
-    LucideAlertTriangle,
-    LucideArchive,
-    LucideArrowRight,
-    LucideBuilding2,
-    LucideCalendar,
-    LucideCheckCircle2,
-    LucideClock,
-    LucideEye,
-    LucideFileCheck,
-    LucideFileText,
-    LucideGavel,
-    LucideMail,
-    LucideScale,
-    LucideSearch,
-    LucideShield,
-    LucideXCircle,
-  ],
+  imports: [RouterLink, LucideAlertTriangle, LucideArchive, LucideArrowLeft, LucideArrowRight,
+    LucideBuilding2, LucideCalendar, LucideCheckCircle2, LucideClock, LucideEye,
+    LucideFileText, LucideSearch, LucideShield, LucideXCircle, StatusBadgeComponent, TimelineComponent, CaptchaPoWComponent, YaikuCargandoComponent],
   templateUrl: './consultar.component.html',
+  styleUrl: './consultar.component.css',
 })
-export class ConsultarComponent {
+export class ConsultarComponent implements OnDestroy {
   private readonly solicitudService = inject(SolicitudService);
-
   readonly query = signal('');
-  readonly buscando = signal(false);
+  readonly estadoConsulta = signal<EstadoConsulta | 'inicial' | 'incompleta' | 'limite'>('inicial');
+  readonly buscando = computed(() => this.estadoConsulta() === 'cargando');
   readonly resultado = signal<ConsultaResultado | null>(null);
-  readonly noEncontrado = signal(false);
+  readonly noEncontrado = computed(() => this.estadoConsulta() === 'inexistente');
+  readonly mensaje = signal('');
+  readonly errorValidacion = signal('');
+  readonly reintentable = signal(false);
+
+  // Anti-abuso: PoW, honeypot, rate limiting
+  readonly prueba = signal<string | null>(null);
+  readonly reinicio = signal<number>(0);
+  readonly trampa = signal<string>('');
+  readonly aviso = signal<string | null>(null);
+  tiempoMinimoMs = 1200;
+  validarPoW = true;
+  private readonly montado = Date.now();
+  private recientes: number[] = [];
+  private consulta = new Subscription();
+  private generacion = 0;
+  private destruido = false;
+  private codigoConsultado = '';
 
   onQueryInput(event: Event): void {
     const value = (event.target as HTMLInputElement).value.toUpperCase();
+    if (value === this.query()) return;
+    this.cancelarConsulta();
     this.query.set(value);
-    this.noEncontrado.set(false);
+    this.aviso.set(null);
   }
 
+  onSubmit(event: Event): void { event.preventDefault(); this.buscar(); }
+
   buscar(): void {
-    const normalizedQuery = this.query().trim().toUpperCase();
-    if (!normalizedQuery) {
+    if (this.destruido) return;
+    const codigo = this.query().trim().toUpperCase();
+    if (this.buscando() && codigo === this.codigoConsultado) return;
+    this.cancelarConsulta();
+    this.aviso.set(null);
+
+    // 1. Honeypot y tiempo mínimo (1200ms)
+    if (this.trampa() || (this.tiempoMinimoMs > 0 && Date.now() - this.montado < this.tiempoMinimoMs)) {
+      this.aviso.set('Espere un momento e inténtelo nuevamente.');
       return;
     }
 
-    this.buscando.set(true);
-    this.noEncontrado.set(false);
-    this.resultado.set(null);
+    // 2. Limitador local de ráfagas (máximo 8 consultas / 60 segundos)
+    const ahora = Date.now();
+    this.recientes = this.recientes.filter((t) => ahora - t < 60000);
+    if (this.recientes.length >= 8) {
+      this.estadoConsulta.set('limite');
+      this.mensaje.set('Ha realizado muchas consultas seguidas. Espere un minuto antes de volver a buscar.');
+      this.enfocar('consulta-feedback');
+      return;
+    }
 
-    this.solicitudService.consultarPublicamente(normalizedQuery).subscribe({
-      next: (data) => {
-        this.resultado.set(this.toConsultaResultado(data));
-        this.noEncontrado.set(false);
-        this.buscando.set(false);
+    // 3. Verificación Proof-of-Work
+    if (this.validarPoW && !this.prueba()) {
+      this.aviso.set('Espere a que termine la verificación anti-bots.');
+      return;
+    }
+
+    this.query.set(codigo);
+    if (codigo.length > 50 || !(NUMERO_SAIP.test(codigo) || NUMERO_TTAIP.test(codigo))) {
+      this.estadoConsulta.set('validacion');
+      this.errorValidacion.set('Ingrese el número completo: SAIP-2026-00001 o 00001-2026-JUS/TTAIP.');
+      this.enfocar('expediente');
+      return;
+    }
+    this.recientes.push(ahora);
+    const gen = this.generacion;
+    this.codigoConsultado = codigo;
+    this.estadoConsulta.set('cargando');
+    this.consulta = this.solicitudService.consultarPublicamente(codigo).subscribe({
+      next: data => {
+        if (!this.actual(gen, codigo)) return;
+        this.consumirPrueba();
+        const resultado = this.convertir(data, codigo);
+        if (!resultado) {
+          this.estadoConsulta.set('incompleta');
+          this.mensaje.set('No pudimos identificar el expediente en el resultado. Vuelva a intentarlo.');
+          this.reintentable.set(true);
+          this.enfocar('consulta-feedback');
+          return;
+        }
+        this.resultado.set(resultado);
+        this.estadoConsulta.set('disponible');
+        this.enfocar('consulta-resultado');
       },
-      error: () => {
-        this.resultado.set(null);
-        this.noEncontrado.set(true);
-        this.buscando.set(false);
-      }
+      error: error => {
+        if (!this.actual(gen, codigo)) return;
+        this.consumirPrueba();
+        if (error?.status === 429) {
+          this.estadoConsulta.set('limite');
+          this.mensaje.set('Espere un momento antes de volver a buscar.');
+          this.enfocar('consulta-feedback');
+          return;
+        }
+        const fallo = falloConsulta(error, 'el resumen público');
+        this.estadoConsulta.set(fallo.estado);
+        this.mensaje.set(fallo.estado === 'inexistente'
+          ? 'No se encontró un expediente con ese número. Revise el número completo e inténtelo de nuevo.'
+          : fallo.mensaje);
+        this.reintentable.set(fallo.reintentable);
+        this.enfocar('consulta-feedback');
+      },
     });
   }
 
+  private consumirPrueba(): void {
+    this.prueba.set(null);
+    this.reinicio.update(n => n + 1);
+  }
+
   limpiarBusqueda(): void {
+    if (this.destruido) return;
+    this.cancelarConsulta();
+    this.aviso.set(null);
     this.query.set('');
-    this.noEncontrado.set(false);
+    this.enfocar('expediente');
+  }
+
+  ngOnDestroy(): void { this.destruido = true; this.cancelarConsulta(); }
+
+  private cancelarConsulta(): void {
+    this.generacion++;
+    this.consulta.unsubscribe();
     this.resultado.set(null);
+    this.estadoConsulta.set('inicial');
+    this.mensaje.set('');
+    this.errorValidacion.set('');
+    this.reintentable.set(false);
+    this.codigoConsultado = '';
   }
 
-  estadoEtiqueta(estado: ConsultaResultado['estado']): string {
-    if (estado === 'EN_PROCESO') {
-      return 'En Proceso';
-    }
-    if (estado === 'RESPONDIDA') {
-      return 'Respondida';
-    }
-    if (estado === 'APELADA') {
-      return 'Apelada';
-    }
-    if (estado === 'DENEGADA') {
-      return 'Denegada';
-    }
-    if (estado === 'VENCIDA') {
-      return 'Vencida';
-    }
-    return 'Archivada';
+  private actual(gen: number, codigo = this.codigoConsultado): boolean {
+    return !this.destruido && gen === this.generacion && this.query().trim().toUpperCase() === codigo;
   }
 
-  estadoBadgeClass(estado: ConsultaResultado['estado']): string {
-    if (estado === 'EN_PROCESO') {
-      return 'badge bg-[var(--estado-azul-suave)] text-[var(--estado-azul)] border border-[var(--estado-azul-borde)]';
-    }
-    if (estado === 'RESPONDIDA') {
-      return 'badge bg-[var(--estado-verde-suave)] text-[var(--estado-verde)] border border-[var(--estado-verde-borde)]';
-    }
-    if (estado === 'APELADA') {
-      return 'badge bg-[var(--accent-violet-soft)] text-[var(--accent-violet)] border border-[var(--accent-violet-border)]';
-    }
-    if (estado === 'DENEGADA') {
-      return 'badge bg-[var(--estado-rojo-suave)] text-[var(--estado-rojo)] border border-[var(--estado-rojo-borde)]';
-    }
-    if (estado === 'VENCIDA') {
-      return 'badge bg-[var(--humo)] text-white border border-[var(--humo)]';
-    }
-    return 'badge bg-[var(--muted)] text-[var(--niebla)] border border-[var(--ceniza-claro)]';
+  private enfocar(id: string): void {
+    const gen = this.generacion;
+    queueMicrotask(() => {
+      if (!this.destruido && gen === this.generacion) document.getElementById(id)?.focus();
+    });
   }
 
-  statusIconColor(estado: ConsultaResultado['estado']): string {
-    if (estado === 'EN_PROCESO') {
-      return 'var(--info)';
-    }
-    if (estado === 'RESPONDIDA') {
-      return 'var(--success)';
-    }
-    if (estado === 'APELADA') {
-      return 'var(--gold)';
-    }
-    if (estado === 'DENEGADA') {
-      return 'var(--brand-700)';
-    }
+  estadoEtiqueta(estado: EstadoPublico): string { return ESTADOS[estado]; }
+  statusIconColor(estado: EstadoPublico): string {
+    if (estado === 'EN_PROCESO') return 'var(--info)';
+    if (estado === 'RESPONDIDA') return 'var(--success)';
+    if (estado === 'APELADA') return 'var(--gold)';
+    if (estado === 'DENEGADA' || estado === 'VENCIDA') return 'var(--brand-700)';
     return 'var(--muted-foreground)';
   }
 
-  timelineIconShellClass(item: TimelineEvent): string {
-    return `reference-timeline-icon ${item.status} icon-${item.icon}`;
+  private texto(value: unknown): string | null {
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
   }
 
-  timelineCardClass(status: TimelineEvent['status']): string {
-    return `reference-timeline-card ${status}`;
+  private fecha(value: unknown): string | null {
+    // Display the date sent by the server, without timezone shifts or calendar calculations.
+    const raw = this.texto(value);
+    if (!raw || !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:\d{2})?)?$/.test(raw)
+      || Number.isNaN(Date.parse(raw))) return null;
+    const civil = new Date(`${raw.slice(0, 10)}T00:00:00Z`);
+    if (civil.toISOString().slice(0, 10) !== raw.slice(0, 10)) return null;
+    return raw.slice(0, 10).split('-').reverse().join('/');
   }
 
-  timelineDateClass(status: TimelineEvent['status']): string {
-    return `reference-timeline-date ${status}`;
-  }
-
-  timelineLineClass(status: TimelineEvent['status']): string {
-    return status === 'completed'
-      ? 'reference-timeline-line completed'
-      : 'reference-timeline-line';
-  }
-
-  private toConsultaResultado(data: ConsultaPublicaSolicitud): ConsultaResultado {
-    const isRuc = /(?:RUC|S\.A\.C|E\.I\.R\.L|S\.A|20\d{9})/i.test(data.ciudadano || '');
-    return {
-      expediente: data.expediente,
-      ciudadano: data.ciudadano,
-      entidad: data.entidad,
-      fechaPresentacion: this.formatDate(data.fechaPresentacion),
-      estado: data.estado,
-      diasTranscurridos: data.diasTranscurridos ?? 0,
-      asunto: data.asunto,
-      tipoPersona: isRuc ? 'Persona Jurídica (RUC)' : 'Persona Natural (DNI)',
-      timeline: this.buildTimeline(data)
-    };
-  }
-
-  private buildTimeline(data: ConsultaPublicaSolicitud): TimelineEvent[] {
-    const events: TimelineEvent[] = [
-      {
-        title: 'Solicitud presentada',
-        description: 'La SAIP fue registrada exitosamente.',
-        date: this.formatDate(data.fechaPresentacion),
-        status: 'completed',
-        icon: 'mail'
-      }
-    ];
-
-    if (data.respuestaFecha) {
-      events.push({
-        title: data.estado === 'DENEGADA' ? 'Solicitud denegada' : 'Respuesta emitida',
-        description: data.estado === 'DENEGADA'
-          ? 'La entidad emitió una denegatoria formal.'
-          : 'La entidad emitió respuesta a la solicitud.',
-        date: this.formatDate(data.respuestaFecha),
-        status: 'completed',
-        icon: 'filecheck'
-      });
-    } else if (data.estado === 'VENCIDA') {
-      events.push({
-        title: 'Plazo vencido',
-        description: 'La solicitud excedió el plazo legal de respuesta.',
-        date: this.formatDate(data.fechaLimite),
-        status: 'current',
-        icon: 'filecheck'
-      });
-    } else {
-      events.push({
-        title: 'En evaluación',
-        description: 'La entidad evalúa la solicitud dentro del plazo legal.',
-        date: this.formatDate(data.fechaPresentacion),
-        status: 'current',
-        icon: 'search'
-      });
-    }
-
-    if (data.apelacionExpediente) {
-      events.push({
-        title: 'Apelación presentada',
-        description: `Expediente ${data.apelacionExpediente} ante el TTAIP.`,
-        date: this.formatDate(data.apelacionFecha),
-        status: 'completed',
-        icon: 'gavel'
-      });
-
-      events.push({
-        title: data.resolucionFecha ? 'Resolución TTAIP' : 'En evaluación TTAIP',
-        description: data.resolucionResultado
-          ? `Resultado: ${data.resolucionResultado.replaceAll('_', ' ')}.`
-          : `Estado: ${(data.apelacionEstado || 'EN_TRAMITE').replaceAll('_', ' ')}.`,
-        date: this.formatDate(data.resolucionFecha) || 'Pendiente',
-        status: data.resolucionFecha ? 'completed' : 'current',
-        icon: data.resolucionFecha ? 'check' : 'scale'
-      });
-    } else if (!data.respuestaFecha && data.estado !== 'VENCIDA') {
-      events.push({
-        title: 'Respuesta',
-        description: 'Pendiente de respuesta de la entidad.',
-        date: 'Pendiente',
-        status: 'pending',
-        icon: 'filecheck'
-      });
-    }
-
-    return events;
-  }
-
-  private formatDate(value: string | null | undefined): string {
-    if (!value) {
-      return '';
-    }
-
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-      return value;
-    }
-
-    return new Intl.DateTimeFormat('es-PE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).format(parsed);
+  private convertir(data: unknown, codigo: string): ConsultaResultado | null {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    const raw = data as Record<string, unknown>;
+    const consultaTtaip = NUMERO_TTAIP.test(codigo);
+    const expedienteSaip = this.texto(raw['expediente']);
+    if (consultaTtaip ? raw['apelacionExpediente'] !== codigo || raw['estado'] !== 'APELADA'
+      || expedienteSaip !== null && !NUMERO_SAIP.test(expedienteSaip) : raw['expediente'] !== codigo) return null;
+    if (typeof raw['estado'] !== 'string' || !Object.hasOwn(ESTADOS, raw['estado'])) return null;
+    const estado = raw['estado'] as EstadoPublico;
+    const ciudadano = this.texto(raw['ciudadano']), entidad = this.texto(raw['entidad']);
+    const fechaPresentacion = this.fecha(raw['fechaPresentacion']);
+    const dias = raw['diasTranscurridos'];
+    const diasTranscurridos = fechaPresentacion && typeof dias === 'number' && Number.isSafeInteger(dias) && dias >= 0 ? dias : null;
+    const apelacionExpediente = this.texto(raw['apelacionExpediente']);
+    const apelacionEstado = apelacionExpediente ? this.texto(raw['apelacionEstado']) : null;
+    const apelacionFecha = this.fecha(raw['apelacionFecha']);
+    const respuestaFecha = this.fecha(raw['respuestaFecha']), respuestaTipo = this.texto(raw['respuestaTipo']);
+    const resolucionFecha = this.fecha(raw['resolucionFecha']);
+    const resolucionResultado = apelacionExpediente ? this.texto(raw['resolucionResultado']) : null;
+    const faltantes: string[] = [];
+    if (!ciudadano) faltantes.push('identificación enmascarada del solicitante');
+    if (expedienteSaip && !entidad) faltantes.push('nombre de entidad');
+    if (expedienteSaip && !fechaPresentacion) faltantes.push('fecha de presentación válida');
+    if (expedienteSaip && diasTranscurridos === null) faltantes.push('días transcurridos verificables en el resumen');
+    if ((raw['respuestaFecha'] != null || respuestaTipo) && (!respuestaFecha || !respuestaTipo)) faltantes.push('datos de respuesta completos');
+    if ((estado === 'RESPONDIDA' || estado === 'DENEGADA') && !respuestaFecha) faltantes.push('fecha del registro de respuesta');
+    if ((estado === 'APELADA' || raw['apelacionEstado'] != null || raw['apelacionFecha'] != null) && !apelacionExpediente) faltantes.push('referencia de la apelación vinculada');
+    if (apelacionExpediente && (!apelacionEstado || !apelacionFecha)) faltantes.push('estado o fecha de la apelación vinculada');
+    if ((raw['resolucionFecha'] != null || raw['resolucionResultado'] != null) && (!apelacionExpediente || !resolucionFecha || !resolucionResultado)) faltantes.push('datos de resolución completos y vinculados');
+    const timeline: TimelineEvent[] = [];
+    if (fechaPresentacion) timeline.push({ title: 'Registro de la solicitud', description: 'Fecha de presentación informada en la consulta pública.', date: fechaPresentacion, status: 'completed', icon: 'mail' });
+    if (respuestaFecha) timeline.push({ title: 'Registro de respuesta', description: respuestaTipo
+      ? `Tipo informado: ${respuestaTipo.replaceAll('_', ' ')}. No acredita entrega ni notificación eficaz.`
+      : 'Tipo no informado. Esta fecha no acredita entrega ni notificación eficaz.', date: respuestaFecha, status: 'completed', icon: 'filecheck' });
+    if (apelacionExpediente && apelacionFecha) timeline.push({ title: 'Registro de apelación vinculada',
+      description: `Referencia: ${apelacionExpediente}. ${apelacionEstado ? 'Estado informado: ' + apelacionEstado.replaceAll('_', ' ') + '.' : 'Estado no informado.'}`,
+      date: apelacionFecha, status: 'completed', icon: 'gavel' });
+    if (apelacionExpediente && resolucionFecha) timeline.push({ title: 'Registro de resolución',
+      description: resolucionResultado ? `Resultado informado: ${resolucionResultado.replaceAll('_', ' ')}. No acredita firma ni emisión documental verificadas.`
+        : 'Resultado no informado. No acredita firma ni emisión documental verificadas.', date: resolucionFecha, status: 'completed', icon: 'scale' });
+    // Deliberate allowlist: never retain private fields or document relations from an unexpected payload.
+    return { expediente: expedienteSaip ?? codigo, expedienteSaip, codigoConsultado: codigo, consultaTtaip, estado, ciudadano, entidad, fechaPresentacion, diasTranscurridos,
+      apelacionExpediente, apelacionEstado, apelacionFecha, resolucionResultado, timeline, faltantes };
   }
 }

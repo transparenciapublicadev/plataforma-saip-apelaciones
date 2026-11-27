@@ -1,0 +1,428 @@
+<div class="precision-page min-h-screen bg-background">
+  <!-- Hero / Encabezado institucional -->
+  <div class="relative bg-paper border-b border-border overflow-hidden">
+    <div class="relative max-w-6xl mx-auto px-6 md:px-10 pt-28 pb-10">
+      <a [routerLink]="solicitud()?.expediente ? ['/ciudadano/solicitud', solicitud()!.expediente] : ['/ciudadano']" class="back-link">
+        <svg aria-hidden="true" lucideArrowLeft class="w-4 h-4"></svg>
+        {{ solicitud() ? 'Volver al expediente' : 'Volver al panel' }}
+      </a>
+
+      <span class="eyebrow">Subsanación de requisitos · 1ª instancia (entidad)</span>
+      <h1 class="font-display mt-2" style="font-size: clamp(30px, 3.4vw, 42px); line-height: 1.05; letter-spacing: -0.02em;">
+        Subsane su <span class="italic" style="color: var(--brand-700)">solicitud</span>
+      </h1>
+      <p class="text-muted-foreground mt-2 font-mono text-sm">Expediente SAIP · {{ expediente() }}</p>
+    </div>
+  </div>
+
+  <!-- Contenido principal -->
+  <div class="max-w-6xl mx-auto px-6 md:px-10 py-10 space-y-6" [attr.aria-busy]="loadingSolicitud()">
+
+    @if (loadingSolicitud()) {
+      <p class="text-sm text-muted-foreground" role="status" aria-live="polite">Recuperando la solicitud y su observación...</p>
+    }
+    @if (error()) {
+      <div class="rounded-md p-4 text-sm" role="alert" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+        <p>{{ error() }}</p>
+        @if (puedeReintentarCarga()) {
+          <button type="button" class="btn-outline mt-3" (click)="reintentarCarga()">Reintentar consulta</button>
+        }
+        @if (verificacionPendiente() || hayIntento()) {
+          <button type="button" class="btn-outline mt-3" [disabled]="loadingEnvio()" (click)="comprobarRecepcion()">
+            Comprobar recepción
+          </button>
+        }
+      </div>
+    }
+
+    @if (estadoFormulario() === 'vacio') {
+      <p role="status" class="form-shell p-6 text-muted-foreground">La solicitud no está disponible. No se puede determinar si existe un requerimiento.</p>
+      <button type="button" class="btn-outline" (click)="reintentarCarga()">Reintentar consulta</button>
+    }
+    @if (solicitud(); as sol) {
+      <div class="precision-context rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
+        <span class="eyebrow">Solicitud consultada</span>
+        <p class="text-sm font-medium mt-1">{{ sol.entidadNombre || 'Entidad no registrada' }}</p>
+        <p class="text-sm text-muted-foreground mt-1">{{ sol.asunto || 'Asunto no registrado' }}</p>
+        @if (observacionSeleccionada(); as obs) {
+          <p class="text-xs text-muted-foreground mt-2">Requerimiento {{ obs.id }} · {{ estadoObservacionVisible() }}</p>
+        }
+      </div>
+      @if (estadoFormulario() === 'incompleto') {
+        <p role="status" class="form-shell p-5 text-sm text-muted-foreground">La información del requerimiento está incompleta o contiene referencias incompatibles. No se puede habilitar el envío; consulte nuevamente el expediente.</p>
+      } @else if (estadoFormulario() === 'sin-requerimiento') {
+        <p role="status" class="form-shell p-5 text-sm text-muted-foreground">La consulta no contiene requerimientos pendientes. No se habilita otro envío.</p>
+      } @else if (estadoFormulario() === 'atendido' && !recepcion()) {
+        <p role="status" class="form-shell p-5 text-sm text-muted-foreground">Este requerimiento ya no está pendiente. Su estado consta en el expediente; no se presentará otra precisión.</p>
+      }
+      @if (observacionSeleccionada()) {
+    <!-- Alerta de Plazo Legal (2 días hábiles) -->
+    <div class="rounded-lg p-5 flex items-start gap-4" style="background: linear-gradient(90deg, rgba(217,119,6,0.08), transparent); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+      <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--warning)">
+        <svg aria-hidden="true" lucideClock class="w-5 h-5 text-white"></svg>
+      </div>
+      <div class="flex-1">
+        <span class="eyebrow" style="color: var(--warning)">Plazo · 2 días hábiles</span>
+        <p class="text-sm text-foreground/85 mt-1.5 leading-relaxed">
+          El plazo legal es de <strong>dos días hábiles</strong> desde el día siguiente a la notificación válida. En este formulario se muestra la fecha registrada para subsanar. La fecha de notificación validada aún no está disponible aquí.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+          <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
+            <div class="eyebrow">Fecha de observación</div>
+            <div class="font-mono text-sm mt-1">{{ fechaObservacion() || 'No registrada' }}</div>
+          </div>
+          <div class="rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
+            <div class="eyebrow" style="color: var(--warning)">Fecha registrada para subsanar</div>
+            <div class="font-mono text-sm mt-1" style="color: var(--warning)">{{ fechaLimite() || 'No disponible' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      }
+
+    <!-- Rejilla en 2 Columnas: Izquierda (Observación & Antecedentes) | Derecha (Subsanación) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- COLUMNA IZQUIERDA — Observación de la entidad y Documentos -->
+      <div class="space-y-5">
+
+        <!-- Observación de la Entidad -->
+        <section class="form-shell">
+          <div class="form-section-header" style="border-left: 3px solid var(--brand-700)">
+            <span class="eyebrow" style="color: var(--brand-700)">{{ estadoFormulario() === 'disponible' ? 'Pendiente de subsanar' : 'Requerimiento consultado' }}</span>
+            <h2 class="form-section-title flex items-center gap-2">
+              <svg aria-hidden="true" lucideAlertCircle class="w-5 h-5" style="color: var(--brand-700)"></svg>
+              Observación de la entidad
+            </h2>
+          </div>
+          <div class="p-6 space-y-3">
+            @if (!observacion()) {
+              <div class="rounded-md p-4 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
+                No se recuperó el texto de una observación identificada. La información disponible no permite completar esta sección.
+              </div>
+            } @else {
+              <div class="rounded-md p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                <svg aria-hidden="true" lucideBuilding2 class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--brand-700)"></svg>
+                <p class="text-sm text-foreground/85 leading-relaxed whitespace-pre-line">{{ observacion() }}</p>
+              </div>
+            }
+
+            <div class="rounded-md p-3 flex items-start gap-3" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--info)">
+              <svg aria-hidden="true" lucideInfo class="w-4 h-4 flex-shrink-0 mt-0.5" style="color: var(--info)"></svg>
+              <p class="text-xs text-foreground/80">
+                <span class="font-semibold">Nota:</span> subsane la observación para que su solicitud sea admitida a trámite. La causa más común es que el pedido no sea concreto y preciso.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Documentos del Expediente (Antecedentes) -->
+        <section class="form-shell">
+          <div class="form-section-header">
+            <span class="eyebrow">Antecedentes</span>
+            <h2 class="form-section-title">Documentos del expediente</h2>
+          </div>
+          <div class="p-6 space-y-5">
+            @if (documentosIncompletos()) {
+              <p role="status" class="text-sm text-muted-foreground">La información documental está incompleta. Solo se muestran archivos identificados y vinculados a esta solicitud.</p>
+            }
+            @if (gruposDocs().length === 0 && !documentosIncompletos()) {
+              <div class="rounded-md p-3 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
+                No hay documentos cargados en el expediente.
+              </div>
+            } @else {
+              @for (grupo of gruposDocs(); track grupo.kind) {
+                <div>
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="eyebrow">{{ grupo.label }}</span>
+                    <span class="text-[11px] px-1.5 py-0.5 rounded-md font-mono" style="background: var(--brand-subtle); color: var(--brand-700)">
+                      {{ grupo.docs.length }}
+                    </span>
+                  </div>
+
+                  <div class="space-y-2">
+                    @for (doc of grupo.docs; track doc.id) {
+                      <div class="precision-doc-row rounded-md p-3 flex items-center justify-between gap-3" style="background: var(--card); border: 1px solid var(--border)">
+                        <div class="flex items-center gap-3 min-w-0 pr-2">
+                          <div class="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                            <svg aria-hidden="true" lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
+                          </div>
+                          <div class="min-w-0">
+                            <span class="text-sm font-medium truncate block">{{ doc.nombre }}</span>
+                            <div class="font-mono text-[11px] text-muted-foreground">
+                              {{ doc.fecha || '—' }} · {{ doc.tamano || '—' }}
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Botones de Acción (Ver / Descargar) -->
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                          <button
+                            type="button"
+                            (click)="abrirDoc(doc, false)"
+                            class="btn-ghost-brand !px-2.5 !py-1.5 !text-[12px] flex items-center gap-1"
+                            [attr.aria-label]="'Ver ' + doc.nombre">
+                            <svg aria-hidden="true" lucideEye class="w-3.5 h-3.5"></svg>
+                          </button>
+                          <button
+                            type="button"
+                            (click)="abrirDoc(doc, true)"
+                            class="btn-ghost-brand !px-2.5 !py-1.5 !text-[12px] flex items-center gap-1"
+                            [attr.aria-label]="'Descargar ' + doc.nombre">
+                            <svg aria-hidden="true" lucideDownload class="w-3.5 h-3.5"></svg>
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </section>
+
+      </div>
+
+      <!-- COLUMNA DERECHA — Formulario de Subsanación -->
+      <div class="space-y-5">
+
+        @if (estadoFormulario() === 'disponible') {
+        <!-- Guía Editorial -->
+        <section class="form-shell">
+          <div class="form-section-header" style="border-left: 3px solid var(--info)">
+            <span class="eyebrow" style="color: var(--info)">Guía editorial</span>
+            <h2 class="form-section-title">Cómo subsanar</h2>
+          </div>
+          <div class="p-6 space-y-3">
+            @for (paso of pasosGuia; track $index) {
+              <div class="flex items-start gap-3">
+                <span class="font-mono text-[11px] tracking-widest mt-0.5 flex-shrink-0" style="color: var(--brand-700)">
+                  0{{ $index + 1 }}
+                </span>
+                <p class="text-sm text-foreground/85 leading-relaxed">{{ paso }}</p>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- 01 · Correcciones / Descripción -->
+        <section class="form-shell">
+          <div class="form-section-header">
+            <span class="eyebrow">01 · Correcciones</span>
+            <h2 class="form-section-title">Descripción</h2>
+          </div>
+          <div class="p-6">
+            <div class="field">
+              <label for="precision-respuesta" class="field-label">
+                Describa cómo subsana la observación <span class="req">*</span>
+              </label>
+              <textarea
+                id="precision-respuesta" aria-required="true" aria-describedby="precision-respuesta-count precision-comentario-error precision-memoria"
+                [attr.aria-invalid]="!!comentarioError()"
+                class="field-input"
+                rows="7"
+                style="resize: vertical; min-height: 160px;"
+                placeholder="En atención a la observación de la entidad, preciso mi solicitud:&#10;&#10;1. Especifico que solicito los documentos correspondientes al periodo…&#10;2. Detallo el área/dependencia que posee la información…&#10;3. Adjunto el documento que precisa mi pedido…"
+                [ngModel]="respuesta()"
+                [disabled]="formularioBloqueado()"
+                maxlength="3000"
+                (ngModelChange)="respuesta.set($event)">
+              </textarea>
+              <span id="precision-respuesta-count" class="field-hint font-mono">{{ respuesta().length }} / 3000 caracteres</span>
+              <p id="precision-comentario-error" class="text-xs text-destructive mt-2" aria-live="polite">{{ comentarioError() }}</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 02 · Adjuntos / Documento de Subsanación -->
+        <section class="form-shell">
+          <div class="form-section-header">
+            <span class="eyebrow">02 · Adjuntos</span>
+            <h2 class="form-section-title">Documento de subsanación</h2>
+          </div>
+          <div class="p-6 space-y-4">
+            <label for="precision-archivo" id="precision-archivo-label" class="field-label">
+              Documento de subsanación <span class="req">*</span>
+            </label>
+            <p id="precision-archivo-hint" class="text-sm text-muted-foreground -mt-1">
+              Archivo único PDF, JPG, PNG o TXT que subsana la observación.
+            </p>
+
+            <!-- Zona Drag & Drop -->
+            <div
+              (dragover)="onDragOver($event)"
+              (dragleave)="onDragLeave($event)"
+              (drop)="onDrop($event)"
+              (click)="!formularioBloqueado() && !archivoSeleccionado() && fileInput.click()"
+              (keydown)="abrirSelector($event, fileInput)"
+              [attr.role]="archivoSeleccionado() ? 'group' : 'button'"
+              [attr.tabindex]="formularioBloqueado() ? -1 : 0"
+              [attr.aria-disabled]="formularioBloqueado()"
+              aria-label="Documento de subsanación: Seleccionar archivo (PDF, JPG, PNG o TXT, máximo 10 MB)"
+              aria-describedby="precision-archivo-hint precision-archivo-error precision-memoria"
+              class="border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer"
+              [class.reference-upload-feedback]="!archivoSeleccionado()"
+              [class.is-dragging]="isDragging()"
+              [ngClass]="{
+                'border-[var(--brand-700)] bg-[color:var(--brand-subtle)]': isDragging(),
+                'border-border bg-card': !isDragging() && !archivoSeleccionado(),
+                'border-green-500/40 bg-[color:rgba(21,128,61,0.06)] cursor-default': !!archivoSeleccionado()
+              }">
+
+              @if (!archivoSeleccionado()) {
+                <div class="space-y-2">
+                  <svg aria-hidden="true" lucideUpload class="w-8 h-8 mx-auto text-muted-foreground"></svg>
+                  <p class="text-sm">
+                    Arrastra tu archivo aquí o <span class="text-[var(--brand-700)] font-semibold">haz clic para seleccionar</span>
+                  </p>
+                  <p class="text-xs text-muted-foreground">PDF, JPG, PNG o TXT (máx. 10MB)</p>
+                </div>
+              } @else {
+                <div class="space-y-3">
+                  <div class="flex items-center justify-center gap-2">
+                    <svg aria-hidden="true" lucideCheckCircle2 class="w-6 h-6 text-green-600"></svg>
+                    <svg aria-hidden="true" lucideFileText class="w-6 h-6 text-muted-foreground"></svg>
+                  </div>
+                  <p class="font-medium text-foreground text-sm">{{ archivoSeleccionado()!.name }}</p>
+                  <p class="text-xs font-mono text-muted-foreground">
+                    {{ (archivoSeleccionado()!.size / 1024 / 1024).toFixed(2) }} MB
+                  </p>
+
+                  <div class="flex items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      (click)="$event.stopPropagation(); abrirPreviewArchivoLocal()"
+                      class="btn-outline !py-1.5 !px-3 !text-xs inline-flex items-center gap-1.5">
+                      <svg aria-hidden="true" lucideEye class="w-3.5 h-3.5"></svg>
+                      Previsualizar
+                    </button>
+                    <button
+                      type="button"
+                      [disabled]="formularioBloqueado()"
+                      (click)="$event.stopPropagation(); removerArchivo()"
+                      class="btn-outline !py-1.5 !px-3 !text-xs inline-flex items-center gap-1.5 text-red-600 hover:text-red-700">
+                      <svg aria-hidden="true" lucideX class="w-3.5 h-3.5"></svg>
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              }
+
+              <input
+                id="precision-archivo" aria-required="true" aria-labelledby="precision-archivo-label"
+                [attr.aria-invalid]="!!archivoError()" aria-describedby="precision-archivo-hint precision-archivo-error"
+                #fileInput
+                type="file"
+                class="hidden"
+                accept=".pdf,.jpg,.jpeg,.png,.txt"
+                [disabled]="formularioBloqueado()"
+                (change)="onFileSelected($event)">
+            </div>
+
+            <p id="precision-archivo-error" class="text-xs text-destructive" aria-live="polite">{{ archivoError() }}</p>
+            @if (archivoSeleccionado()) {
+              <div class="flex items-start gap-2 bg-muted p-3 rounded-md">
+                <input #archivoRevisionInput id="precision-archivo-revisado" type="checkbox" class="mt-1" aria-describedby="precision-memoria"
+                  [checked]="archivoRevisado()" [disabled]="formularioBloqueado()"
+                  (change)="archivoRevisado.set(archivoRevisionInput.checked)">
+                <label for="precision-archivo-revisado" class="text-sm cursor-pointer">Confirmo que este es el documento correcto</label>
+              </div>
+            }
+
+            <!-- Archivo seleccionado localmente: no acredita recepción. -->
+            @if (archivoSeleccionado(); as doc) {
+              <div class="rounded-md p-3 flex items-center gap-3" style="background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25)">
+                <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4 flex-shrink-0" style="color: var(--success)"></svg>
+                <span class="text-sm flex-1 font-medium">Archivo seleccionado: {{ doc.name }}</span>
+                <span class="font-mono text-[11px] text-muted-foreground flex-shrink-0">
+                  {{ (doc.size / 1024).toFixed(1) }} KB
+                </span>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- Botón de Envío -->
+        <button
+          type="button"
+          class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          (click)="abrirConfirmacion()"
+          [disabled]="!puedeEnviar() || !respuesta().trim() || !archivoSeleccionado()">
+          @if (loadingEnvio()) {
+            <svg aria-hidden="true" lucideLoader2 class="w-4 h-4 animate-spin"></svg>
+            <span>Enviando subsanación...</span>
+          } @else {
+            <svg aria-hidden="true" lucideSend class="w-4 h-4"></svg>
+            <span>Enviar subsanación a la entidad</span>
+          }
+        </button>
+
+        <p id="precision-memoria" class="text-xs text-muted-foreground" role="note">Si sale de este formulario o recarga la página, deberá volver a escribir el comentario y seleccionar el archivo para enviarlos. Si ya hizo el envío, use «Comprobar recepción» antes de intentarlo de nuevo.</p>
+        <p class="text-xs text-center text-muted-foreground" aria-live="polite">{{ loadingEnvio() ? 'Comprobando la recepción…' : verificacionPendiente() ? 'Aún no sabemos si se recibió el envío. Compruebe la recepción antes de volver a enviarlo.' : '' }}</p>
+        } @else if (recepcion(); as recibida) {
+          <section id="precision-recepcion" tabindex="-1" class="form-shell p-6 space-y-3" aria-label="Recepción persistida">
+            <span class="eyebrow" style="color: var(--success)">Precisión registrada</span>
+            <h2 class="form-section-title">Datos de la recepción</h2>
+            <dl class="precision-receipt text-sm space-y-2">
+              <div><dt>Requerimiento</dt><dd class="font-mono">{{ recibida.observacionId }}</dd></div>
+              <div><dt>Fecha de recepción</dt><dd>{{ fechaRecepcionVisible() }}</dd></div>
+              <div><dt>Documento registrado</dt><dd class="font-mono">{{ recibida.documento.id }} · {{ recibida.documento.nombreOriginal }}</dd></div>
+            </dl>
+            <button type="button" class="btn-outline" (click)="verDetalleExpediente()">Ver expediente</button>
+          </section>
+        }
+
+      </div>
+
+    </div>
+
+    }
+  </div>
+
+  <!-- Modal de Confirmación -->
+  <app-reference-confirm-modal
+    [open]="confirmModalAbierto()"
+    [manageFocus]="true"
+    presentation="saip-response"
+    [submitting]="loadingEnvio()"
+    title="Confirme la subsanación"
+    titleLead="Confirme"
+    titleEmphasis="la subsanación"
+    eyebrow="Revisión final · Subsanación de requisitos"
+    description="Verifique que las correcciones respondan a la observación de la entidad antes de enviar."
+    [summary]="subsanacionConfirmSummary()"
+    [warning]="subsanacionWarning"
+    confirmLabel="Enviar a la entidad"
+    (close)="confirmModalAbierto.set(false)"
+    (confirm)="confirmarDesdeDialogo()">
+  </app-reference-confirm-modal>
+
+  <!-- Modal de Éxito -->
+  <app-reference-success-modal
+    [open]="successModalAbierto() && !!recepcion()"
+    [manageFocus]="true"
+    presentation="saip-response"
+    variant="subsanacion-enviada"
+    tone="success"
+    eyebrow="Recepción registrada"
+    title="Precisión registrada"
+    description="Su subsanación y el documento adjunto quedaron registrados en el expediente."
+    [expediente]="expediente()"
+    [expedienteHint]="'Fecha de recepción: ' + fechaRecepcionVisible()"
+    [metadata]="subsanacionSuccessMetadata()"
+    [nextSteps]="subsanacionNextSteps"
+    primaryLabel="Ir a mi panel"
+    secondaryLabel="Ver expediente"
+    (secondary)="verDetalleExpediente()"
+    (close)="cerrarResultado()"
+    (primary)="irAlPanel()">
+  </app-reference-success-modal>
+
+  <app-document-preview-modal
+    [doc]="previewTarget()"
+    [open]="isPreviewOpen()"
+    [manageFocus]="true"
+    (close)="cerrarPreview()">
+  </app-document-preview-modal>
+</div>

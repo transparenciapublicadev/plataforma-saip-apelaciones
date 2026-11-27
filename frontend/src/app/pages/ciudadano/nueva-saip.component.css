@@ -1,2 +1,23 @@
-/* Estilos adicionales para nueva SAIP */
-
+/* SAIPForm: scoped reference layout, native keyboard controls and long content. */
+:host { display:block; }
+.saip-form-page { overflow-wrap:anywhere; }
+.saip-form-page .grid > *, .saip-form-page fieldset { min-width:0; }
+.saip-form-page :is(button,a,input,select,textarea,[tabindex]):focus-visible { outline:2px solid var(--brand-600); outline-offset:3px; }
+.saip-section-number { font-family:var(--font-display);font-size:48px;line-height:1;letter-spacing:-0.04em;color:color-mix(in srgb,var(--brand-700) 35%,transparent);-webkit-text-stroke:1px color-mix(in srgb,var(--brand-700) 55%,transparent); }
+.saip-option:has(input:focus-visible) { outline:2px solid var(--brand-600);outline-offset:3px; }
+.saip-option:has(input:checked) { border-color:var(--brand-300)!important;box-shadow:0 0 0 3px var(--brand-50); }
+.file-upload-zone { display:block;border:2px dashed var(--border);border-radius:0.5rem;padding:1.5rem;text-align:center;background:var(--card);cursor:pointer;transition:border-color 160ms ease,background-color 160ms ease; }
+.file-upload-zone.has-file { cursor:default;background:color-mix(in srgb,var(--success) 8%,var(--card));border:1.5px solid color-mix(in srgb,var(--success) 35%,var(--border)); }
+.saip-file-row { display:flex;flex-wrap:wrap;gap:0.75rem;justify-content:space-between; }
+.saip-form-page input { accent-color:var(--brand-600); }
+.saip-form-page button:disabled { opacity:0.6;cursor:not-allowed; }
+@media(max-width:639px) { .saip-form-page .form-shell > .p-6 { padding:1.25rem; } .saip-form-page .sticky { position:static; } }
+@media(prefers-reduced-motion:reduce) { .file-upload-zone { transition:none; } }
+.saip-checkbox { display:flex;align-items:center;justify-content:center;width:20px;height:20px;border:1.5px solid var(--border-strong);border-radius:6px;flex-shrink:0;margin-top:2px; } .saip-option:has(input:checked) .saip-checkbox { background:var(--brand-600);border-color:var(--brand-600); }
+.saip-form-page .field-error { color:var(--destructive); font-size:12px; font-weight:600; }
+.saip-form-page .field-input[aria-invalid="true"] { border-color:var(--destructive); background:color-mix(in srgb, var(--destructive) 6%, var(--card)); }
+.saip-form-page .field-input[aria-invalid="true"]:focus,
+.saip-form-page .field-input[aria-invalid="true"]:focus-visible { border-color:var(--destructive); box-shadow:0 0 0 3px color-mix(in srgb, var(--destructive) 18%, transparent); }
+.saip-form-page .form-shell.zone-invalid { border-color:var(--destructive); box-shadow:0 0 0 3px color-mix(in srgb, var(--destructive) 14%, transparent); }
+.saip-form-page .zone-invalid { outline:2px solid var(--destructive); outline-offset:2px; }
+.saip-form-page .file-upload-zone.zone-invalid { border-color:var(--destructive); background:color-mix(in srgb, var(--destructive) 6%, var(--card)); }

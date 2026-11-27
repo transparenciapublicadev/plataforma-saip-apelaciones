@@ -6,11 +6,17 @@ import {
 } from '@angular/ssr/node';
 import express from 'express';
 import { join } from 'node:path';
+import { proxyBrowserApi } from './server-api-proxy';
+import { serverAllowedHosts } from './server-hosts';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
-const angularApp = new AngularNodeAppEngine();
+const angularApp = new AngularNodeAppEngine({
+  allowedHosts: serverAllowedHosts(process.env['PUBLIC_ORIGIN']),
+});
+
+app.use(proxyBrowserApi(process.env['API_INTERNAL_ORIGIN']));
 
 /**
  * Example Express Rest API endpoints can be defined here.
@@ -38,6 +44,11 @@ app.use(
 /**
  * Handle all other requests by rendering the Angular application.
  */
+app.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'private, no-store');
+  next();
+});
+
 app.use((req, res, next) => {
   angularApp
     .handle(req)

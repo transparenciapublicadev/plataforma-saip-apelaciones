@@ -11,6 +11,7 @@ import {
   ElevarApelacionPayload,
   ElevacionApelacionTtaip
 } from '../models/apelacion.model';
+import type { AltaApelacionRecepcionDTO, RegistrarAltaApelacionRequest } from '../api/types';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -19,6 +20,17 @@ import { environment } from '../../environments/environment';
 export class ApelacionService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = `${environment.apiUrl}/apelaciones`;
+
+  registrarAlta(datos: RegistrarAltaApelacionRequest, archivos: readonly File[]): Observable<AltaApelacionRecepcionDTO> {
+    const body = new FormData();
+    body.append('datos', new Blob([JSON.stringify(datos)], { type: 'application/json' }));
+    for (const file of archivos) body.append('archivos', file, file.name);
+    return this.http.post<AltaApelacionRecepcionDTO>(`${this.apiUrl}/recepciones`, body);
+  }
+
+  obtenerRecepcionAlta(clave: string): Observable<AltaApelacionRecepcionDTO> {
+    return this.http.get<AltaApelacionRecepcionDTO>(`${this.apiUrl}/recepciones/${encodeURIComponent(clave)}`);
+  }
 
   findAll(): Observable<Apelacion[]> {
     return this.http.get<Apelacion[]>(this.apiUrl);

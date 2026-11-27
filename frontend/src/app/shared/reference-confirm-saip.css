@@ -1,0 +1,60 @@
+/* ConfirmSubmitModal.tsx: px-7/pt-7/pb-5, py-5/space-y-4, footer py-4.
+   Only the response registration opts in; retain compact/stacked accessibility. */
+.reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-header {
+  padding: 28px 28px 20px;
+}
+.reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-title {
+  font-weight: 500;
+  font-optical-sizing: auto;
+}
+.reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-description {
+  line-height: 1.625;
+}
+.reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-body {
+  padding: 20px 28px;
+}
+.reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-body > * + * {
+  margin-top: 16px;
+}
+.reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-summary,
+.reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-warning {
+  border-radius: 8px;
+}
+.reference-confirm-panel[data-presentation="saip-response"] .reference-modal-section-label,
+.reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-eyebrow,
+.reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-warning-label {
+  font-weight: 400;
+}
+.reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-actions {
+  padding: 16px 28px;
+}
+@media (max-width: 640px) {
+  .reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-header,
+  .reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-body {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-actions {
+    padding-left: 20px;
+    padding-right: 20px;
+    align-items: stretch;
+  }
+  .reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-actions button {
+    width: 100%;
+    flex: 0 0 auto;
+  }
+}
+@media (max-height: 700px) {
+  .reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-header {
+    padding: 20px 24px 16px;
+  }
+  .reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-body {
+    padding: 14px 24px 16px;
+  }
+  .reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-description {
+    line-height: 1.45;
+  }
+  .reference-confirm-panel[data-presentation="saip-response"] .reference-confirm-actions {
+    padding: 12px 24px 8px;
+  }
+}

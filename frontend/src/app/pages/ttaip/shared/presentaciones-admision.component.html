@@ -1,0 +1,194 @@
+@if (!ocultarSinAdmision() || mostrarSolicitudes()) {
+  <section class="block space-y-6">
+    @if (vista() !== 'descargos' && contexto() === 'ciudadano') {
+      <h3 class="font-display text-base font-semibold">Solicitudes al Tribunal</h3>
+    }
+    @if (error() && (!formulario() || pendiente())) {
+      <p role="alert" class="text-sm text-destructive">{{ error() }}</p>
+      <button type="button" class="btn-ghost-brand" [disabled]="ocupado()" (click)="consultar()">Consultar expediente</button>
+    }
+    @if (ocupado()) { <p role="status" class="text-sm">Consultando el expediente…</p> }
+    @if (mensaje()) { <p role="status" class="text-sm">{{ mensaje() }}</p> }
+    @if (pendiente()) {
+      <button type="button" class="btn-ghost-brand" [disabled]="ocupado() || !!error()" (click)="reintentar()">Reintentar la misma operación</button>
+    }
+    @if (consulta(); as datos) {
+      @if (vista() !== 'solicitudes' && contexto() !== 'ciudadano') {
+        <section class="rounded-lg border border-border bg-card p-4 sm:p-5 space-y-3">
+          <h3 class="font-display text-base font-semibold flex items-center gap-2">
+            <svg aria-hidden="true" lucideFileText class="h-4 w-4 text-[var(--brand-700)]"></svg> Descargos de la entidad
+          </h3>
+          @if (datos.descargo; as descargo) {
+            <div class="rounded-md border border-border bg-card p-4 text-sm space-y-2">
+              <p>
+                @switch (descargo.estado) {
+                  @case ('REQUERIDO') { <strong>Descargos requeridos por el Tribunal</strong> }
+                  @case ('CERRADO_SIN_PRESENTACION') { <strong>Etapa cerrada sin descargos presentados</strong> }
+                  @case ('CANCELADO') { <strong>Requerimiento de descargos cancelado</strong> }
+                  @case ('VENCIDO_SIN_PRESENTACION') { <strong>Plazo vencido sin presentación</strong> }
+                  @case ('PRESENTADO_EXTEMPORANEO') { <strong>Descargos presentados fuera de plazo</strong> }
+                  @default { <strong>Descargos presentados</strong> }
+                }
+              </p>
+              <p>Fecha límite para presentar descargos <strong>{{ descargo.fechaLimite | date:'dd/MM/yyyy' }}</strong></p>
+              @if (descargo.estado === 'REQUERIDO') {
+                <p class="text-muted-foreground">La presentación es opcional. La suspensión del plazo para resolver dura los siete días hábiles completos.</p>
+              }
+              @if (descargo.fechaPresentacion) {
+                <p>Recibidos el {{ descargo.fechaPresentacion | date:'dd/MM/yyyy' }}</p>
+                @if (descargo.resumen && !descargos().length) { <p>{{ descargo.resumen }}</p> }
+                @if (descargo.referencia && !descargos().length) { <p>Referencia registrada {{ descargo.referencia }}</p> }
+              }
+              @if (descargo.puedePresentar && !formulario()) {
+                <button type="button" class="btn-brand" [disabled]="ocupado()" (click)="abrir('DESCARGOS', descargo.id)">Presentar descargos</button>
+              }
+              @for (p of descargos(); track p.id) {
+                <p class="font-semibold">Oficio N.° {{ p.numeroOficio }}</p>
+                @for (doc of p.documentos; track doc.id; let primero = $first) {
+                  <app-ttaip-documento-fila [documento]="doc" [etiqueta]="primero ? 'Oficio' : 'Anexo'" (abrir)="ver($event)" />
+                }
+              }
+            </div>
+          } @else {
+            <p class="text-sm text-muted-foreground">Los descargos se habilitan cuando se acredita la notificación de admisión a la entidad.</p>
+          }
+          @if (datos.fechaLimiteResolucion) {
+            <p class="text-sm">Fecha límite para resolver <strong>{{ datos.fechaLimiteResolucion | date:'dd/MM/yyyy' }}</strong></p>
+          }
+        </section>
+      }
+      @if (vista() !== 'descargos') {
+        <div class="space-y-6">
+          @for (categoria of categoriasSolicitudes; track categoria.tipo) {
+            @let registros = solicitudesPorTipo()[categoria.tipo];
+            <section class="space-y-3" [class.rounded-lg]="contexto() === 'entidad'"
+              [class.border]="contexto() === 'entidad'" [class.border-border]="contexto() === 'entidad'"
+              [class.bg-card]="contexto() === 'entidad'" [class.p-4]="contexto() === 'entidad'">
+              <div>
+                <h3 class="font-display text-base font-semibold flex items-center gap-2">
+                  @if (categoria.tipo === 'INFORME_ORAL') {
+                    <svg aria-hidden="true" lucideMic class="h-4 w-4 text-[var(--brand-700)]"></svg>
+                  } @else {
+                    <svg aria-hidden="true" lucideFolderOpen class="h-4 w-4 text-[var(--brand-700)]"></svg>
+                  }
+                  {{ categoria.titulo }}
+                </h3>
+                @if (contexto() !== 'tribunal' && datos.puedePresentarSolicitudes) {
+                  <p class="mt-1 text-sm text-muted-foreground">{{ categoria.descripcion }}</p>
+                }
+              </div>
+              @for (p of registros; track p.id) {
+                <article class="rounded-md border border-border bg-card p-4 space-y-3 text-sm">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h4 class="font-semibold text-foreground">
+                      @if (!p.operacion && p.aceptada) { Programación del Tribunal }
+                      @else if (p.tipo === 'INFORME_ORAL') { Solicitud de informe oral }
+                      @else { Escrito presentado }
+                    </h4>
+                    @if (contexto() === 'tribunal') {
+                      <span class="rounded-full border border-brand-200 bg-brand-subtle px-2 py-0.5 text-xs font-medium text-[var(--brand-700)]">
+                        {{ p.origen === 'CIUDADANO' ? 'Administrado' : 'Entidad' }}
+                      </span>
+                    }
+                  </div>
+                  @if (p.fechaPresentacion || p.numeroOficio) {
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      @if (p.fechaPresentacion) { <span>Presentado el <time [attr.datetime]="p.fechaPresentacion" class="font-mono">{{ p.fechaPresentacion | date:'dd/MM/yyyy HH:mm' }}</time></span> }
+                      @if (p.numeroOficio) { <span>Oficio N.° <strong>{{ p.numeroOficio }}</strong></span> }
+                    </div>
+                  }
+                  @if (p.texto) { <p class="whitespace-pre-wrap break-words">{{ p.texto }}</p> }
+                  @for (doc of p.documentos; track doc.id) {
+                    <app-ttaip-documento-fila [documento]="doc" (abrir)="ver($event)" />
+                  }
+                  @if (p.respuesta; as respuesta) {
+                    <div class="space-y-2 border-t border-border pt-3">
+                      <div class="flex flex-wrap items-baseline justify-between gap-2">
+                        <p class="font-semibold">{{ p.aceptada ? 'Informe oral programado' : 'Solicitud denegada' }}</p>
+                        @if (p.fechaRespuesta) {
+                          <time [attr.datetime]="p.fechaRespuesta" class="font-mono text-xs text-muted-foreground">{{ p.fechaRespuesta | date:'dd/MM/yyyy HH:mm' }}</time>
+                        }
+                      </div>
+                      <app-ttaip-documento-fila [documento]="respuesta" [etiqueta]="p.aceptada ? 'Programación del informe oral' : 'Sustento de la denegatoria'" (abrir)="ver($event)" />
+                    </div>
+                  } @else if (p.tipo === 'INFORME_ORAL') {
+                    <p class="text-sm text-muted-foreground">Pendiente de respuesta</p>
+                    @if (datos.puedeResponderInformeOral && !formulario()) {
+                      <button type="button" class="btn-ghost-brand" [disabled]="ocupado()" (click)="abrir('INFORME_ORAL', undefined, p.id)">Responder solicitud</button>
+                    }
+                  }
+                </article>
+              } @empty {
+                @if (contexto() === 'tribunal' || !datos.puedePresentarSolicitudes) {
+                  <p class="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">{{ categoria.vacio }}</p>
+                }
+              }
+              @if (datos.puedePresentarSolicitudes && !formulario()) {
+                <button type="button" class="btn-ghost-brand" [disabled]="ocupado()" (click)="abrir(categoria.tipo)">
+                  {{ yaPresento(categoria.tipo) ? categoria.otraAccion : categoria.primeraAccion }}
+                </button>
+              }
+            </section>
+          }
+        </div>
+      }
+      @if (formulario(); as f) {
+        <form #formularioEnvio tabindex="-1" class="rounded-md border border-brand-200 bg-brand-subtle p-4 space-y-3"
+          [formGroup]="campos" (ngSubmit)="enviar()">
+          <h4 class="font-semibold">
+            @if (f.respuestaId != null) { Responder solicitud de informe oral }
+            @else if (f.tipo === 'DESCARGOS') { Presentar descargos }
+            @else if (f.tipo === 'INFORME_ORAL') { Solicitar informe oral }
+            @else { Presentar documentación adicional }
+          </h4>
+          <fieldset class="space-y-3" [disabled]="ocupado() || !!pendiente()">
+            @if (f.respuestaId != null) {
+              <label class="block text-sm">Decisión
+                <select formControlName="decision" class="field-input">
+                  <option value="">Seleccione</option>
+                  <option value="aceptar">Aceptar y comunicar la programación</option>
+                  <option value="denegar">Denegar con sustento</option>
+                </select>
+              </label>
+              <p class="text-sm text-muted-foreground">Adjunte la programación de la audiencia o el documento con el sustento de la denegación. La programación estará disponible para ambas partes.</p>
+            }
+            @if (requiereOficio(f)) {
+              <label class="block text-sm">Número de oficio
+                <input formControlName="oficio" class="field-input" maxlength="120" />
+              </label>
+            }
+            @if (requiereTexto(f)) {
+              <label class="block text-sm">Detalle de la solicitud
+                <textarea rows="3" formControlName="texto" class="field-input" maxlength="2000"></textarea>
+              </label>
+            }
+            <app-multi-file-upload-zone [single]="true" [keyboardAccessible]="true" [allowText]="true"
+              [required]="f.tipo !== 'INFORME_ORAL' || f.respuestaId != null" [disabled]="ocupado() || !!pendiente()"
+              [label]="f.respuestaId != null ? 'Documento de respuesta' : requiereOficio(f) ? 'Archivo del oficio' : f.tipo === 'INFORME_ORAL' ? 'Documento de sustento (opcional)' : 'Documento adicional'"
+              [files]="archivoPrincipal()" (filesChange)="archivo.set($event.at(0) ?? null)" />
+            @if (f.tipo === 'DESCARGOS') {
+              <app-multi-file-upload-zone label="Anexos (opcional)" addLabel="Agregar anexo" [batch]="true"
+                [keyboardAccessible]="true" [allowText]="true" [disabled]="ocupado() || !!pendiente()" [(files)]="anexos" />
+              <p class="text-sm text-muted-foreground">Después de presentar el oficio, los descargos quedarán registrados y cerrados para edición.</p>
+            }
+          </fieldset>
+          @if (error() && !pendiente()) { <p role="alert" class="text-sm text-destructive">{{ error() }}</p> }
+          <div class="flex flex-wrap gap-2">
+            <button type="submit" class="btn-brand" [disabled]="ocupado() || !!pendiente()">Enviar {{ f.respuestaId != null ? 'respuesta' : 'al Tribunal' }}</button>
+            <button type="button" class="btn-ghost-brand" [disabled]="ocupado() || !!pendiente()" (click)="formulario.set(null)">Cancelar</button>
+          </div>
+        </form>
+      }
+    }
+  </section>
+}
+<app-document-preview-modal [doc]="preview()" [open]="!!preview()" [manageFocus]="true" (close)="preview.set(null)" />
+
+
+@if (recibo(); as confirmacion) {
+  <app-reference-success-modal [open]="true" [manageFocus]="true" variant="respuesta-entidad"
+    eyebrow="Constancia de presentación" [title]="confirmacion.titulo"
+    description="La actuación quedó registrada en el expediente."
+    [expediente]="numeroExpediente()" [metadata]="confirmacion.detalle" [plazoDias]="null" primaryLabel="Aceptar"
+    (close)="recibo.set(null)" (primary)="recibo.set(null)" />
+}

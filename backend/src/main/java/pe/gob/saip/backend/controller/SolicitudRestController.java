@@ -1,15 +1,24 @@
 package pe.gob.saip.backend.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
+import pe.gob.saip.backend.model.dto.AsignarAreaResponsableRequest;
 import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.ActualizarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.AmpliacionPlazoSolicitudDTO;
@@ -21,8 +30,10 @@ import pe.gob.saip.backend.model.dto.ObservacionSolicitudDTO;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
 import pe.gob.saip.backend.model.dto.PaginaDTO;
 import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
+import pe.gob.saip.backend.model.dto.RegistrarDocumentosEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEncauzamientoSolicitudRequest;
 import pe.gob.saip.backend.model.dto.PlazoSeguimientoDTO;
+import pe.gob.saip.backend.model.dto.PrevisionAmpliacionDTO;
 import pe.gob.saip.backend.model.dto.RegistrarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.SolicitudDTO;
 import pe.gob.saip.backend.model.dto.SolicitudResumenDTO;
@@ -33,6 +44,7 @@ import pe.gob.saip.backend.model.dto.EnviarNotificacionRequest;
 import pe.gob.saip.backend.model.dto.IntentoNotificacionDTO;
 
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @RestController
@@ -40,33 +52,33 @@ import java.util.stream.Collectors;
 @Tag(name = "Solicitudes SAIP", description = "Gestión de solicitudes de acceso a la información pública (Ley N° 27806)")
 public class SolicitudRestController {
 
+    private static final Pattern EXPEDIENTE_TTAIP = Pattern.compile("[0-9]{5,}-[0-9]{4}-JUS/TTAIP");
+    private static final Pattern EXPEDIENTE_SAIP = Pattern.compile("SAIP-[0-9]{4}-[0-9]{5,}");
     private final SolicitudService solicitudService;
     private final CiudadanoService ciudadanoService;
     private final EntidadService entidadService;
     private final MotorNotificacionesService motorNotificacionesService;
     private final AutorizacionRecursosService autorizacionRecursosService;
+    private final ApelacionService apelacionService;
 
     public SolicitudRestController(SolicitudService solicitudService,
                                     CiudadanoService ciudadanoService,
                                     EntidadService entidadService,
                                     MotorNotificacionesService motorNotificacionesService,
-                                    AutorizacionRecursosService autorizacionRecursosService) {
+                                    AutorizacionRecursosService autorizacionRecursosService,
+                                    ApelacionService apelacionService) {
         this.solicitudService = solicitudService;
         this.ciudadanoService = ciudadanoService;
         this.entidadService = entidadService;
         this.motorNotificacionesService = motorNotificacionesService;
         this.autorizacionRecursosService = autorizacionRecursosService;
+        this.apelacionService = apelacionService;
     }
 
     @Operation(summary = "Listar todas las solicitudes SAIP")
     @GetMapping
     public ResponseEntity<List<SolicitudDTO>> listar() {
-        List<SolicitudDTO> solicitudes = autorizacionRecursosService
-                .filtrarSolicitudesAccesibles(solicitudService.obtenerTodasLasSolicitudes())
-                .stream()
-                .map(SolicitudDTO::from)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(solicitudes);
+        return ResponseEntity.ok(solicitudService.listarTodasAccesibles());
     }
 
     @Operation(summary = "Listar solicitudes SAIP con paginación y DTO liviano")
@@ -82,39 +94,49 @@ public class SolicitudRestController {
     @Operation(summary = "Obtener solicitud por ID")
     @GetMapping("/{id}")
     public ResponseEntity<SolicitudDTO> obtenerPorId(@Parameter(description = "ID de la solicitud") @PathVariable Long id) {
-        Solicitud solicitud = solicitudService.findById(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
-        autorizacionRecursosService.verificarSolicitudAccesible(solicitud);
-        return ResponseEntity.ok(SolicitudDTO.from(solicitud));
+        return ResponseEntity.ok(solicitudService.obtenerDetalle(id));
     }
 
     @Operation(summary = "Obtener solicitud por expediente", description = "Busca por formato SAIP-AAAA-NNNNN")
     @GetMapping("/expediente/{expediente}")
     public ResponseEntity<SolicitudDTO> obtenerPorExpediente(@Parameter(description = "Número de expediente SAIP") @PathVariable String expediente) {
-        Solicitud solicitud = solicitudService.findByExpediente(expediente)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con expediente: " + expediente));
-        autorizacionRecursosService.verificarSolicitudAccesible(solicitud);
-        return ResponseEntity.ok(SolicitudDTO.from(solicitud));
+        return ResponseEntity.ok(solicitudService.obtenerDetallePorExpediente(expediente));
     }
 
+    @SecurityRequirements
     @Operation(summary = "Consulta pública enmascarada de solicitud por expediente")
     @GetMapping("/publica/expediente/{expediente}")
     public ResponseEntity<ConsultaPublicaSolicitudDTO> obtenerPublicaPorExpediente(
             @Parameter(description = "Número de expediente SAIP") @PathVariable String expediente) {
-        Solicitud solicitud = solicitudService.findByExpediente(expediente)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con expediente: " + expediente));
-        return ResponseEntity.ok(ConsultaPublicaSolicitudDTO.from(solicitud));
+        return respuestaPublica(solicitudService.consultarEstadoPublicoSaip(expediente));
+    }
+
+    @SecurityRequirements
+    @Operation(summary = "Consulta pública enmascarada por número de expediente SAIP o TTAIP")
+    @GetMapping("/publica/expediente")
+    public ResponseEntity<ConsultaPublicaSolicitudDTO> consultarEstadoPublico(
+            @Parameter(description = "Número completo, por ejemplo SAIP-2026-00001 o 00001-2026-JUS/TTAIP")
+            @RequestParam String expediente) {
+        String codigo = expediente.strip().toUpperCase(Locale.ROOT);
+        if (codigo.length() <= 50) {
+            if (EXPEDIENTE_TTAIP.matcher(codigo).matches()) {
+                return respuestaPublica(apelacionService.consultarEstadoPublicoTtaip(codigo));
+            }
+            if (EXPEDIENTE_SAIP.matcher(codigo).matches()) {
+                return respuestaPublica(solicitudService.consultarEstadoPublicoSaip(codigo));
+            }
+        }
+        throw new IllegalArgumentException("Ingrese un número completo de expediente SAIP o TTAIP");
+    }
+
+    private ResponseEntity<ConsultaPublicaSolicitudDTO> respuestaPublica(ConsultaPublicaSolicitudDTO resumen) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(resumen);
     }
 
     @Operation(summary = "Listar solicitudes por ciudadano")
     @GetMapping("/ciudadano/{ciudadanoId}")
     public ResponseEntity<List<SolicitudDTO>> listarPorCiudadano(@Parameter(description = "ID del ciudadano") @PathVariable Long ciudadanoId) {
-        autorizacionRecursosService.verificarCiudadanoActualOPrivilegiado(ciudadanoId);
-        List<SolicitudDTO> solicitudes = solicitudService.findByCiudadanoId(ciudadanoId)
-                .stream()
-                .map(SolicitudDTO::from)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(solicitudes);
+        return ResponseEntity.ok(solicitudService.listarPorCiudadano(ciudadanoId));
     }
 
     @Operation(summary = "Listar solicitudes SAIP de un ciudadano con paginación y DTO liviano")
@@ -134,12 +156,7 @@ public class SolicitudRestController {
     @Operation(summary = "Listar solicitudes por entidad")
     @GetMapping("/entidad/{entidadId}")
     public ResponseEntity<List<SolicitudDTO>> listarPorEntidad(@Parameter(description = "ID de la entidad") @PathVariable Long entidadId) {
-        autorizacionRecursosService.verificarEntidadInstitucional(entidadId);
-        List<SolicitudDTO> solicitudes = solicitudService.findByEntidadId(entidadId)
-                .stream()
-                .map(SolicitudDTO::from)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(solicitudes);
+        return ResponseEntity.ok(solicitudService.listarPorEntidad(entidadId));
     }
 
     @Operation(summary = "Listar solicitudes SAIP de una entidad con paginación y DTO liviano")
@@ -166,12 +183,7 @@ public class SolicitudRestController {
             throw new IllegalArgumentException("Estado no válido: " + estado);
         }
 
-        List<SolicitudDTO> solicitudes = autorizacionRecursosService
-                .filtrarSolicitudesAccesibles(solicitudService.obtenerSolicitudesPorEstado(estadoEnum))
-                .stream()
-                .map(SolicitudDTO::from)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(solicitudes);
+        return ResponseEntity.ok(solicitudService.listarPorEstado(estadoEnum));
     }
 
     @Operation(summary = "Listar solicitudes por estado con paginación y DTO liviano")
@@ -221,6 +233,7 @@ public class SolicitudRestController {
         solicitud.setCopiaCertificada(solicitudDTO.copiaCertificada() != null ? solicitudDTO.copiaCertificada() : false);
         solicitud.setConsentimientoDatosPersonales(true);
         solicitud.setCanalNotificacion(parseCanalNotificacion(solicitudDTO.canalNotificacion()));
+        solicitud.registrarOficinaDesdeDescripcion();
         solicitud.setCiudadano(ciudadano);
         solicitud.setEntidad(entidad);
         solicitud.setEstado(Solicitud.EstadoSolicitud.RECEPCIONADA);
@@ -231,42 +244,11 @@ public class SolicitudRestController {
         return ResponseEntity.status(201).body(SolicitudDTO.from(solicitud));
     }
 
-    @Operation(summary = "Actualizar solicitud SAIP")
+    @Operation(summary = "Actualizar solicitud SAIP", description = "Edita asunto, descripción, tipo, consentimiento, canal y prioridad. Ignora estado, fechas y actuaciones; estas requieren su comando específico.")
     @PutMapping("/{id}")
     public ResponseEntity<SolicitudDTO> actualizar(@Parameter(description = "ID de la solicitud") @PathVariable Long id, @RequestBody SolicitudDTO solicitudDTO) {
         autorizacionRecursosService.verificarSolicitudInstitucional(id);
-        Solicitud solicitud = solicitudService.findById(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
-
-        if (solicitudDTO.asunto() != null) {
-            solicitud.setAsunto(solicitudDTO.asunto());
-        }
-        if (solicitudDTO.descripcion() != null) {
-            solicitud.setDescripcion(solicitudDTO.descripcion());
-        }
-        if (solicitudDTO.tipoInformacion() != null) {
-            solicitud.setTipoInformacion(solicitudDTO.tipoInformacion());
-        }
-        if (solicitudDTO.consentimientoDatosPersonales() != null) {
-            if (!Boolean.TRUE.equals(solicitudDTO.consentimientoDatosPersonales())) {
-                throw new IllegalArgumentException("El consentimiento de tratamiento de datos personales no puede retirarse desde este endpoint");
-            }
-            solicitud.setConsentimientoDatosPersonales(true);
-        }
-        if (solicitudDTO.canalNotificacion() != null) {
-            solicitud.setCanalNotificacion(parseCanalNotificacion(solicitudDTO.canalNotificacion()));
-        }
-        if (solicitudDTO.prioridad() != null) {
-            try {
-                solicitud.setPrioridad(Solicitud.Prioridad.valueOf(solicitudDTO.prioridad().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException(
-                        "Prioridad no válida: " + solicitudDTO.prioridad()
-                        + ". Valores permitidos: BAJA, NORMAL, MEDIA, ALTA, URGENTE");
-            }
-        }
-
-        solicitud = solicitudService.save(solicitud);
+        Solicitud solicitud = solicitudService.actualizarDatos(id, solicitudDTO);
 
         return ResponseEntity.ok(SolicitudDTO.from(solicitud));
     }
@@ -297,8 +279,14 @@ public class SolicitudRestController {
 
     @Operation(
             summary = "Subsanar observación SAIP",
-            description = "Registra la subsanación ciudadana dentro del plazo de 2 días hábiles y devuelve la solicitud a revisión."
+            description = "Registra comentario textual del ciudadano sobre una observación pendiente del expediente, dentro de plazo y sin respuesta. Los campos documentales no vacíos se rechazan (400); para archivos use la recepción multipart idempotente de precisiones."
     )
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación o datos persistidos", content=@Content(schema=@Schema(implementation=ObservacionSolicitudDTO.class))),
+        @ApiResponse(responseCode="400", description="Metadatos documentales sin bytes o comentario ausente", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class))),
+        @ApiResponse(responseCode="409", description="Actuación incompatible con el estado actual", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class))),
+        @ApiResponse(responseCode="422", description="Observación no pendiente o plazo vencido", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PostMapping("/{id}/observaciones/{observacionId}/subsanar")
     public ResponseEntity<ObservacionSolicitudDTO> subsanarSolicitud(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id,
@@ -310,7 +298,7 @@ public class SolicitudRestController {
 
     @Operation(
             summary = "Procesar observaciones SAIP vencidas",
-            description = "Marca observaciones pendientes vencidas como no subsanadas y cierra la solicitud como CONCLUIDA."
+            description = "Revalida observaciones pendientes vencidas bajo bloqueo. Solo cierra como CONCLUIDA solicitudes PENDIENTE_INFORMACION sin respuesta; no sobrescribe recepciones o estados posteriores."
     )
     @PostMapping("/observaciones/vencidas/procesar")
     public ResponseEntity<List<ObservacionSolicitudDTO>> procesarObservacionesVencidas() {
@@ -321,10 +309,16 @@ public class SolicitudRestController {
         return ResponseEntity.ok(observaciones);
     }
 
-    @Operation(
-            summary = "Registrar ampliación de plazo SAIP",
-            description = "Registra y notifica una ampliación dentro del día 4 de atención, con informe y cronograma de entregas parciales."
-    )
+    @Operation(summary = "Consultar disponibilidad y límite de una ampliación SAIP")
+    @GetMapping("/{id}/ampliaciones/prevision")
+    public ResponseEntity<PrevisionAmpliacionDTO> preverAmpliacion(@PathVariable Long id,
+            @RequestParam(defaultValue = "0") int diasHabilesAdicionales) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(solicitudService.preverAmpliacion(id, diasHabilesAdicionales));
+    }
+
+    @Operation(summary = "Registrar ampliación de plazo SAIP",
+            description = "Registra el nuevo vencimiento y las entregas programadas dentro del plazo aplicable.")
     @PostMapping("/{id}/ampliaciones")
     public ResponseEntity<AmpliacionPlazoSolicitudDTO> registrarAmpliacion(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id,
@@ -338,11 +332,7 @@ public class SolicitudRestController {
     public ResponseEntity<List<AmpliacionPlazoSolicitudDTO>> listarAmpliaciones(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
         autorizacionRecursosService.verificarSolicitudAccesible(id);
-        List<AmpliacionPlazoSolicitudDTO> ampliaciones = solicitudService.listarAmpliaciones(id)
-                .stream()
-                .map(AmpliacionPlazoSolicitudDTO::from)
-                .toList();
-        return ResponseEntity.ok(ampliaciones);
+        return ResponseEntity.ok(solicitudService.listarAmpliaciones(id));
     }
 
     @Operation(summary = "Consultar cronograma de entregas parciales de una SAIP")
@@ -350,11 +340,7 @@ public class SolicitudRestController {
     public ResponseEntity<List<CronogramaEntregaParcialDTO>> listarCronogramaAmpliacion(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id) {
         autorizacionRecursosService.verificarSolicitudAccesible(id);
-        List<CronogramaEntregaParcialDTO> entregas = solicitudService.listarCronogramaAmpliacion(id)
-                .stream()
-                .map(CronogramaEntregaParcialDTO::from)
-                .toList();
-        return ResponseEntity.ok(entregas);
+        return ResponseEntity.ok(solicitudService.listarCronogramaAmpliacion(id));
     }
 
     @Operation(summary = "Actualizar estado de una entrega parcial SAIP")
@@ -365,8 +351,21 @@ public class SolicitudRestController {
             @Parameter(description = "ID de la entrega parcial") @PathVariable Long entregaId,
             @Valid @RequestBody ActualizarEntregaParcialRequest request) {
         autorizacionRecursosService.verificarSolicitudInstitucional(id);
-        return ResponseEntity.ok(CronogramaEntregaParcialDTO.from(
-                solicitudService.actualizarEntregaParcial(id, ampliacionId, entregaId, request)));
+        return ResponseEntity.ok(solicitudService.actualizarEntregaParcial(id, ampliacionId, entregaId, request));
+    }
+
+    @Operation(summary = "Registrar los archivos y la fecha real de una entrega programada SAIP",
+            description = "Requiere al menos un archivo. Ante incertidumbre consulte el cronograma antes de repetir.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
+                    content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(implementation = RegistrarDocumentosEntregaParcialRequest.class))))
+    @PostMapping(value = "/{id}/ampliaciones/{ampliacionId}/cronograma/{entregaId}",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CronogramaEntregaParcialDTO> registrarDocumentosEntregaParcial(@PathVariable Long id,
+            @PathVariable Long ampliacionId, @PathVariable Long entregaId,
+            @Valid @ModelAttribute RegistrarDocumentosEntregaParcialRequest request) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(solicitudService.registrarDocumentosEntregaParcial(id, ampliacionId, entregaId, request));
     }
 
     @Operation(
@@ -407,7 +406,7 @@ public class SolicitudRestController {
 
     @Operation(
             summary = "Emitir liquidación o cupón SAIP",
-            description = "Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días hábiles para recojo."
+            description = "Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días calendario para el recojo, contados desde el día siguiente a la notificación."
     )
     @PostMapping("/{id}/liquidaciones")
     public ResponseEntity<LiquidacionCostoSolicitudDTO> emitirLiquidacion(
@@ -442,6 +441,11 @@ public class SolicitudRestController {
     }
 
     @Operation(summary = "Actualizar pago o recojo de liquidación SAIP")
+
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación o datos persistidos", content=@Content(schema=@Schema(implementation=LiquidacionCostoSolicitudDTO.class))),
+        @ApiResponse(responseCode="409", description="Actuación incompatible con el estado de la solicitud o con una observación pendiente. El recojo sigue disponible cuando la información ya está puesta a disposición.", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PatchMapping("/{id}/liquidaciones/{liquidacionId}")
     public ResponseEntity<LiquidacionCostoSolicitudDTO> actualizarLiquidacion(
             @Parameter(description = "ID de la solicitud") @PathVariable Long id,
@@ -454,7 +458,7 @@ public class SolicitudRestController {
 
     @Operation(
             summary = "Procesar liquidaciones vencidas por no recojo",
-            description = "Archiva/cierra solicitudes con liquidación notificada cuyo plazo de recojo de 30 días hábiles venció."
+            description = "Archiva solicitudes con liquidación notificada cuyo plazo de recojo de 30 días calendario venció, también si la información ya estaba puesta a disposición."
     )
     @PostMapping("/liquidaciones/vencidas/procesar")
     public ResponseEntity<List<LiquidacionCostoSolicitudDTO>> procesarLiquidacionesVencidas() {
@@ -479,21 +483,25 @@ public class SolicitudRestController {
         }
     }
 
-    @Operation(summary = "Cambiar estado de solicitud")
+    @Operation(summary = "Registrar el área responsable", description = "Persiste el área de la entidad que tiene la información y, si se indica, la persona encargada. No modifica el plazo ni la respuesta.")
+    @PatchMapping("/{id}/area-responsable")
+    public ResponseEntity<SolicitudDTO> asignarArea(
+            @Parameter(description = "ID de la solicitud") @PathVariable Long id,
+            @Valid @RequestBody AsignarAreaResponsableRequest body) {
+        autorizacionRecursosService.verificarSolicitudInstitucional(id);
+        return ResponseEntity.ok(solicitudService.asignarAreaResponsable(id, body.area(), body.encargado()));
+    }
+
+    @Operation(summary = "Cambiar estado de solicitud", description = "Solo permite RECEPCIONADA a EN_REVISION sin respuesta ni observación pendiente, o consultar el mismo estado sin nueva actuación. Los demás cambios requieren su comando específico (409).")
+    @ApiResponses({
+        @ApiResponse(responseCode="200", description="Actuación o datos persistidos", content=@Content(schema=@Schema(implementation=SolicitudDTO.class))),
+        @ApiResponse(responseCode="409", description="La transición exige una actuación o es incompatible con el expediente", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class))),
+        @ApiResponse(responseCode="422", description="Valor de estado ausente o no reconocido", content=@Content(mediaType="application/problem+json", schema=@Schema(implementation=org.springframework.http.ProblemDetail.class)))
+    })
     @PatchMapping("/{id}/estado")
     public ResponseEntity<SolicitudDTO> cambiarEstado(@Parameter(description = "ID de la solicitud") @PathVariable Long id, @RequestBody Map<String, String> body) {
         autorizacionRecursosService.verificarSolicitudInstitucional(id);
-        Solicitud solicitud = solicitudService.findById(id)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + id));
-
-        String nuevoEstado = body.get("estado");
-        try {
-            solicitud.setEstado(Solicitud.EstadoSolicitud.valueOf(nuevoEstado.toUpperCase()));
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Estado no válido: " + nuevoEstado);
-        }
-
-        solicitud = solicitudService.save(solicitud);
+        Solicitud solicitud = solicitudService.cambiarEstado(id, body.get("estado"));
 
         return ResponseEntity.ok(SolicitudDTO.from(solicitud));
     }

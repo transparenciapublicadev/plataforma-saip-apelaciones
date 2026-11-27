@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import pe.gob.saip.backend.model.dto.ActividadRecienteDTO;
 import pe.gob.saip.backend.model.entity.*;
 import pe.gob.saip.backend.service.*;
 
@@ -24,19 +25,25 @@ public class EstadisticasRestController {
     private final CiudadanoService ciudadanoService;
     private final FuncionarioService funcionarioService;
     private final AutorizacionRecursosService autorizacionRecursosService;
+    private final UsuarioService usuarioService;
+    private final ActividadRecienteService actividadRecienteService;
 
     public EstadisticasRestController(SolicitudService solicitudService,
                                        ApelacionService apelacionService,
                                        EntidadService entidadService,
                                        CiudadanoService ciudadanoService,
                                        FuncionarioService funcionarioService,
-                                       AutorizacionRecursosService autorizacionRecursosService) {
+                                       AutorizacionRecursosService autorizacionRecursosService,
+                                       UsuarioService usuarioService,
+                                       ActividadRecienteService actividadRecienteService) {
         this.solicitudService = solicitudService;
         this.apelacionService = apelacionService;
         this.entidadService = entidadService;
         this.ciudadanoService = ciudadanoService;
         this.funcionarioService = funcionarioService;
         this.autorizacionRecursosService = autorizacionRecursosService;
+        this.usuarioService = usuarioService;
+        this.actividadRecienteService = actividadRecienteService;
     }
 
     @Operation(summary = "Estadísticas generales del sistema", description = "Totales de solicitudes, apelaciones, entidades, ciudadanos y funcionarios")
@@ -61,6 +68,21 @@ public class EstadisticasRestController {
                 .filter(s -> Solicitud.EstadoSolicitud.VENCIDA.equals(s.getEstado()))
                 .count());
 
+        List<Solicitud> respondidas = solicitudes.stream()
+                .filter(s -> s.getRespuesta() != null && s.getFechaPresentacion() != null
+                        && s.getRespuesta().getFechaRespuesta() != null)
+                .collect(Collectors.toList());
+        if (!respondidas.isEmpty()) {
+            double promedioHoras = respondidas.stream()
+                    .mapToLong(s -> Math.max(0, ChronoUnit.HOURS.between(s.getFechaPresentacion(),
+                            s.getRespuesta().getFechaRespuesta())))
+                    .average()
+                    .orElse(0);
+            stats.put("tiempoPromedioRespuestaDias", Math.round((promedioHoras / 24.0) * 10.0) / 10.0);
+        } else {
+            stats.put("tiempoPromedioRespuestaDias", 0.0);
+        }
+
         List<Apelacion> apelaciones = apelacionService.findAll();
         stats.put("totalApelaciones", apelaciones.size());
         stats.put("apelacionesPendientes", apelaciones.stream()
@@ -74,6 +96,7 @@ public class EstadisticasRestController {
         stats.put("totalEntidades", entidadService.findAll().size());
         stats.put("totalCiudadanos", ciudadanoService.obtenerTodosLosCiudadanos().size());
         stats.put("totalFuncionarios", funcionarioService.obtenerTodosLosFuncionarios().size());
+        stats.put("totalUsuarios", usuarioService.obtenerTodosLosUsuarios().size());
 
         return ResponseEntity.ok(stats);
     }
@@ -183,9 +206,10 @@ public class EstadisticasRestController {
                             .count());
                     return item;
                 })
-                .sorted((a, b) -> Integer.compare(
-                        (int) b.get("totalSolicitudes"),
-                        (int) a.get("totalSolicitudes")))
+                .sorted(Comparator
+                        .<Map<String, Object>>comparingInt(item -> (int) item.get("totalSolicitudes"))
+                        .reversed()
+                        .thenComparing(item -> String.valueOf(item.get("entidadNombre")), String.CASE_INSENSITIVE_ORDER))
                 .limit(limite)
                 .collect(Collectors.toList());
 
@@ -243,5 +267,12 @@ public class EstadisticasRestController {
         }
 
         return ResponseEntity.ok(tendencias);
+    }
+
+    @Operation(summary = "Actividad reciente del sistema", description = "Últimos eventos unificados de solicitudes y apelaciones")
+    @GetMapping("/actividad-reciente")
+    public ResponseEntity<List<ActividadRecienteDTO>> obtenerActividadReciente(
+            @Parameter(description = "Número máximo de eventos") @RequestParam(defaultValue = "10") int limite) {
+        return ResponseEntity.ok(actividadRecienteService.listar(limite));
     }
 }

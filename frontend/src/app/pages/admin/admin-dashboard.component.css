@@ -1,2 +1,27 @@
-/* Estilos admin dashboard */
+/* Keep adaptations inside this dashboard; retain the reference's shared tokens. */
+:host { display: block; }
+.admin-dashboard button:focus-visible,
+.admin-dashboard input:focus-visible,
+.admin-dashboard select:focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 3px;
+}
+.admin-dashboard button:disabled { opacity: .5; cursor: not-allowed; }
+.admin-dashboard [role="dialog"] { overflow-wrap: anywhere; }
+.admin-dashboard [role="dialog"] .field-input { min-width: 0; }
+.admin-dashboard .stat-card-value { overflow-wrap: anywhere; }
+.admin-dashboard .form-shell { min-width: 0; }
+@media (max-width: 639px) {
+  .admin-dashboard .admin-hero { flex-wrap: wrap; gap: 1rem; }
+  .admin-dashboard .admin-hero > button { margin-left: 0; }
+  .admin-dashboard [role="dialog"] { max-height: calc(100dvh - 2rem); }
+  .admin-dashboard [role="dialog"] h3 { min-width: 0; }
+  .admin-dashboard [role="dialog"] .justify-between { gap: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-dashboard *, .admin-dashboard *::before, .admin-dashboard *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 

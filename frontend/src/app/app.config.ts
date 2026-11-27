@@ -15,7 +15,8 @@ import {
   LucideXCircle, LucideClock, LucideFileCheck2, LucideArrowLeft, LucideArrowRight,
   LucidePlus, LucideCheck, LucideInfo, LucideCompass, LucideTrendingUp,
   LucideFlame, LucideCalendar, LucideInbox, LucideLayers, LucideTarget,
-  LucideGavel, LucideSparkles, LucideHourglass, LucideActivity, LucideChevronRight
+  LucideGavel, LucideSparkles, LucideHourglass, LucideActivity, LucideChevronRight,
+  LucideShieldCheck, LucideBadgeCheck, LucideBarChart3
 } from '@lucide/angular';
 
 export const appConfig: ApplicationConfig = {
@@ -33,7 +34,8 @@ export const appConfig: ApplicationConfig = {
       LucideXCircle, LucideClock, LucideFileCheck2, LucideArrowLeft, LucideArrowRight,
       LucidePlus, LucideCheck, LucideInfo, LucideCompass, LucideTrendingUp,
       LucideFlame, LucideCalendar, LucideInbox, LucideLayers, LucideTarget,
-      LucideGavel, LucideSparkles, LucideHourglass, LucideActivity, LucideChevronRight
+      LucideGavel, LucideSparkles, LucideHourglass, LucideActivity, LucideChevronRight,
+      LucideShieldCheck, LucideBadgeCheck, LucideBarChart3
     )
   ]
 };

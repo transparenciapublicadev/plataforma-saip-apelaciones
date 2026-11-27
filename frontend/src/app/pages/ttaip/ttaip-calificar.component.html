@@ -1,338 +1,135 @@
-<div class="min-h-screen bg-background">
+<div class="qualification-page min-h-screen bg-background">
   @if (loadingApelacion()) {
-    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
-      <div class="form-shell p-16 text-center">
-        <div class="w-8 h-8 border-2 border-[var(--brand-700)] border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p class="mt-4 text-muted-foreground">Cargando apelacion...</p>
-      </div>
-    </div>
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10"><app-yaiku-cargando mensaje="Cargando apelación y antecedentes…" /></div>
+  } @else if (loadError() || !contextoVigente() || !apelacion()) {
+    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10"><div class="form-shell p-6 text-center">
+      <h1 class="font-display text-2xl">Primera calificación no disponible</h1>
+      <p role="alert" class="text-sm text-muted-foreground mt-3">{{ loadError() || 'No se ha recuperado el expediente para la sesión actual.' }}</p>
+      <div class="flex flex-wrap justify-center gap-3 mt-4"><button type="button" class="btn-brand" (click)="reintentarConsulta()">Consultar nuevamente</button><a routerLink="/ttaip" class="btn-ghost-brand">Volver al panel</a><a routerLink="/acceso-ttaip" class="btn-ghost-brand">Acceso interno TTAIP</a></div>
+    </div></div>
   } @else if (apelacion(); as ap) {
     <div class="relative bg-brand-gradient text-white overflow-hidden">
-      <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
+      <div aria-hidden="true" class="absolute inset-0 bg-paper opacity-[0.06]"></div>
       <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
-        <a routerLink="/ttaip" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 19-7-7 7-7" /><path stroke-width="2" d="M19 12H5" /></svg>
-          Volver al panel TTAIP
-        </a>
-        <span class="eyebrow !text-[color:var(--gold-soft)]">Tribunal · Etapa de calificacion</span>
-        <h1 class="font-display mt-2" style="font-size: clamp(30px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -0.025em;">
-          Primera <span class="italic" style="color: var(--gold-soft)">calificacion</span>
-        </h1>
+        <a routerLink="/ttaip" class="back-link back-link--dark"><svg aria-hidden="true" lucideArrowLeft class="w-4 h-4"></svg>Volver al panel TTAIP</a>
+        <span class="eyebrow !text-[color:var(--gold-soft)]">Tribunal · Etapa de calificación</span>
+        <h1 class="font-display mt-2" style="font-size: clamp(30px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -0.025em">Primera <span class="italic" style="color: var(--gold-soft)">calificación</span></h1>
         <p class="text-white/75 mt-2 font-mono text-sm">Expediente · {{ ap.expediente }}</p>
-      </div>
-      <div class="brand-divider"></div>
+      </div><div class="brand-divider" aria-hidden="true"></div>
     </div>
-
     <div class="max-w-7xl mx-auto px-6 md:px-10 py-10 space-y-6">
-      <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--info)" data-reveal>
-        <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(29,78,216,0.08)">
-          <svg class="w-5 h-5" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2" /></svg>
-        </div>
-        <div>
-          <span class="eyebrow" style="color: var(--info)">Proceso de calificacion</span>
-          <p class="text-sm text-foreground/85 leading-relaxed mt-1.5">
-            Determine si la apelacion cumple requisitos formales (Admisible), requiere subsanacion (Inadmisible) o no procede (Improcedente).
-          </p>
-        </div>
+      <div class="rounded-lg p-5 flex items-start gap-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--info)">
+        <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: color-mix(in srgb, var(--info) 8%, transparent)"><svg aria-hidden="true" lucideAlertCircle class="w-5 h-5" style="color: var(--info)"></svg></div>
+        <div><span class="eyebrow" style="color: var(--info)">Proceso de calificación</span><p class="text-sm text-foreground/85 leading-relaxed mt-1.5">Determine si la apelación cumple los requisitos formales (Admisible), requiere subsanación (Inadmisible) o no procede (Improcedente).</p></div>
       </div>
-
-      <div
-        class="grid grid-cols-1 lg:grid-cols-2 gap-6"
-        data-motion-stagger
-        data-motion-y="12"
-        data-motion-duration="0.38"
-        data-motion-delay-step="0.055"
-      >
-        <div class="form-shell" data-motion-item>
-          <div class="flex border-b" style="border-color: var(--border)">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="form-shell min-w-0" aria-label="Antecedentes del recurso">
+          <div role="tablist" aria-label="Antecedentes de la apelación" class="flex border-b border-border">
             @for (tab of tabs; track tab.id) {
-              <button
-                type="button"
-                (click)="cambiarTab(tab.id)"
-                class="flex-1 px-4 py-3.5 text-sm relative"
-                [style.color]="activeTab() === tab.id ? 'var(--brand-700)' : 'var(--muted-foreground)'"
-                [style.font-weight]="activeTab() === tab.id ? '600' : '400'">
-                {{ tab.label }}
-                @if (activeTab() === tab.id) {
-                  <span class="absolute left-0 right-0 bottom-[-1px] h-[2px]" style="background: var(--brand-700)"></span>
-                }
+              <button type="button" role="tab" [id]="'qual-tab-' + tab.id" [attr.aria-controls]="'qual-panel-' + tab.id" [attr.aria-selected]="activeTab() === tab.id" [attr.tabindex]="activeTab() === tab.id ? 0 : -1" (click)="cambiarTab(tab.id)" (keydown)="onTabKey($event, tab.id)" class="flex-1 min-w-0 px-4 py-3.5 text-sm relative" [style.color]="activeTab() === tab.id ? 'var(--brand-700)' : 'var(--muted-foreground)'" [style.font-weight]="activeTab() === tab.id ? 600 : 400">
+                {{ tab.label }}@if (activeTab() === tab.id) { <span aria-hidden="true" class="absolute left-0 right-0 bottom-[-1px] h-[2px]" style="background: var(--brand-700)"></span> }
               </button>
             }
           </div>
-
-          @if (activeTab() === 'apelacion') {
-            <div class="p-6 space-y-5 text-sm animate-fade-in">
-              <div>
-                <span class="eyebrow">Ciudadano apelante</span>
-                <div class="flex items-center gap-3 mt-2">
-                  <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ getInitials(ap.ciudadanoNombre) }}</div>
-                  <div>
-                    <div class="font-medium text-foreground">{{ ap.ciudadanoNombre }}</div>
-                    <div class="font-mono text-[11px] text-muted-foreground">SAIP origen · {{ ap.solicitudExpediente || ap.numeroSolicitudExterna || '—' }}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <span class="eyebrow">Solicitud origen</span>
-                <div class="mt-2"><span class="code-chip">{{ ap.solicitudExpediente || ap.numeroSolicitudExterna || '—' }}</span></div>
-                <p class="text-xs text-muted-foreground mt-2 leading-relaxed">Asunto: {{ ap.solicitudAsunto || ap.resumenSolicitudOriginal || '—' }}</p>
-              </div>
-
-              <div class="rule-ornament"></div>
-
-              <div>
-                <span class="eyebrow">Fundamentos del apelante</span>
-                <div class="mt-2 rounded-md p-3" style="background: var(--card); border: 1px solid var(--border)">
-                  <p class="text-foreground leading-relaxed whitespace-pre-wrap">{{ ap.fundamentos }}</p>
-                </div>
-              </div>
-
-              <div>
-                <span class="eyebrow">Fecha de presentacion</span>
-                <div class="mt-1 font-mono">{{ ap.fechaApelacion | date:'dd/MM/yyyy' }}</div>
-              </div>
-
-              @if (ap.elevacion; as elevacion) {
-                <div class="rounded-md p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--gold-dark)">
-                  <span class="eyebrow" style="color: var(--gold-dark)">Origen · elevación por entidad</span>
-                  <p class="text-sm text-foreground/85 mt-2">
-                    El recurso ingresó por remisión de <span class="font-semibold">{{ elevacion.entidadOrigenNombre }}</span>.
-                  </p>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 text-xs">
-                    <div>
-                      <span class="eyebrow">Cargo ciudadano</span>
-                      <p class="font-mono mt-1">{{ elevacion.referenciaCargoPresentacion }}</p>
-                    </div>
-                    <div>
-                      <span class="eyebrow">Referencia elevada</span>
-                      <p class="font-mono mt-1">{{ elevacion.referenciaExpedienteElevado || 'Admisión excepcional' }}</p>
-                    </div>
-                  </div>
+          <div role="tabpanel" id="qual-panel-apelacion" aria-labelledby="qual-tab-apelacion" [hidden]="activeTab() !== 'apelacion'" class="p-6 space-y-5 text-sm">
+            <div><h2 class="eyebrow">Ciudadano apelante</h2><div class="flex items-center gap-3 mt-2"><div aria-hidden="true" class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ getInitials(ap.ciudadanoNombre) }}</div><div class="min-w-0"><p class="font-medium text-foreground">{{ ap.ciudadanoNombre || '—' }}</p><p class="font-mono text-[11px] text-muted-foreground">Datos no disponibles</p></div></div></div>
+            <div><h2 class="eyebrow">Expediente SAIP</h2><div class="mt-2"><span class="code-chip">{{ ap.solicitudExpediente || ap.numeroSolicitudExterna || '—' }}</span></div><p class="text-xs text-muted-foreground mt-2 leading-relaxed">Asunto: {{ solicitudOrigen()?.asunto || ap.solicitudAsunto || ap.resumenSolicitudOriginal || '—' }}</p></div>
+            <div aria-hidden="true" class="rule-ornament"></div>
+            <div><h2 class="eyebrow" style="color: var(--brand-700)">Causal de denegatoria · Entidad</h2><div class="mt-2 rounded-md p-3" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)"><p class="font-semibold">{{ causalOrigen() }}</p><p class="text-xs text-foreground/75 mt-1 leading-relaxed">Entidad emplazada: {{ ap.entidadNombre || ap.entidadExternaNombre || '—' }}.</p>@if (solicitudOrigen()?.respuesta?.causalDenegatoria) { <p class="text-xs mt-1">{{ solicitudOrigen()?.respuesta?.causalDenegatoria }}</p> }</div></div>
+            <div><h2 class="eyebrow">Fundamentos del apelante</h2><div class="mt-2 rounded-md p-3 border border-border bg-card"><p class="leading-relaxed whitespace-pre-wrap">{{ ap.fundamentos || 'Sin fundamentos registrados.' }}</p></div></div>
+            <div><h2 class="eyebrow">Fecha de presentación</h2><p class="mt-1 font-mono">{{ (fechaVisible(ap.fechaApelacion) | date:'dd/MM/yyyy') || 'No informada' }}</p></div>
+            <div><h2 class="eyebrow">Vía de ingreso</h2><p class="mt-1 inline-flex rounded-md px-2.5 py-1 text-xs font-medium" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); color: var(--brand-700)">{{ viaIngreso() }}</p></div>
+          </div>
+          <div role="tabpanel" id="qual-panel-adjuntos" aria-labelledby="qual-tab-adjuntos" [hidden]="activeTab() !== 'adjuntos'" class="p-6">
+            @if (loadingDocuments()) { <p role="status">Consultando documentos por sus relaciones…</p> }
+            @else if (documentError()) { <p role="alert" class="text-sm text-destructive">{{ documentError() }}</p><button type="button" class="btn-ghost-brand mt-3" (click)="cargarDocumentos()">Reintentar consulta documental</button> }
+            @else {
+              <p class="text-xs text-muted-foreground mb-4">Archivos registrados de esta actuación. No certifican firma ni autenticidad. Los borradores se presentan por separado.</p>
+              @if (documentCount() > 3) {
+                <div class="space-y-2 mb-3"><div class="relative"><svg aria-hidden="true" lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></svg><label class="sr-only" for="qualification-document-search">Buscar documentos del expediente</label><input id="qualification-document-search" type="search" class="field-input !pl-9 !pr-9 !py-2 !text-sm" [ngModel]="documentSearch()" (ngModelChange)="documentSearch.set($event)" placeholder="Buscar por nombre, tipo, fecha o relación"/>@if (documentSearch()) { <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded" aria-label="Limpiar búsqueda de documentos" (click)="documentSearch.set('')"><svg aria-hidden="true" lucideXCircle class="w-3.5 h-3.5"></svg></button> }</div>
+                  <div role="group" aria-label="Filtrar documentos por relación" class="flex flex-wrap gap-1.5"><button type="button" class="text-xs px-2.5 py-1 rounded-full border border-border" [attr.aria-pressed]="!documentFilter()" [style.background]="!documentFilter() ? 'var(--brand-700)' : 'var(--card)'" [style.color]="!documentFilter() ? '#fff' : 'var(--foreground)'" (click)="documentFilter.set('')">Todos <span class="font-mono opacity-70">{{ documentCount() }}</span></button>@for (group of documentGroups(); track group.label) { @if (group.documents.length) { <button type="button" class="text-xs px-2.5 py-1 rounded-full border border-border" [attr.aria-pressed]="documentFilter() === group.label" [style.background]="documentFilter() === group.label ? 'var(--brand-700)' : 'var(--card)'" [style.color]="documentFilter() === group.label ? '#fff' : 'var(--foreground)'" (click)="documentFilter.set(group.label)">{{ group.label }} <span class="font-mono opacity-70">{{ group.documents.length }}</span></button> } }</div>
                 </div>
               }
-            </div>
-          }
-
-          @if (activeTab() === 'adjuntos') {
-            @if (ap.documentos && ap.documentos.length > 0) {
-              <div class="p-6 space-y-2">
-                @for (doc of ap.documentos; track doc.id) {
-                  <div class="rounded-md p-3 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)" data-table-row>
-                    <div class="flex items-center gap-3">
-                      <div class="w-9 h-9 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-                        <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
-                      </div>
-                      <div>
-                        <div class="text-sm font-medium">{{ doc.nombreArchivo }}</div>
-                        <div class="font-mono text-[11px] text-muted-foreground">{{ doc.tipoArchivo }}</div>
-                      </div>
+              @for (group of visibleGroups(); track group.label) {
+                <section class="mb-3"><h2><button type="button" class="w-full flex items-center gap-2 py-1.5 text-left" [attr.aria-expanded]="groupOpen(group.label)" [attr.aria-controls]="documentGroupId(group)" [disabled]="!!documentSearch().trim() || !!documentFilter()" (click)="toggleDocumentGroup(group.label)"><span class="eyebrow flex-1">{{ group.label }}</span><span class="font-mono text-[11px] text-muted-foreground">{{ group.documents.length }} de {{ group.total }} docs.</span><svg aria-hidden="true" lucideChevronDown class="w-4 h-4 text-muted-foreground transition-transform" [style.transform]="groupOpen(group.label) ? null : 'rotate(-90deg)'"></svg></button></h2>
+                  <div [id]="documentGroupId(group)" [hidden]="!groupOpen(group.label)" role="list" [attr.aria-label]="'Documentos: ' + group.label" class="space-y-2 mt-1.5 pl-3 ml-2.5 border-l border-border">
+                  @for (doc of group.documents; track doc.id) {
+                    <div role="listitem" class="rounded-md p-3 flex items-center gap-3 flex-wrap border border-border bg-card mb-2">
+                      <span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)"><svg aria-hidden="true" lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg></span>
+                      <div class="flex-1 min-w-0"><p class="text-sm font-medium">{{ nombreDocumento(doc) }}</p><p class="font-mono text-[11px] text-muted-foreground">{{ doc.contentType || 'Tipo no informado' }}</p></div>
+                      <div class="flex gap-1"><button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" (click)="verDocumento(doc)" [attr.aria-label]="'Previsualizar ' + nombreDocumento(doc)"><svg aria-hidden="true" lucideEye class="w-4 h-4"></svg></button><button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" [disabled]="downloadingId() !== null" (click)="descargarDocumento(doc)" [attr.aria-label]="'Descargar ' + nombreDocumento(doc)"><svg aria-hidden="true" lucideDownload class="w-4 h-4"></svg></button></div>
                     </div>
-                    <button type="button" class="btn-ghost-brand !px-2.5 !py-1.5" (click)="descargarDocumento(doc)" aria-label="Descargar documento">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 16V4m0 12-4-4m4 4 4-4M5 20h14" /></svg>
-                    </button>
+                  }
                   </div>
-                }
-              </div>
-            } @else {
-              <div class="p-12 text-center">
-                <svg class="w-14 h-14 mx-auto text-muted-foreground/55 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /></svg>
-                <p class="text-sm text-muted-foreground">No hay adjuntos registrados para esta apelacion.</p>
-              </div>
+                </section>
+              } @empty {
+                <p role="status" class="rounded-md p-3 text-sm text-muted-foreground border border-dashed border-border">{{ documentCount() ? 'Ningún documento coincide con la búsqueda o filtro.' : 'No hay documentos registrados en esta relación consultada.' }}</p>
+              }
+              <p class="text-xs text-muted-foreground">Los documentos propios de resoluciones y cédulas se consultan en el detalle de esas actuaciones. Esta lista no afirma un inventario documental universal.</p>
             }
+            @if (downloadError()) { <p role="alert" class="text-sm text-destructive mt-3">{{ downloadError() }}</p> }
+          </div>
+          <div role="tabpanel" id="qual-panel-subprocesos" aria-labelledby="qual-tab-subprocesos" [hidden]="activeTab() !== 'subprocesos'" class="p-6">
+            @if (activeTab() === 'subprocesos' && expedienteActuacion(); as expedienteId) {
+              <app-informacion-complementaria [expedienteId]="expedienteId" [tribunal]="true" />
+            }
+          </div>
+        </section>
+        <div class="space-y-5 min-w-0">
+          @if (motivoNoDisponible()) { <p role="status" class="rounded-lg p-4 text-sm" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">{{ motivoNoDisponible() }}</p> }
+          @if (error()) { <p role="alert" class="rounded-lg p-4 text-sm text-destructive border border-border">{{ error() }}</p> }
+          @if (resultadoIncierto()) {
+            <section class="form-shell p-5"><h2 class="font-display text-xl">Resultado por comprobar</h2><p class="text-sm text-muted-foreground mt-2">El texto se conserva solo en memoria de esta pantalla. Cambiar de expediente, sesión o recargar pierde este seguimiento local. Cancelar en el navegador no revierte un registro aceptado por el servidor.</p>
+              @if (registroObservado()) { <p class="text-sm mt-2">La consulta encontró una primera calificación; no se atribuye automáticamente al envío incierto.</p> }
+              <div class="flex flex-wrap gap-3 mt-4"><button type="button" class="btn-brand" [disabled]="loading()" (click)="recuperarResultado()">Consultar resultado</button><a class="btn-ghost-brand" [routerLink]="['/ttaip/apelacion', ap.expediente]">Revisar expediente</a></div>
+            </section>
           }
-        </div>
-
-        <div class="space-y-5">
-          @if (error()) {
-            <div class="rounded-lg p-4 flex items-start gap-3" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
-              <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--destructive)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 14l2-2m0 0 2-2m-2 2-2-2m2 2 2 2m7-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0" /></svg>
-              <p class="text-sm" style="color: var(--destructive)">{{ error() }}</p>
-            </div>
-          }
-
-          @if (mensaje()) {
-            <div class="rounded-lg p-4 flex items-start gap-3" style="background: color-mix(in srgb, var(--success) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent)">
-              <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>
-              <p class="text-sm" style="color: var(--success)">{{ mensaje() }}</p>
-            </div>
-          }
-
-          @if (!puedeCalificar()) {
-            <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200); border-left: 3px solid var(--gold)">
-              <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: var(--gold-dark, var(--gold))" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 8v4l3 3" /><circle cx="12" cy="12" r="10" /></svg>
-              <p class="text-sm text-foreground/85">Esta apelación ya avanzó de la primera calificación. Estado actual: <span class="font-semibold">{{ getEstadoDisplay(ap.estado) }}</span>.</p>
-            </div>
-          }
-
-          <section class="form-shell" data-motion-item>
-            <div class="form-section-header">
-              <span class="eyebrow">01 · Decision colegiada</span>
-              <h2 class="form-section-title">Calificacion</h2>
-            </div>
-            <div class="p-6 space-y-3">
+          @if (mensaje()) { <section id="qualification-result" tabindex="-1" class="rounded-lg p-5 border border-border"><h2 class="font-display text-xl">Registro recuperado</h2><p role="status" class="text-sm mt-2">{{ mensaje() }}</p><p class="text-xs text-muted-foreground mt-2">{{ numeroPrimera() }}. No acredita firma digital ni notificación eficaz.</p><a class="btn-ghost-brand mt-3" [routerLink]="['/ttaip/apelacion', ap.expediente]">Ver expediente</a></section> }
+          <section class="form-shell">
+            <div class="form-section-header"><span class="eyebrow">01 · Decisión colegiada</span><h2 id="qualification-options" class="form-section-title">Calificación</h2></div>
+            <div class="p-6 space-y-3" role="group" aria-labelledby="qualification-options">
               @for (option of options; track option.id) {
-                <button
-                  type="button"
-                  (click)="seleccionarCalificacion(option.id)"
-                  [disabled]="!puedeCalificar() || loading()"
-                  class="w-full rounded-lg p-4 text-left transition-all reference-option-card disabled:opacity-55 disabled:cursor-not-allowed"
-                  [style.background]="selectedDecision() === option.id ? 'var(--brand-subtle)' : 'var(--card)'"
-                  [style.border]="'1.5px solid ' + (selectedDecision() === option.id ? option.accent : 'var(--border)')"
-                  [style.box-shadow]="selectedDecision() === option.id ? '0 0 0 3px var(--brand-50)' : 'none'">
-                  <div class="flex items-center gap-3">
-                    <span class="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="selectedDecision() === option.id ? option.accent : 'var(--background)'" [style.border]="'1px solid ' + (selectedDecision() === option.id ? 'transparent' : 'var(--border)')">
-                      <svg class="w-5 h-5" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0" /></svg>
-                    </span>
-                    <div class="flex-1">
-                      <div class="font-display text-sm font-semibold tracking-wider">{{ option.label }}</div>
-                      <div class="text-xs text-muted-foreground mt-0.5">{{ option.description }}</div>
-                    </div>
-                  </div>
+                <button type="button" (click)="seleccionarCalificacion(option.id)" [disabled]="!puedeCalificar() || loading()" [attr.aria-pressed]="selectedDecision() === option.id" class="w-full rounded-lg p-4 text-left transition-all disabled:opacity-55 disabled:cursor-not-allowed" [style.background]="selectedDecision() === option.id ? 'var(--brand-subtle)' : 'var(--card)'" [style.border]="'1.5px solid ' + (selectedDecision() === option.id ? option.accent : 'var(--border)')" [style.box-shadow]="selectedDecision() === option.id ? '0 0 0 3px var(--brand-50)' : 'none'">
+                  <span class="flex items-center gap-3"><span class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" [style.background]="selectedDecision() === option.id ? option.accent : 'var(--background)'" [style.border]="'1px solid ' + (selectedDecision() === option.id ? 'transparent' : 'var(--border)')" [style.color]="selectedDecision() === option.id ? '#fff' : option.accent">
+                    @switch (option.id) { @case ('admisible') { <svg aria-hidden="true" lucideCheckCircle2 class="w-5 h-5"></svg> } @case ('inadmisible') { <svg aria-hidden="true" lucideAlertCircle class="w-5 h-5"></svg> } @default { <svg aria-hidden="true" lucideXCircle class="w-5 h-5"></svg> } }
+                  </span><span class="flex-1 min-w-0"><span class="block font-display text-sm font-semibold tracking-wider">{{ option.label }}</span><span class="block text-xs text-muted-foreground mt-0.5">{{ option.description }}</span></span></span>
                 </button>
               }
             </div>
           </section>
-
-          @if (selectedOption(); as selected) {
-            <div class="rounded-lg p-5 flex items-start gap-3 animate-fade-in" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)" [style.border-left]="'3px solid ' + selected.accent">
-              <svg class="w-5 h-5 flex-shrink-0 mt-0.5" [style.color]="selected.accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2" /></svg>
-              <p class="text-sm text-foreground/85 leading-relaxed">
-                @if (selected.id === 'admisible') {
-                  La apelacion cumple requisitos formales y pasa a Resolucion Final para pronunciamiento de fondo.
-                }
-                @if (selected.id === 'inadmisible') {
-                  La apelacion requiere subsanacion del ciudadano en plazo legal. Si no subsana, se declara tener por no presentado.
-                }
-                @if (selected.id === 'improcedente') {
-                  La apelacion no cumple requisitos legales y el proceso concluye con archivo.
-                }
-              </p>
-            </div>
-          }
-
-          @if (selectedDecision() === 'inadmisible') {
-            <section class="form-shell animate-fade-in">
-              <div class="form-section-header">
-                <span class="eyebrow">02 · Subsanacion</span>
-                <h2 class="form-section-title">Observaciones al ciudadano</h2>
-              </div>
-              <div class="p-6 space-y-4">
-                <div class="field">
-                  <label class="field-label">Observaciones <span class="req">*</span></label>
-                  <textarea [(ngModel)]="observaciones" [disabled]="!puedeCalificar() || loading()" class="field-input" rows="4" style="resize: vertical; min-height: 120px" placeholder="Indique con precision que debe subsanar el ciudadano..."></textarea>
+          @if (selectedOption(); as selected) { <div class="rounded-lg p-5 flex items-start gap-3 text-sm leading-relaxed" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)" [style.border-left]="'3px solid ' + selected.accent"><svg aria-hidden="true" lucideAlertCircle class="w-5 h-5 shrink-0 mt-0.5" [style.color]="selected.accent"></svg><p>{{ efectoCalificacion() }}</p></div> }
+          <section class="form-shell">
+            <div class="form-section-header"><span class="eyebrow">02 · Sustento</span><h2 id="qualification-observations" class="form-section-title">{{ selectedDecision() === 'inadmisible' ? 'Observaciones a subsanar' : 'Fundamentos de la calificación' }}</h2></div>
+            <div class="p-6 space-y-4">
+              @if (selectedDecision() === 'inadmisible') {
+                <div role="group" aria-labelledby="qualification-observations">
+                  <p id="observations-hint" class="text-xs text-muted-foreground mb-3">Registre cada observación como un punto independiente. El administrado las verá numeradas (punto 1, punto 2, …) en su detalle para subsanarlas.</p>
+                  @for (obs of observacionesList(); track $index) {
+                    <div class="flex items-start gap-2 mb-3"><span aria-hidden="true" class="w-7 h-9 flex items-center justify-center shrink-0 font-mono text-xs rounded-md" style="background: var(--brand-subtle); color: var(--brand-700)">{{ $index + 1 }}</span>
+                      <label class="sr-only" [for]="'qualification-obs-' + $index">Observación {{ $index + 1 }}</label><input [id]="'qualification-obs-' + $index" type="text" class="field-input flex-1 min-w-0" [value]="obs" (input)="setObs($index, $any($event.target).value)" [disabled]="!puedeCalificar() || loading()" aria-required="true" aria-describedby="observations-hint qualification-validation" [attr.aria-invalid]="validationAttempted() && !obs.trim()" [placeholder]="'Observación ' + ($index + 1) + '…'"/>
+                      <button type="button" (click)="removeObs($index)" [disabled]="observacionesList().length <= 1 || !puedeCalificar() || loading()" class="w-9 h-9 flex items-center justify-center rounded-md shrink-0 border border-border disabled:opacity-30 hover:bg-muted" [attr.aria-label]="'Eliminar observación ' + ($index + 1)"><svg aria-hidden="true" lucideXCircle class="w-4 h-4" style="color: var(--brand-700)"></svg></button>
+                    </div>
+                  }
+                  <button type="button" (click)="addObs()" [disabled]="!puedeCalificar() || loading()" class="btn-ghost-brand !py-2 !px-4 !text-[13px]">+ Agregar observación</button>
                 </div>
-
-                <div class="field">
-                  <label class="field-label">Plazo de subsanacion (dias habiles)</label>
-                  <input type="number" [(ngModel)]="diasSubsanacion" [disabled]="!puedeCalificar() || loading()" class="field-input" min="1" max="5" />
-                </div>
-              </div>
-            </section>
-          }
-
-          <section class="form-shell" data-motion-item>
-            <div class="form-section-header">
-              <span class="eyebrow">03 · Sustento</span>
-              <h2 class="form-section-title">Fundamentos de la calificacion</h2>
-            </div>
-            <div class="p-6">
-              <div class="field">
-                <label class="field-label">Fundamentos <span class="req">*</span></label>
-                <textarea [(ngModel)]="fundamentos" [disabled]="!puedeCalificar() || loading()" class="field-input" rows="8" style="resize: vertical; min-height: 160px" placeholder="Describa fundamentos legales y facticos de la calificacion..."></textarea>
-                <span class="field-hint font-mono">{{ fundamentos.length }} caracteres</span>
-              </div>
+              }
+              <div class="field"><label for="qualification-grounds" class="field-label">Fundamentos <span class="req">*</span></label><textarea id="qualification-grounds" [(ngModel)]="fundamentos" [disabled]="!puedeCalificar() || loading()" aria-required="true" aria-describedby="grounds-hint qualification-validation" [attr.aria-invalid]="validationAttempted() && (!fundamentos.trim() || fundamentos.trim().length > 5000)" class="field-input" rows="8" style="resize: vertical; min-height: 160px" placeholder="Describa los fundamentos legales y fácticos de la calificación…"></textarea><p id="grounds-hint" class="field-hint font-mono">{{ fundamentos.length }} caracteres</p></div>
             </div>
           </section>
-
-          <button type="button" class="btn-ghost-brand w-full justify-center !py-3" (click)="togglePreview()">
-            @if (showPreview()) {
-              Ocultar
-            } @else {
-              Previsualizar
-            }
-            PDF de calificacion
-          </button>
-
-          @if (showPreview()) {
-            <div class="form-shell animate-fade-in">
-              <div class="p-7 font-serif text-sm" style="background: var(--paper)">
-                <div class="text-center mb-6">
-                  <div class="w-14 h-14 mx-auto rounded-md flex items-center justify-center mb-3" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
-                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 3v18m-9-9h18" /></svg>
-                  </div>
-                  <div class="font-display tracking-wide" style="font-size: 13px; letter-spacing: 0.06em;">TRIBUNAL DE TRANSPARENCIA Y ACCESO A LA INFORMACION PUBLICA</div>
-                  <div class="rule-ornament my-3"><span class="text-[10px] tracking-widest">·</span></div>
-                  <div class="font-display" style="font-size: 16px;">CALIFICACION N° {{ ap.expediente }}-C1</div>
-                </div>
-
-                <div class="space-y-4 text-justify">
-                  <section><span class="eyebrow">Expediente</span><p class="font-mono mt-1">{{ ap.expediente }}</p></section>
-                  <section><span class="eyebrow">Vistos</span><p class="mt-1">El recurso de apelacion interpuesto por {{ ap.ciudadanoNombre }}.</p></section>
-                  <section><span class="eyebrow">Considerandos</span><p class="mt-1 whitespace-pre-line">{{ fundamentos || '[Fundamentos de la calificacion...]' }}</p></section>
-                  <section>
-                    <span class="eyebrow">Se resuelve</span>
-                    <p class="mt-1">Declarar <span class="font-semibold">{{ getEstadoDisplay(selectedDecision() || '') }}</span> el recurso de apelacion.</p>
-                  </section>
-                </div>
-              </div>
-            </div>
+          <a class="btn-ghost-brand" [routerLink]="['/ttaip/apelacion', ap.expediente]" [queryParams]="{ tab: 'notificaciones' }">Ver actos de notificación del expediente</a>
+          <app-official-docs-section #oficiales [expediente]="ap.expediente" [expedienteId]="expedienteActuacion()" [decisionBackend]='selectedOption()?.decision' stage="primera" [decision]="selectedDecision()" [ctx]="docCtx()" [considerando]="fundamentos"></app-official-docs-section>
+          <button type="button" class="btn-ghost-brand w-full justify-center !py-3" (click)="togglePreview()" [disabled]="!selectedDecision()" [attr.aria-expanded]="showPreview()" aria-controls="qualification-draft">@if (showPreview()) { <svg aria-hidden="true" lucideEyeOff class="w-4 h-4"></svg> } @else { <svg aria-hidden="true" lucideEye class="w-4 h-4"></svg> }{{ showPreview() ? 'Ocultar' : 'Previsualizar' }} PDF de calificación</button>
+          @if (showPreview()) { <div id="qualification-draft"><app-official-preview stage="primera" [decision]="selectedDecision()" [considerando]="fundamentos || 'Fundamentos pendientes de completar por el operador.'" [cedulaVariant]="cedulaVariant()" [ctx]="docCtx()"></app-official-preview></div> }
+          <p id="qualification-validation" role="status" class="sr-only">{{ validacionTexto() }}</p>
+          @if (selectedDecision() && !oficiales.documentosListos()) {
+            <p class="text-sm text-muted-foreground" role="status">Cargue la resolución y las cédulas firmadas para emitir y enviar la decisión.</p>
           }
-
-          <button type="button" (click)="abrirConfirmacionCalificacion()" [disabled]="!canSubmit() || loading()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed">
-            @if (loading()) {
-              <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              Procesando...
-            } @else {
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-              Emitir calificacion
-            }
-          </button>
+          <button id="qualification-submit" type="button" (click)="abrirConfirmacionCalificacion()" [disabled]="!canSubmit() || !oficiales.documentosListos()" class="btn-brand w-full !py-3 justify-center disabled:opacity-50 disabled:cursor-not-allowed"><svg aria-hidden="true" lucideSend class="w-4 h-4"></svg>{{ loading() ? 'Comprobando registro…' : 'Emitir y enviar calificación' }}</button>
         </div>
       </div>
     </div>
-  } @else {
-    <div class="max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
-      <div class="rounded-lg p-6 text-center" style="background: color-mix(in srgb, var(--destructive) 8%, var(--card)); border: 1px solid color-mix(in srgb, var(--destructive) 24%, transparent)">
-        <p class="text-sm" style="color: var(--destructive)">{{ error() || 'No se pudo cargar la apelacion.' }}</p>
-      </div>
-    </div>
   }
-
-  <app-reference-confirm-modal
-    [open]="confirmModalAbierto()"
-    [submitting]="loading()"
-    title="Confirme la calificación"
-    titleLead="Confirme"
-    titleEmphasis="la calificación"
-    eyebrow="Revisión final · 1ra Calificación"
-    description="Revise la calificación y los fundamentos antes de notificar a las partes. Esta resolución quedará registrada en el expediente."
-    [summary]="calificacionConfirmSummary()"
-    [warning]="calificacionWarning()"
-    confirmLabel="Emitir resolución"
-    (close)="confirmModalAbierto.set(false)"
-    (confirm)="enviarCalificacion()">
-  </app-reference-confirm-modal>
-
-  <app-reference-success-modal
-    [open]="successModalAbierto()"
-    variant="calificacion-1ra"
-    [tone]="calificacionSuccessTone()"
-    eyebrow="1ra calificación emitida"
-    [title]="calificacionSuccessTitle()"
-    [description]="calificacionSuccessDescription()"
-    [expediente]="apelacion()?.expediente || ''"
-    [expedienteHint]="'Calificación N° ' + (apelacion()?.expediente || '—') + '-C1'"
-    [plazoDias]="calificacionPlazoDias()"
-    plazoTipo="hábiles"
-    [plazoDescripcion]="calificacionPlazoDescripcion()"
-    plazoNorma="Reglamento TTAIP"
-    [metadata]="calificacionSuccessMetadata()"
-    [nextSteps]="calificacionNextSteps()"
-    primaryLabel="Ir al panel TTAIP"
-    secondaryLabel="Ver expediente"
-    (close)="irPanelTtaip()"
-    (primary)="irPanelTtaip()"
-    (secondary)="irPanelTtaip()">
-  </app-reference-success-modal>
+  <app-reference-confirm-modal [open]="confirmModalAbierto() && contextoVigente()" [manageFocus]="true" [submitting]="loading()" title="Confirme la calificación" titleLead="Confirme" titleEmphasis="la calificación" eyebrow="Revisión final · 1ra Calificación" description="Revise la decisión y los documentos firmados. Se registrarán y quedarán disponibles en el panel de los destinatarios." [summary]="calificacionConfirmSummary()" [warning]="calificacionWarning()" confirmLabel="Emitir y enviar calificación" (close)="confirmModalAbierto.set(false)" (confirm)="enviarCalificacion()"></app-reference-confirm-modal>
+  <app-reference-success-modal [open]="successModalAbierto() && contextoVigente()" [manageFocus]="true" variant="calificacion-1ra" [tone]="calificacionSuccessTone()" eyebrow="1ra calificación registrada y recuperada" [title]="calificacionSuccessTitle()" description="Actuación identificada y recuperada. No acredita firma digital, entrega ni notificación eficaz. Consulte los documentos emitidos y registre el cargo y el acuse en Notificaciones." [expediente]="apelacion()?.expediente || ''" [expedienteHint]="apelacion()?.resolucionPrimeraCalificacion?.numeroResolucion || 'Sin numeración registrada'" [plazoDias]="null" [metadata]="calificacionSuccessMetadata()" [nextSteps]="calificacionNextSteps()" primaryLabel="Ir al panel TTAIP" secondaryLabel="Subir actos de notificación" (close)="cerrarResultado()" (primary)="irPanelTtaip()" (secondary)="irNotificaciones()"></app-reference-success-modal>
+  <app-document-preview-modal [doc]="previewTarget()" [open]="!!previewTarget() && contextoVigente()" [manageFocus]="true" (close)="previewTarget.set(null)"></app-document-preview-modal>
 </div>

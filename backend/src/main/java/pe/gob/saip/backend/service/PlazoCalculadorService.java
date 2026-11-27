@@ -1,27 +1,50 @@
 package pe.gob.saip.backend.service;
 
+import pe.gob.saip.backend.model.dto.CalendarioAnioResumenDTO;
+import pe.gob.saip.backend.model.dto.DiaInhabilDTO;
+
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 
 /**
- * Servicio central de cálculo de plazos legales en días hábiles (excluyendo fines de semana).
+ * Servicio central de cómputo de plazos legales, días hábiles y calendario oficial.
  */
 public interface PlazoCalculadorService {
 
-    /**
-     * Calcula la fecha de vencimiento de un plazo legal basado en días hábiles.
-     *
-     * @param fechaRegistro     Fecha de registro del documento.
-     * @param diasHabilesLimit   Límite de días hábiles.
-     * @return La fecha de vencimiento calculada.
-     */
+    // 1. Cómputo de fecha de vencimiento
     LocalDate calcularFechaVencimiento(LocalDate fechaRegistro, int diasHabilesLimit);
+    LocalDate calcularFechaVencimiento(LocalDate fechaRegistro, int diasHabilesLimit, Long entidadId);
+
+    // 2. Control de exceso de plazo / silencio administrativo negativo
+    boolean verificarExcesoDePlazo(LocalDate fechaRegistro, int diasHabilesLimit);
+    boolean verificarExcesoDePlazo(LocalDate fechaRegistro, int diasHabilesLimit, Long entidadId);
+
+    // 3. Inspección de fechas y días hábiles
+    boolean esDiaHabil(LocalDate fecha);
+    boolean esDiaHabil(LocalDate fecha, Long entidadId);
+    String motivoInhabil(LocalDate fecha, Long entidadId);
+    LocalDate siguienteDiaHabil(LocalDate fecha, Long entidadId);
+    LocalDate recepcionEfectiva(LocalDate fecha, Long entidadId);
+
+    // 4. Conteo de días hábiles y días restantes
+    int contarDiasHabiles(LocalDate desde, LocalDate hasta);
+    int contarDiasHabiles(LocalDate desde, LocalDate hasta, Long entidadId);
+    int diasHabilesRestantes(LocalDate fechaLimite);
+    int diasHabilesRestantes(LocalDate fechaLimite, Long entidadId);
+
+    // 5. Reloj oficial y consultas anuales
+    LocalDate hoy();
+    LocalDateTime ahora();
+    List<DiaInhabilDTO> obtenerInhabilesDelAnio(int anio);
+    CalendarioAnioResumenDTO obtenerResumenAnio(int anio);
+
+    // 6. Invalida la memoria caché en cambios del calendario
+    void invalidarCache();
 
     /**
-     * Verifica si la fecha actual ha excedido la fecha de vencimiento calculada (Silencio Administrativo).
-     *
-     * @param fechaRegistro     Fecha de registro del documento.
-     * @param diasHabilesLimit   Límite de días hábiles.
-     * @return true si la fecha actual supera el vencimiento, false en caso contrario.
+     * Días guardados en la configuración del calendario. Si la clave no existe
+     * o el valor no es positivo, devuelve {@code porDefecto}.
      */
-    boolean verificarExcesoDePlazo(LocalDate fechaRegistro, int diasHabilesLimit);
+    int diasVigentes(String clave, int porDefecto);
 }

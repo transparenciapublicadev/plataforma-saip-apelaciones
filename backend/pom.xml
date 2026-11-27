@@ -28,6 +28,7 @@
 	</scm>
 	<properties>
 		<java.version>25</java.version>
+		<saip.build.directory>${project.basedir}/target</saip.build.directory>
 		<aws.sdk.version>2.46.9</aws.sdk.version>
 	</properties>
 	<dependencies>
@@ -132,6 +133,7 @@
 	</dependencies>
 
 	<build>
+		<directory>${saip.build.directory}</directory>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

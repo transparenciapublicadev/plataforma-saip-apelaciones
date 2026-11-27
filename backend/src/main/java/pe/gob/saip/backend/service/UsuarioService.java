@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import pe.gob.saip.backend.model.entity.Usuario;
 import pe.gob.saip.backend.repository.UsuarioRepository;
+import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
 
 import java.util.List;
 import java.util.Optional;
@@ -56,6 +57,26 @@ public class UsuarioService {
     @Transactional
     public void guardarUsuario(Usuario usuario) {
         usuarioRepository.save(usuario);
+    }
+
+    /** Updates admin profile data and an explicitly requested state in the same transaction. */
+    @Transactional
+    public Usuario guardarUsuario(Usuario usuario, Boolean activo) {
+        Usuario guardado = usuarioRepository.saveAndFlush(usuario);
+        return activo == null ? guardado : cambiarEstado(guardado.getIdUsuario(), activo);
+    }
+
+    /** A reactivation preserves the generation that invalidated previous JWTs. */
+    @Transactional
+    public Usuario cambiarEstado(Long id, Boolean activo) {
+        if (activo == null) {
+            throw new IllegalArgumentException("El campo activo es obligatorio");
+        }
+        if (usuarioRepository.actualizarEstadoAutenticacion(id, activo) == 0) {
+            throw new RecursoNoEncontradoException("Usuario no encontrado con ID: " + id);
+        }
+        return usuarioRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado con ID: " + id));
     }
 
     @Transactional

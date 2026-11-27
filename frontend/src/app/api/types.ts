@@ -14,6 +14,8 @@ export type RespuestaDTO = components['schemas']['RespuestaDTO'];
 export type ResolucionDTO = components['schemas']['ResolucionDTO'];
 export type DocumentoDTO = components['schemas']['DocumentoDTO'];
 export type DocumentoMetadataDTO = components['schemas']['DocumentoMetadataDTO'];
+export type ConsultaRecepcionSubsanacionTtaipDTO = components['schemas']['ConsultaRecepcionSubsanacionTtaipDTO'];
+export type AltaSaipRecepcionDTO = components['schemas']['AltaSaipRecepcionDTO'];
 export type CiudadanoDTO = components['schemas']['CiudadanoDTO'];
 export type EntidadDTO = components['schemas']['EntidadDTO'];
 export type FuncionarioDTO = components['schemas']['FuncionarioDTO'];
@@ -43,3 +45,6 @@ export type DecisionResolucion = NonNullable<ResolucionDTO['decision']>;
 
 // ── API Paths & Operations (para uso avanzado) ──────────────────────────
 export type { paths, operations } from './schema';
+
+export type AltaApelacionRecepcionDTO = components['schemas']['AltaApelacionRecepcionDTO'];
+export type RegistrarAltaApelacionRequest = components['schemas']['RegistrarAltaApelacionRequest'];

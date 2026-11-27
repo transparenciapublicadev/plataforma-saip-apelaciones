@@ -3,6 +3,7 @@ package pe.gob.saip.backend.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
+import pe.gob.saip.backend.exception.ConflictoEstadoException;
 import pe.gob.saip.backend.model.dto.CrearRespuestaRequest;
 import pe.gob.saip.backend.model.dto.RespuestaDTO;
 import pe.gob.saip.backend.model.entity.Funcionario;
@@ -20,13 +21,16 @@ public class RespuestaService {
     private final RespuestaRepository respuestaRepository;
     private final SolicitudService solicitudService;
     private final FuncionarioService funcionarioService;
+    private final AutorizacionRecursosService autorizacion;
 
     public RespuestaService(RespuestaRepository respuestaRepository,
                             SolicitudService solicitudService,
-                            FuncionarioService funcionarioService) {
+                            FuncionarioService funcionarioService,
+                            AutorizacionRecursosService autorizacion) {
         this.respuestaRepository = respuestaRepository;
         this.solicitudService = solicitudService;
         this.funcionarioService = funcionarioService;
+        this.autorizacion = autorizacion;
     }
 
     @Transactional(readOnly = true)
@@ -86,6 +90,9 @@ public class RespuestaService {
     public RespuestaDTO aceptarSolicitud(CrearRespuestaRequest request) {
         Solicitud solicitud = buscarSolicitud(request.solicitudId());
         validarSinRespuesta(solicitud);
+        if (!("ENTREGA_TOTAL".equalsIgnoreCase(request.tipoRespuesta()) || "ACEPTADA".equalsIgnoreCase(request.tipoRespuesta()))) {
+            throw new IllegalArgumentException("Aceptar requiere ENTREGA_TOTAL; use el registro de respuesta para una entrega parcial");
+        }
         Funcionario funcionario = buscarFuncionario(request.funcionarioId());
 
         Respuesta respuesta = new Respuesta();
@@ -108,6 +115,9 @@ public class RespuestaService {
     public RespuestaDTO denegarSolicitud(CrearRespuestaRequest request) {
         Solicitud solicitud = buscarSolicitud(request.solicitudId());
         validarSinRespuesta(solicitud);
+        if (!("DENEGACION_TOTAL".equalsIgnoreCase(request.tipoRespuesta()) || "DENEGADA".equalsIgnoreCase(request.tipoRespuesta()))) {
+            throw new IllegalArgumentException("Denegar requiere DENEGACION_TOTAL");
+        }
         Funcionario funcionario = buscarFuncionario(request.funcionarioId());
 
         Respuesta respuesta = new Respuesta();
@@ -133,11 +143,11 @@ public class RespuestaService {
     // ============================================================
 
     private Solicitud buscarSolicitud(Long solicitudId) {
-        return solicitudService.findById(solicitudId)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Solicitud no encontrada con ID: " + solicitudId));
+        return solicitudService.bloquearSolicitudInstitucional(solicitudId);
     }
 
     private Funcionario buscarFuncionario(Long funcionarioId) {
+        autorizacion.verificarFuncionarioPuedeActuar(funcionarioId);
         return funcionarioService.obtenerFuncionarioPorId(funcionarioId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Funcionario no encontrado con ID: " + funcionarioId));
     }
@@ -146,13 +156,16 @@ public class RespuestaService {
         if (solicitud.getRespuesta() != null) {
             throw new IllegalArgumentException("La solicitud ya tiene una respuesta");
         }
+        if (solicitud.getEstado() != Solicitud.EstadoSolicitud.RECEPCIONADA
+                && solicitud.getEstado() != Solicitud.EstadoSolicitud.EN_REVISION
+                && solicitud.getEstado() != Solicitud.EstadoSolicitud.VENCIDA) {
+            throw new ConflictoEstadoException("La solicitud no admite respuesta en su estado actual");
+        }
+        solicitudService.validarSinActuacionPendiente(solicitud);
     }
 
     private void asignarFuncionario(Respuesta respuesta, Long funcionarioId) {
-        if (funcionarioId != null) {
-            funcionarioService.obtenerFuncionarioPorId(funcionarioId)
-                    .ifPresent(respuesta::setFuncionario);
-        }
+        respuesta.setFuncionario(buscarFuncionario(funcionarioId));
     }
 
     private void aplicarTipoRespuesta(Respuesta respuesta, Solicitud solicitud, CrearRespuestaRequest request) {
@@ -166,6 +179,8 @@ public class RespuestaService {
             solicitud.setEstado(Solicitud.EstadoSolicitud.RESPONDIDA);
         } else if ("ENTREGA_PARCIAL".equalsIgnoreCase(tipo)) {
             respuesta.setTipoRespuesta(Respuesta.TipoRespuesta.ENTREGA_PARCIAL);
+            respuesta.setCausalDenegatoria(request.causalDenegatoria());
+            respuesta.setFundamentoLegal(request.fundamentoLegal());
             solicitud.setEstado(Solicitud.EstadoSolicitud.RESPONDIDA);
         } else if ("DENEGACION_TOTAL".equalsIgnoreCase(tipo) || "DENEGADA".equalsIgnoreCase(tipo)) {
             respuesta.setTipoRespuesta(Respuesta.TipoRespuesta.DENEGACION_TOTAL);
@@ -173,8 +188,7 @@ public class RespuestaService {
             respuesta.setFundamentoLegal(request.fundamentoLegal());
             solicitud.setEstado(Solicitud.EstadoSolicitud.DENEGADA);
         } else {
-            respuesta.setTipoRespuesta(Respuesta.TipoRespuesta.ENTREGA_TOTAL);
-            solicitud.setEstado(Solicitud.EstadoSolicitud.RESPONDIDA);
+            throw new IllegalArgumentException("Tipo de respuesta no válido");
         }
     }
 

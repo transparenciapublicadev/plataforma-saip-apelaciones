@@ -1,15 +1,18 @@
-import { Component, ChangeDetectionStrategy, OnInit, signal, inject, computed, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, signal, inject, computed, effect, untracked, ElementRef, HostListener } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
+import { PanelQueryService } from '../../services/panel-query.service';
 import { SolicitudService } from '../../services/solicitud.service';
-import { ApelacionService } from '../../services/apelacion.service';
+import { PanelSolicitud as Solicitud, PanelPage, PanelSummary, validPanelPage } from '../../models/panel-query.model';
+import { Solicitud as ExpedienteDetalle, AmpliacionPlazoSolicitud, ampliacionPermiteApelar, diasApelacionCronograma, diasHabilesParaApelar, entregaApelable } from '../../models/solicitud.model';
+import { Subscription } from 'rxjs';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { TourStep } from '../../core/guided-tour/guided-tour.model';
 import { AuthService } from '../../services/auth.service';
-import { Solicitud } from '../../models/solicitud.model';
-import { Apelacion } from '../../models/apelacion.model';
+import { ProfileDialogService } from '../../services/profile-dialog.service';
 import { isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
+import { aISO, habilesEntre, hoyLima, PLAZO_META_POR_CLAVE, recepcionEfectiva, sumarDias, sumarHabiles } from '../../models/calendario.model';
 import { parseISO } from 'date-fns';
 
 interface DashboardAction {
@@ -38,16 +41,22 @@ interface TimelineStep {
 }
 
 interface PlazoEntidadView {
-  restantes: number;
-  pct: number;
+  restantes: number | null;
   tone: string;
   fechaLimite?: string;
 }
 
+interface IndicadorBandeja {
+  value: string | number;
+  unit: string;
+  tone: string;
+  nota?: string;
+}
+
 interface SubsanacionView {
-  dias: number;
+  dias: number | null;
+  pendiente: boolean;
   vencido: boolean;
-  observaciones: string;
   expediente?: string;
 }
 
@@ -60,10 +69,11 @@ interface GuideStep {
 }
 
 interface PipelineStage {
-  key: 'todas' | 'proceso' | 'respondidas' | 'tribunal' | 'resueltas';
+  key: 'todas' | 'accion' | 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas';
   num: string;
   iconName: string;
   color: string;
+  bg: string;
   label: string;
   desc: string;
   count: number;
@@ -81,31 +91,51 @@ import {
   LucideChevronRight,
   LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
   LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
-  LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser
+  LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser, LucideUserPen,
+  LucideAlertTriangle, LucideSearch, LucideX
 } from '@lucide/angular';
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { PaginationComponent } from '../../shared/pagination.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 
 @Component({
   selector: 'app-ciudadano-dashboard',
   imports: [
     RouterLink, FormsModule, DatePipe,
+    StatusBadgeComponent, PaginationComponent, YaikuCargandoComponent,
     LucideScale, LucidePlus, LucideFileText, LucideClock, LucideCheckCircle2,
     LucideChevronRight,
     LucideBuilding2, LucideSend, LucideHelpCircle, LucidePhone, LucideMail,
     LucideCompass, LucideSparkles, LucideBell, LucideInbox, LucideHourglass,
-    LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser
+    LucideMailCheck, LucideGavel, LucideArrowRight, LucideMessageCircle, LucideLayers, LucideLock, LucideUser, LucideUserPen,
+    LucideAlertTriangle, LucideSearch, LucideX
   ],
   templateUrl: './ciudadano-dashboard.component.html',
   styleUrl: './ciudadano-dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CiudadanoDashboardComponent implements OnInit {
+export class CiudadanoDashboardComponent implements OnInit, OnDestroy {
+  readonly profileDialog = inject(ProfileDialogService);
+  private readonly elementRef = inject(ElementRef);
+  private readonly panelService = inject(PanelQueryService);
   private readonly solicitudService = inject(SolicitudService);
-  private readonly apelacionService = inject(ApelacionService);
   private readonly tourService = inject(GuidedTourService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
-  private readonly estadosEnProceso = new Set(['RECEPCIONADA', 'EN_REVISION', 'PENDIENTE_INFORMACION']);
+  private readonly estadosEnProceso = new Set(['RECEPCIONADA', 'EN_PROCESO', 'EN_REVISION', 'PENDIENTE_INFORMACION']);
+  private readonly estadosActivos = new Set([
+    'RECEPCIONADA',
+    'EN_PROCESO',
+    'EN_REVISION',
+    'PENDIENTE_INFORMACION',
+    'DENEGADA',
+    'VENCIDA',
+    'EN_PRECISION',
+    'POR_RECOGER',
+    'ENCAUZADA',
+    'OBSERVADA'
+  ]);
   private readonly estadosApelacionActivos = new Set([
     'PENDIENTE_ELEVACION',
     'EN_CALIFICACION_1',
@@ -126,7 +156,7 @@ export class CiudadanoDashboardComponent implements OnInit {
     {
       num: '02',
       titulo: 'La entidad le responde',
-      desc: 'Tiene 10 dias habiles para entregarle la informacion. Le avisamos por correo cuando responda.',
+      desc: 'Revise el plazo informado, la respuesta y sus documentos en el detalle autorizado.',
       icon: 'building',
       color: 'var(--info)'
     },
@@ -149,10 +179,27 @@ export class CiudadanoDashboardComponent implements OnInit {
   readonly filtrosRapidos = ['En Proceso', 'Apelada', 'Denegada', 'Educacion', 'Vivienda'];
 
   todasSolicitudes = signal<Solicitud[]>([]);
-  apelaciones = signal<Apelacion[]>([]);
 
   loading = signal<boolean>(true);
   error = signal<string>('');
+  readonly errorTipo = signal<'sesion' | 'permiso' | 'validacion' | 'inexistente' | 'servidor' | 'red' | 'incompleta' | null>(null);
+  private read?: Subscription;
+  private globalRead?: Subscription;
+  private globalGeneration = 0;
+  private searchTimer?: ReturnType<typeof setTimeout>;
+  private globalTimer?: ReturnType<typeof setTimeout>;
+  readonly pagina = signal<PanelPage<Solicitud> | null>(null);
+  readonly resumen = signal<PanelSummary | null>(null);
+  readonly queryLoading = signal(false);
+  readonly globalLoading = signal(false);
+  readonly globalError = signal('');
+  readonly globalTotal = signal(0);
+
+  private generation = 0;
+  private initialized = false;
+  private destroyed = false;
+  private sessionRevision = 0;
+  private readonly timers = new Set<ReturnType<typeof setTimeout>>();
 
   totalSolicitudes = signal<number>(0);
   enProceso = signal<number>(0);
@@ -160,7 +207,7 @@ export class CiudadanoDashboardComponent implements OnInit {
   denegadas = signal<number>(0);
   vencidas = signal<number>(0);
 
-  nombreUsuario = signal<string>('Usuario');
+  nombreUsuario = signal<string>('');
   ciudadanoId = signal<number>(0);
   tieneApelables = signal<boolean>(false);
 
@@ -172,30 +219,29 @@ export class CiudadanoDashboardComponent implements OnInit {
   representanteNombreCompleto = signal<string>('');
   nombreCompleto = signal<string>('');
 
-  busqueda = '';
-  busquedaEnfocada = signal<boolean>(false);
-  mostrarResultadosBusqueda = signal<boolean>(false);
-
   guideOpen = signal<boolean>(true);
   historicoOpen = signal<boolean>(false);
   showAllSecundarias = signal<boolean>(false);
   selectedSolicitudId = signal<number | null>(null);
   accionResaltada = signal<boolean>(false);
+  private readonly ampliacionVista = signal<AmpliacionPlazoSolicitud | null>(null);
+  private readonly ampliacionSolicitudId = signal<number | null>(null);
+  private readonly detalleVista = signal<ExpedienteDetalle | null>(null);
 
   // Pipeline state
-  selectedStageKey = signal<'todas' | 'proceso' | 'respondidas' | 'tribunal' | 'resueltas'>('todas');
+  selectedStageKey = signal<'todas' | 'accion' | 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas'>('todas');
   stageSearch = signal<string>('');
   stagePage = signal<number>(1);
+  private scrollEtapaPendiente = false;
   readonly PER_PAGE = 4;
 
   readonly nombrePila = computed(() => this.nombreUsuario().trim().split(' ')[0] || 'Ciudadano');
 
   readonly solicitudesActivas = computed(() => {
     return this.todasSolicitudes().filter((solicitud) => {
+      if (this.esApelacionResuelta(solicitud)) return false;
       const estado = (solicitud.estado || '').toUpperCase();
-      return this.estadosEnProceso.has(estado)
-        || estado === 'DENEGADA'
-        || estado === 'VENCIDA'
+      return this.estadosActivos.has(estado)
         || this.tieneApelacionActiva(solicitud);
     });
   });
@@ -219,6 +265,23 @@ export class CiudadanoDashboardComponent implements OnInit {
     return todas[0];
   });
 
+  readonly solicitudTrazada = computed(() => {
+    const base = this.solicitudPrincipal();
+    const detalle = this.detalleVista();
+    if (!base || !detalle || detalle.id !== base.id) return base;
+    const alcance = base.encauzamientoAlcance
+      ?? (detalle.encauzamientos?.some(item => item.alcance === 'TOTAL') ? 'TOTAL' as const
+        : detalle.encauzamientos?.some(item => item.alcance === 'PARCIAL') ? 'PARCIAL' as const
+          : null);
+    return {
+      ...base,
+      estado: detalle.estado || base.estado,
+      respuesta: detalle.respuesta ?? base.respuesta,
+      entidadNombre: detalle.entidadNombre || base.entidadNombre,
+      encauzamientoAlcance: alcance,
+    };
+  });
+
   readonly solicitudesSecundarias = computed(() => {
     const principal = this.solicitudPrincipal();
     if (!principal) return this.solicitudesActivas();
@@ -236,7 +299,7 @@ export class CiudadanoDashboardComponent implements OnInit {
   });
 
   readonly accionPrincipal = computed(() => {
-    const principalAction = this.construirAccionPrincipal(this.solicitudPrincipal());
+    const principalAction = this.construirAccionPrincipal(this.solicitudTrazada());
     if (principalAction) return principalAction;
 
     for (const solicitud of this.todasSolicitudes()) {
@@ -245,49 +308,30 @@ export class CiudadanoDashboardComponent implements OnInit {
     }
     return null;
   });
-  readonly timelinePrincipal = computed(() => this.buildTimeline(this.solicitudPrincipal()));
-  readonly timelineDisplaySteps = computed(() => this.timelinePrincipal().slice(0, 5));
-
-  readonly timelineProgress = computed(() => {
-    const steps = this.timelinePrincipal();
-    if (!steps.length) return 0;
-
-    const activeIdx = steps.findIndex((step) => step.status === 'active');
-    const doneCount = steps.filter((step) => step.status === 'done').length;
-
-    if (activeIdx >= 0) {
-      return Math.round((activeIdx / Math.max(steps.length - 1, 1)) * 100);
-    }
-
-    return Math.round((doneCount / steps.length) * 100);
-  });
-
-  readonly timelineLineProgress = computed(() => {
-    const steps = this.timelineDisplaySteps();
-    if (steps.length <= 1) return 0;
-
-    const doneCount = steps.filter((step) => step.status === 'done').length;
-    return Math.min(100, Math.round((doneCount / Math.max(steps.length - 1, 1)) * 100));
+  readonly timelinePrincipal = computed(() => this.buildTimeline(this.solicitudTrazada()));
+  readonly precisionPrincipal = computed(() => {
+    const solicitud = this.solicitudPrincipal();
+    if (!solicitud || !this.enPrecision(solicitud)) return null;
+    const observacion = this.observacionPendiente(solicitud);
+    return {
+      fechaRegistrada: this.formatDate(observacion?.fechaLimiteSubsanacion),
+      expediente: observacion ? solicitud.expediente : null,
+      indicador: this.indicadorPrecision(solicitud),
+    };
   });
 
   readonly plazoEntidadPrincipal = computed<PlazoEntidadView | null>(() => {
-    const solicitud = this.solicitudPrincipal();
-    if (!solicitud) return null;
+    const solicitud = this.solicitudTrazada();
+    if (!solicitud || this.enPrecision(solicitud) || this.esSilencioAdministrativo(solicitud) || this.encauzamientoCierraOrigen(solicitud)) return null;
 
     const estado = (solicitud.estado || '').toUpperCase();
     if (!this.estadosEnProceso.has(estado)) return null;
 
-    const totalDias = 10;
-    const restantes = Math.max(this.diasRestantesParaEntidad(solicitud), 0);
-    const consumidos = Math.max(0, totalDias - Math.min(restantes, totalDias));
-    const pct = Math.min(100, Math.round((consumidos / totalDias) * 100));
-    const tone = restantes <= 1 ? 'var(--brand-700)' : restantes <= 3 ? 'var(--warning)' : 'var(--success)';
-
+    const restantes = this.diasRestantesParaEntidad(solicitud);
     return {
       restantes,
-      pct,
-      tone,
-      fechaLimite: this.formatDate(solicitud.fechaLimite)
+      tone: restantes === null ? 'var(--muted-foreground)' : 'var(--info)',
+      fechaLimite: this.formatDate(solicitud.fechaLimite),
     };
   });
 
@@ -297,230 +341,350 @@ export class CiudadanoDashboardComponent implements OnInit {
 
     const rawDias = this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud);
     return {
-      dias: Math.max(rawDias, 0),
-      vencido: rawDias < 0,
-      observaciones: solicitud.apelacion?.resultado || 'observaciones',
+      dias: rawDias === null ? null : Math.max(rawDias, 0),
+      pendiente: solicitud.apelacion?.plazoSubsanacion?.estado === 'PENDIENTE_INICIO',
+      vencido: solicitud.apelacion?.plazoSubsanacion?.estado === 'VENCIDO',
       expediente: solicitud.apelacion?.expediente
     };
   });
 
   readonly resumenActivasTexto = computed(() => {
-    const activas = this.solicitudesActivas();
-    if (!activas.length) {
-      return 'Aun no tiene solicitudes activas. Cuando lo necesite, puede pedir informacion a cualquier entidad publica.';
-    }
-
-    const cantidad = activas.length;
-    const base = `Aqui estan sus ${cantidad} solicitud${cantidad === 1 ? '' : 'es'} en curso`;
-    return this.accionPrincipal() ? `${base}. Le mostramos lo que conviene hacer hoy.` : `${base}.`;
+    const total = this.resumen()?.total;
+    if (total == null) return 'La información de sus solicitudes todavía no está disponible.';
+    if (total === 0) return 'Aún no ha presentado solicitudes. Puede pedir información a una entidad pública.';
+    return `Aquí puede consultar sus ${total} solicitud${total === 1 ? '' : 'es'}. Seleccione una etapa y revise cada expediente.`;
   });
+
+  esSegundaInstancia(s: Solicitud): boolean {
+    return !!s.apelacion?.expediente || !!s.apelacion?.resultado || !!s.apelacion?.estado;
+  }
+
+  requiereSubsanacionTTAIP(s: Solicitud): boolean {
+    return !!s.apelacion?.expediente && (s.apelacion?.estado || '').toUpperCase() === 'EN_SUBSANACION';
+  }
+
+  requiereAccion(s: Solicitud): boolean {
+    const estado = (s.estado || '').toUpperCase();
+    return (this.enPrecision(s) && this.observacionPendiente(s) !== undefined)
+      || estado === 'EN_PRECISION' || estado === 'POR_RECOGER' || estado === 'OBSERVADA' || this.requiereSubsanacionTTAIP(s);
+  }
 
   // ── Pipeline computed properties ──────────────────────────────────────
   readonly stageBuckets = computed(() => {
     const all = this.todasSolicitudes();
+    const ranked = [...all].sort((a, b) => {
+      const msA = a.fechaPresentacion ? new Date(a.fechaPresentacion).getTime() : 0;
+      const msB = b.fechaPresentacion ? new Date(b.fechaPresentacion).getTime() : 0;
+      return msB - msA;
+    });
+
+    const activos = ranked.filter(s =>
+      !this.esApelacionResuelta(s) &&
+      (this.estadosEnProceso.has((s.estado || '').toUpperCase())
+        || (s.estado || '').toUpperCase() === 'RECEPCIONADA'
+        || (s.estado || '').toUpperCase() === 'EN_PROCESO'
+        || (s.estado || '').toUpperCase() === 'EN_REVISION'
+        || (s.estado || '').toUpperCase() === 'PENDIENTE_INFORMACION'
+        || this.tieneApelacionActiva(s)
+        || (s.estado || '').toUpperCase() === 'DENEGADA'
+        || (s.estado || '').toUpperCase() === 'VENCIDA'
+        || (s.estado || '').toUpperCase() === 'EN_PRECISION'
+        || (s.estado || '').toUpperCase() === 'POR_RECOGER'
+        || (s.estado || '').toUpperCase() === 'ENCAUZADA'
+        || (s.estado || '').toUpperCase() === 'OBSERVADA')
+    );
+
+    const historicos1 = ranked.filter(s => (s.estado || '').toUpperCase() === 'RESPONDIDA' && !s.apelacion?.expediente);
+    const historicos2 = ranked.filter(s => this.esApelacionResuelta(s));
+
     return {
-      todas: all,
-      proceso: all.filter(s => {
-        const estado = (s.estado || '').toUpperCase();
-        return (this.estadosEnProceso.has(estado) || estado === 'PENDIENTE' || estado === 'EN_TRAMITE' || estado === 'RECEPCIONADA' || estado === 'EN_PROCESO') && !this.tieneApelacionActiva(s) && !this.esApelacionResuelta(s);
+      todas: ranked,
+      accion: activos.filter(s => this.requiereAccion(s)),
+      proceso: activos.filter(s => {
+        const st = (s.estado || '').toUpperCase();
+        return (st === 'RECEPCIONADA' || st === 'EN_PROCESO' || st === 'EN_REVISION' || st === 'PENDIENTE_INFORMACION' || st === 'ENCAUZADA')
+          && !this.tieneApelacionActiva(s) && !this.requiereAccion(s) && !this.esSilencioAdministrativo(s);
       }),
-      respondidas: all.filter(s => {
-        const estado = (s.estado || '').toUpperCase();
-        const esRespondida = estado === 'RESPONDIDA' || estado === 'CON_RESPUESTA' || estado === 'ENTREGADA' || estado === 'PUEDE_APELAR' || estado === 'OBSERVADA' || estado === 'ATENDIDA' || estado === 'FINALIZADA' || estado === 'RESUELTA' || estado === 'DENEGADA' || estado === 'VENCIDA';
-        return esRespondida && !this.tieneApelacionActiva(s) && !this.esApelacionResuelta(s);
-      }),
-      tribunal: all.filter(s => this.tieneApelacionActiva(s) || (s.apelacion?.estado && ['EN_REVISION_TTAIP', 'APELADA', 'EN_CALIFICACION', 'SUBSANACION', 'EN_PROCESO_TTAIP', 'PENDIENTE_ELEVACION', 'EN_CALIFICACION_1', 'EN_SUBSANACION', 'EN_CALIFICACION_2', 'NOTIFICACION_SEGUNDA_CALIFICACION', 'EN_RESOLUCION'].includes((s.apelacion.estado).toUpperCase()))),
-      resueltas: all.filter(s => this.esApelacionResuelta(s) || (s.apelacion?.estado && ['RESUELTA_TTAIP', 'FUNDADA', 'INFUNDADA', 'IMPROCEDENTE', 'CONCLUIDA'].includes((s.apelacion.estado).toUpperCase()))),
+      respondidas: historicos1,
+      apelar: activos.filter(s => this.puedePresentarApelacion(s) && !this.requiereAccion(s)),
+      tribunal: activos.filter(s => this.tieneApelacionActiva(s) && !this.requiereSubsanacionTTAIP(s)),
+      resueltas: historicos2,
     };
   });
 
   readonly pipeline = computed<PipelineStage[]>(() => {
-    const b = this.stageBuckets();
+    const resumen = this.resumen();
+    const b = resumen?.porEtapa ?? {};
+    const buckets = this.stageBuckets();
+    const countFor = (key: keyof typeof buckets) => {
+      if (key === 'todas') return resumen?.total ?? buckets.todas.length;
+      return (b[key] !== undefined && b[key] > 0) ? b[key] : (buckets[key]?.length ?? b[key] ?? 0);
+    };
     return [
-      { key: 'todas', num: '00', iconName: 'layers', color: 'var(--brand-700)', label: 'Todas', desc: 'Ver el historial completo de sus solicitudes', count: b.todas.length },
-      { key: 'proceso', num: '01', iconName: 'hourglass', color: 'var(--info)', label: 'SAIP pendiente de atención', desc: 'La entidad pública aún está dentro del plazo legal', count: b.proceso.length },
-      { key: 'respondidas', num: '02', iconName: 'mailCheck', color: 'var(--success)', label: 'SAIP atendidas', desc: 'La entidad entregó respuesta oficial (revisar o apelar)', count: b.respondidas.length },
-      { key: 'tribunal', num: '03', iconName: 'scale', color: 'var(--gold-dark, var(--gold))', label: 'En revisión del Tribunal', desc: 'Su recurso de apelación está en evaluación por el TTAIP', count: b.tribunal.length },
-      { key: 'resueltas', num: '04', iconName: 'checkCircle', color: 'var(--muted-foreground)', label: 'Resuelta por el Tribunal', desc: 'El Tribunal emitió resolución o fallo final firme', count: b.resueltas.length },
+      { key: 'todas', num: '00', iconName: 'layers', color: 'var(--foreground)', bg: 'var(--muted)', label: 'Todas', desc: 'Ver el historial completo de sus solicitudes', count: countFor('todas') },
+      { key: 'accion', num: '01', iconName: 'alertTriangle', color: 'var(--warning)', bg: 'var(--warning-subtle)', label: 'Requieren su acción', desc: 'Subsane ante la entidad (1ª) o el Tribunal (2ª), o recoja su información', count: countFor('accion') },
+      { key: 'proceso', num: '02', iconName: 'hourglass', color: 'var(--info)', bg: 'var(--info-subtle)', label: 'Pendiente en la entidad', desc: 'La entidad aún no responde su solicitud', count: countFor('proceso') },
+      { key: 'respondidas', num: '03', iconName: 'mailCheck', color: 'var(--success)', bg: 'var(--success-subtle)', label: 'Respondida por la entidad', desc: 'La entidad ya entregó su respuesta', count: countFor('respondidas') },
+      { key: 'apelar', num: '04', iconName: 'scale', color: 'var(--gold-dark)', bg: 'rgba(176,136,66,0.10)', label: 'Puede apelar al Tribunal', desc: 'Si no está conforme con la respuesta, puede llevar su caso al Tribunal', count: countFor('apelar') },
+      { key: 'tribunal', num: '05', iconName: 'gavel', color: 'var(--brand-700)', bg: 'var(--brand-subtle)', label: 'En revisión del Tribunal', desc: 'Usted apeló; el Tribunal evalúa el caso', count: countFor('tribunal') },
+      { key: 'resueltas', num: '06', iconName: 'checkCircle', color: 'var(--muted-foreground)', bg: 'var(--muted)', label: 'Resuelta por el Tribunal', desc: 'El Tribunal ya emitió el fallo final', count: countFor('resueltas') },
     ];
   });
 
   readonly selectedStageMeta = computed(() => this.pipeline().find(s => s.key === this.selectedStageKey()) ?? this.pipeline()[0]);
-  readonly stageAll = computed(() => this.stageBuckets()[this.selectedStageKey()] ?? []);
-
-  readonly stageFiltered = computed(() => {
-    const all = this.stageAll();
-    const q = this.normalizeText(this.stageSearch().trim());
-    if (!q) return all;
-    const terms = q.split(/\s+/).filter(Boolean);
-    return all.filter(s => {
-      const hay = this.normalizeText([s.expediente || '', s.entidadNombre || '', s.asunto || '', s.apelacion?.expediente || '', this.estadoHumano(s)].join(' '));
-      return terms.every(t => hay.includes(t));
-    });
-  });
-
-  readonly stageTotalPages = computed(() => Math.max(1, Math.ceil(this.stageFiltered().length / this.PER_PAGE)));
+  readonly stageAll = computed(() => this.todasSolicitudes());
+  readonly stageFiltered = computed(() => this.todasSolicitudes());
+  readonly stageTotal = computed(() => this.pagina()?.totalElementos ?? 0);
+  readonly stageCount = computed(() => this.selectedStageKey() === 'todas' ? (this.resumen()?.total ?? 0) : (this.resumen()?.porEtapa[this.selectedStageKey()] ?? 0));
+  readonly stageTotalPages = computed(() => Math.max(1, this.pagina()?.totalPaginas ?? 1));
   readonly stageSafePage = computed(() => Math.min(this.stagePage(), this.stageTotalPages()));
-  readonly stageVisible = computed(() => {
-    const filtered = this.stageFiltered();
-    const start = (this.stageSafePage() - 1) * this.PER_PAGE;
-    return filtered.slice(start, start + this.PER_PAGE);
+  readonly stageVisible = computed(() => this.todasSolicitudes());
+  readonly stageRangeFrom = computed(() => this.stageTotal() === 0 ? 0 : (this.stageSafePage() - 1) * this.PER_PAGE + 1);
+  readonly stageRangeTo = computed(() => Math.min(this.stageSafePage() * this.PER_PAGE, this.stageTotal()));
+
+  // ── Buscador Global ───────────────────────────────────────────────────
+  globalQuery = signal<string>('');
+  globalIdx = signal<number>(0);
+
+  readonly globalTerms = computed(() => {
+    const q = this.normalizeText(this.globalQuery().trim());
+    return q.split(/\s+/).filter(Boolean);
   });
-  readonly stageRangeFrom = computed(() => this.stageFiltered().length === 0 ? 0 : (this.stageSafePage() - 1) * this.PER_PAGE + 1);
-  readonly stageRangeTo = computed(() => Math.min(this.stageSafePage() * this.PER_PAGE, this.stageFiltered().length));
+
+  readonly globalOpen = computed(() => this.globalTerms().length > 0);
+
+  readonly globalResults = signal<Solicitud[]>([]);
+
+  onGlobalSearchChange(val: string): void {
+    this.globalQuery.set(val.slice(0, 120)); this.globalIdx.set(0);
+    clearTimeout(this.globalTimer); this.globalRead?.unsubscribe(); ++this.globalGeneration;
+    const terms = this.normalizeText(val.trim()).split(/\s+/).filter(Boolean);
+    const local = terms.length ? this.todasSolicitudes().filter(sol => {
+      const text = this.textoBuscable(sol);
+      return terms.every(t => text.includes(t));
+    }) : [];
+    this.globalResults.set(local); this.globalTotal.set(local.length); this.globalError.set('');
+    this.globalLoading.set(!!this.globalQuery().trim());
+    if (this.globalLoading()) this.globalTimer = setTimeout(() => this.buscarGlobal(), 250);
+  }
+
+  private buscarGlobal(): void {
+    const revision = this.sessionRevision, generation = ++this.globalGeneration;
+    const session = this.authService.obtenerSesion();
+    if (this.destroyed || revision !== this.authService.cambiosSesion() || !session?.token || session.tipoUsuario !== 'CIUDADANO') { this.clearGlobalSearch(); return; }
+    const token = session.token, citizen = session.ciudadanoId;
+    const current = () => !this.destroyed && generation === this.globalGeneration && revision === this.authService.cambiosSesion() && token === this.authService.obtenerSesion()?.token;
+    this.globalRead = this.panelService.solicitudes({ pagina: 0, tamano: 8, busqueda: this.globalQuery().trim(), etapa: 'todas', orden: 'recientes' }).subscribe({
+      next: data => {
+        if (!current()) return;
+        if (!validPanelPage<Solicitud>(data, 0, 8) || !this.validarSolicitudes(data.contenido, citizen)) {
+          this.globalError.set('La respuesta de búsqueda está incompleta. Reintente.'); this.globalLoading.set(false); return;
+        }
+        this.globalResults.set(data.contenido); this.globalTotal.set(data.totalElementos); this.globalLoading.set(false);
+      },
+      error: () => { if (current()) { this.globalError.set('No se pudo consultar la búsqueda. Vuelva a intentarlo.'); this.globalLoading.set(false); } }
+    });
+  }
+
+  clearGlobalSearch(): void {
+    clearTimeout(this.globalTimer); this.globalRead?.unsubscribe(); ++this.globalGeneration;
+    this.globalQuery.set(''); this.globalIdx.set(0); this.globalResults.set([]); this.globalTotal.set(0);
+    this.globalLoading.set(false); this.globalError.set('');
+  }
+
+  @HostListener('document:mousedown', ['$event'])
+  onDocumentClick(ev: MouseEvent): void {
+    if (!this.globalOpen()) return;
+    const target = ev.target as Node | null;
+    const box = this.elementRef.nativeElement.querySelector('#buscador-global-container');
+    if (box && target && !box.contains(target)) {
+      this.clearGlobalSearch();
+    }
+  }
+
+  abrirExpediente(s: Solicitud): void {
+    if (this.loading() || this.error() || this.sessionRevision !== this.authService.cambiosSesion()
+      || ![...this.todasSolicitudes(), ...this.globalResults()].some(current => current.id === s.id && current.expediente === s.expediente)) return;
+    this.clearGlobalSearch();
+    if (s.expediente) {
+      this.router.navigate(['/ciudadano/solicitud', s.expediente]);
+    } else {
+      this.enfocarSolicitud(s.id);
+    }
+  }
+
+  onGlobalKeyDown(ev: KeyboardEvent): void {
+    if (ev.key === 'Escape') {
+      this.clearGlobalSearch();
+      return;
+    }
+    const results = this.globalResults();
+    if (!results.length) return;
+
+    if (ev.key === 'ArrowDown') {
+      ev.preventDefault();
+      this.globalIdx.update(i => (i + 1) % results.length);
+    } else if (ev.key === 'ArrowUp') {
+      ev.preventDefault();
+      this.globalIdx.update(i => (i - 1 + results.length) % results.length);
+    } else if (ev.key === 'Enter') {
+      ev.preventDefault();
+      const current = results[Math.min(this.globalIdx(), results.length - 1)];
+      if (current) this.abrirExpediente(current);
+    }
+  }
 
   readonly tourSteps = computed<TourStep[]>(() => {
     const s: TourStep[] = [
       { selector: '[data-tour="nueva"]', title: 'Pedir información', body: 'Aquí presenta una nueva solicitud de acceso a la información (SAIP). Es su punto de partida en la 1ª instancia, ante la entidad pública.' },
-      { selector: '[data-tour="resumen"]', title: 'Mis solicitudes de un vistazo', body: 'La cuantificación de todas sus solicitudes por etapa: Todas, SAIP pendientes, SAIP atendidas, En revisión del Tribunal y Resuelta por el Tribunal. Toque una etapa para filtrar la lista de abajo.' },
-      { selector: '[data-tour="buscar"]', title: 'Buscador de expedientes', body: 'Localice de inmediato cualquier solicitud o apelación escribiendo el código de expediente, entidad o palabra clave.' },
+      { selector: '[data-tour="resumen"]', title: 'Mis solicitudes de un vistazo', body: 'Agrupación de sus solicitudes recuperadas por etapa. Seleccione una etapa para filtrar el listado; una consulta fallida no confirma un total de cero.' },
     ];
     if (this.accionPrincipal()) {
-      s.push({ selector: '[data-tour="accion"]', title: 'Lo que debe hacer hoy', body: 'La gestión más urgente de todas sus solicitudes. Si algo requiere su atención (subsanar, apelar, revisar), aparece aquí primero.' });
+      s.push({ selector: '[data-tour="accion"]', title: 'Solicitud para revisar', body: 'Acción disponible para una solicitud identificada. Revise su requerimiento y los datos del servidor antes de presentar una precisión o subsanación.' });
     }
     if (this.solicitudPrincipal()) {
-      s.push({ selector: '[data-tour="detalle"]', title: 'Está viendo esta solicitud', body: 'La línea de tiempo del expediente seleccionado y su ubicación actual: "con la entidad" (1ª instancia) o "en el Tribunal" (2ª instancia). Aquí ve la trazabilidad completa.' });
+      s.push({ selector: '[data-tour="detalle"]', title: 'Está viendo esta solicitud', body: 'Resumen del recurso seleccionado con sus datos registrados. Consulte el detalle autorizado para revisar actuaciones y documentos; la información ausente no se completa con hitos supuestos.' });
     }
     s.push({ selector: '[data-tour="cola"]', title: 'La lista de la etapa', body: 'Todos los expedientes de la etapa seleccionada, ordenados y con su propio buscador. Toque cualquiera para verlo en detalle arriba, sin desplazarse de más.' });
-    s.push({ selector: '[data-tour="ayuda"]', title: '¿Necesita ayuda?', body: 'Canales de orientación gratuitos. Desde aquí también puede volver a ver este tutorial cuando quiera.' });
+    s.push({ selector: '[data-tour="ayuda"]', title: '¿Necesita ayuda?', body: 'Abra la guía de ayuda disponible. Los canales de contacto o asistencia no configurados se identifican como no disponibles. Puede volver a iniciar este tutorial desde su botón.' });
     return s;
   });
 
   readonly ubicacionPrincipal = computed<UbicacionTramite | null>(() => {
-    const s = this.solicitudPrincipal();
-    if (!s) return null;
-    const estado = (s.estado || '').toUpperCase();
-    if (this.esApelacionResuelta(s)) return { label: 'Resuelto por el Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--success)', iconName: 'gavel' };
-    if (this.tieneApelacionActiva(s)) return { label: 'En manos del Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--brand-700)', iconName: 'scale' };
-    if (estado === 'RESPONDIDA') return { label: 'Resuelta por la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--success)', iconName: 'mailCheck' };
-    if (estado === 'DENEGADA') return { label: 'Denegada por la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--brand-700)', iconName: 'building' };
-    if (estado === 'VENCIDA') return { label: 'Sin respuesta · plazo vencido', instancia: '1ª instancia · Entidad', tone: 'var(--gold-dark)', iconName: 'clock' };
-    return { label: 'En revisión de la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--info)', iconName: 'building' };
+    const s = this.solicitudTrazada();
+    return s ? this.ubicacionTramite(s) : null;
   });
 
   constructor() {
     effect(() => {
+      const revision = this.authService.cambiosSesion();
+      if (this.initialized && revision !== this.sessionRevision) untracked(() => this.cargarDatos());
+    });
+    effect(() => {
       if (this.tourService.isOpen()) {
-        this.mostrarResultadosBusqueda.set(false);
+        this.clearGlobalSearch();
       }
+    });
+    effect(onCleanup => {
+      const id = this.solicitudPrincipal()?.id ?? null;
+      if (id == null || !Number.isSafeInteger(id) || id <= 0) {
+        untracked(() => {
+          this.ampliacionVista.set(null);
+          this.ampliacionSolicitudId.set(null);
+          this.detalleVista.set(null);
+        });
+        return;
+      }
+      untracked(() => {
+        if (this.ampliacionSolicitudId() !== id) {
+          this.ampliacionVista.set(null);
+          this.detalleVista.set(null);
+        }
+      });
+      const sub = this.solicitudService.findById(id).subscribe({
+        next: detalle => this.aplicarDetalle(id, detalle),
+        error: () => this.aplicarDetalle(id, null),
+      });
+      onCleanup(() => sub.unsubscribe());
     });
   }
 
   ngOnInit(): void {
-    const sesion = this.authService.obtenerSesion();
-    if (sesion) {
-      this.nombreUsuario.set(sesion.nombreCompleto || sesion.nombre || 'Usuario');
-      this.ciudadanoId.set(sesion.ciudadanoId || 0);
-      this.tipoPersona.set(sesion.tipoPersona || 'NATURAL');
-      this.dni.set(sesion.dni || '');
-      this.ruc.set(sesion.ruc || '');
-      this.razonSocial.set(sesion.razonSocial || '');
-      this.representanteDni.set(sesion.representanteDni || '');
-      this.representanteNombreCompleto.set(sesion.representanteNombreCompleto || '');
-      this.nombreCompleto.set(sesion.nombreCompleto || sesion.nombre || '');
-      this.cargarDatos();
-    }
+    this.initialized = true;
+    this.cargarDatos();
   }
 
-  cargarDatos(): void {
-    this.cargarSolicitudes();
-    this.cargarApelaciones();
+  ngOnDestroy(): void {
+    this.tourService.endTourFor('saip_tour_done');
+    this.destroyed = true;
+    ++this.generation;
+    this.read?.unsubscribe(); this.clearGlobalSearch(); clearTimeout(this.searchTimer);
+    this.timers.forEach(timer => clearTimeout(timer));
+    this.timers.clear();
   }
 
-  cargarSolicitudes(): void {
-    this.loading.set(true);
-    const ciudadanoId = this.ciudadanoId();
-
-    if (ciudadanoId === 0) {
-      this.error.set('No se encontro el ID del ciudadano');
-      this.loading.set(false);
-      return;
+  cargarDatos(resetFilters = true): void {
+    clearTimeout(this.searchTimer);
+    if (this.destroyed) return;
+    this.tourService.endTourFor('saip_tour_done');
+    const generation = ++this.generation;
+    this.read?.unsubscribe(); this.clearGlobalSearch(); clearTimeout(this.searchTimer);
+    this.timers.forEach(timer => clearTimeout(timer)); this.timers.clear();
+    const changed = this.sessionRevision !== this.authService.cambiosSesion();
+    if (resetFilters || changed) {
+      this.selectedSolicitudId.set(null); this.accionResaltada.set(false);
+      this.todasSolicitudes.set([]); this.pagina.set(null); this.scrollEtapaPendiente = false;
+      this.selectedStageKey.set('todas'); this.stagePage.set(1); this.stageSearch.set(''); this.clearGlobalSearch();
     }
-
-    this.solicitudService.findByCiudadanoId(ciudadanoId).subscribe({
-      next: (data) => {
-        this.todasSolicitudes.set(data);
-        this.calcularEstadisticas(data);
-
-        // Auto-select initial pipeline stage
-        const stageOrder: Array<'todas' | 'proceso' | 'respondidas' | 'tribunal' | 'resueltas'> = ['todas', 'proceso', 'respondidas', 'tribunal', 'resueltas'];
-        const buckets = this.stageBuckets();
-        const initialStage = stageOrder.find(k => buckets[k].length > 0);
-        if (initialStage) this.selectedStageKey.set(initialStage);
-
-        if (data.length > 0) {
-          const activeFirst = data.find((solicitud) => {
-            const estado = (solicitud.estado || '').toUpperCase();
-            return this.estadosEnProceso.has(estado)
-              || estado === 'DENEGADA'
-              || estado === 'VENCIDA'
-              || this.tieneApelacionActiva(solicitud);
-          });
-          if (activeFirst) {
-            this.selectedSolicitudId.set(activeFirst.id);
-          }
+    if (changed) this.resumen.set(null);
+    this.error.set(''); this.errorTipo.set(null); this.loading.set(changed || !this.resumen()); this.queryLoading.set(true);
+    this.sessionRevision = this.authService.cambiosSesion();
+    let session: ReturnType<AuthService['obtenerSesion']> = null;
+    try { session = this.authService.obtenerSesion(); } catch { /* Invalid local session: no request. */ }
+    this.nombreUsuario.set(session?.nombreCompleto || session?.nombre || '');
+    this.nombreCompleto.set(session?.nombreCompleto || session?.nombre || '');
+    this.ciudadanoId.set(session?.ciudadanoId || 0);
+    this.tipoPersona.set(session?.tipoPersona || 'NATURAL'); this.dni.set(session?.dni || '');
+    this.ruc.set(session?.ruc || ''); this.razonSocial.set(session?.razonSocial || '');
+    this.representanteDni.set(session?.representanteDni || '');
+    this.representanteNombreCompleto.set(session?.representanteNombreCompleto || '');
+    const citizen = this.ciudadanoId(), revision = this.sessionRevision, token = session?.token;
+    if (!token && this.authService.cerrandoSesion?.()) {
+      this.error.set(''); this.loading.set(true); this.queryLoading.set(false); return;
+    }
+    if (!token || session?.tipoUsuario !== 'CIUDADANO' || !Number.isSafeInteger(citizen) || citizen <= 0) {
+      this.nombreUsuario.set(''); this.nombreCompleto.set(''); this.ciudadanoId.set(0);
+      this.dni.set(''); this.ruc.set(''); this.razonSocial.set(''); this.representanteDni.set(''); this.representanteNombreCompleto.set('');
+      this.errorTipo.set('sesion'); this.error.set('Su sesión no es válida. Inicie sesión nuevamente.');
+      this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null); this.scrollEtapaPendiente = false; return;
+    }
+    const current = () => {
+      try {
+        return !this.destroyed && generation === this.generation && revision === this.authService.cambiosSesion()
+          && token === this.authService.obtenerSesion()?.token;
+      } catch { return false; }
+    };
+    const page = this.stagePage() - 1;
+    this.read = this.panelService.solicitudes({ pagina: page, tamano: this.PER_PAGE, etapa: this.selectedStageKey(),
+      busqueda: this.stageSearch().trim() }).subscribe({
+      next: data => {
+        if (!current()) return;
+        if (!validPanelPage<Solicitud>(data, page, this.PER_PAGE) || !this.validarSolicitudes(data.contenido, citizen)) {
+          this.errorTipo.set('incompleta'); this.error.set('La información recibida está incompleta o no corresponde a esta consulta. Reintente la consulta.');
+          this.resumen.set(null); this.loading.set(false); this.queryLoading.set(false); this.scrollEtapaPendiente = false; return;
         }
-
-        this.loading.set(false);
-        this.tourService.checkAutoStart('saip_tour_done', this.tourSteps());
+        const ancla = this.anclaBuscadorEtapa();
+        this.todasSolicitudes.set(data.contenido); this.pagina.set(data); this.resumen.set(data.resumen);
+        this.calcularEstadisticas(); this.loading.set(false); this.queryLoading.set(false);
+        if (this.scrollEtapaPendiente) { this.scrollEtapaPendiente = false; this.scrollToStageList(); }
+        else this.restaurarAnclaEtapa(ancla);
       },
-      error: (err) => {
-        const mensaje = err.error?.mensaje || err.message || 'Error desconocido';
-        this.error.set(`Error al cargar solicitudes: ${mensaje} (${err.status || 'sin conexion'})`);
-        this.loading.set(false);
-        console.error('Error al cargar solicitudes:', err);
-      }
-    });
-  }
-
-  cargarApelaciones(): void {
-    const ciudadanoId = this.ciudadanoId();
-    if (ciudadanoId === 0) return;
-
-    this.apelacionService.findByCiudadanoId(ciudadanoId).subscribe({
-      next: (data) => {
-        this.apelaciones.set(data);
+      error: failure => {
+        if (!current() || this.authService.cerrandoSesion?.()) return;
+        const status = failure?.status;
+        this.errorTipo.set(status === 401 ? 'sesion' : status === 403 ? 'permiso' : status === 400 ? 'validacion' : status === 404 ? 'inexistente' : status === 0 ? 'red' : 'servidor');
+        this.error.set(status === 401 ? 'Su sesión no es válida. Inicie sesión nuevamente.'
+          : status === 403 ? 'No tiene permiso para consultar estas solicitudes.'
+          : status === 400 ? 'No se pudo validar la consulta de solicitudes.'
+          : status === 404 ? 'El recurso solicitado no fue encontrado.'
+          : status === 0 ? 'No se pudo conectar con el servidor. Revise su conexión y reintente.'
+          : 'El servidor no pudo completar la consulta. Reintente más tarde.');
+        this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null); this.scrollEtapaPendiente = false;
       },
-      error: (err) => {
-        console.error('Error al cargar apelaciones:', err);
-        const mensaje = err.error?.mensaje || err.message || 'Error desconocido';
-        this.error.set(`Error al cargar apelaciones: ${mensaje} (${err.status || 'sin conexion'})`);
-      }
     });
-  }
-
-  onSearchFocus(): void {
-    this.busquedaEnfocada.set(true);
-    this.mostrarResultadosBusqueda.set(this.busqueda.trim().length > 0);
-  }
-
-  onSearchBlur(): void {
-    setTimeout(() => {
-      this.busquedaEnfocada.set(false);
-      this.mostrarResultadosBusqueda.set(false);
-    }, 150);
-  }
-
-  onSearchInput(): void {
-    this.mostrarResultadosBusqueda.set(this.busquedaEnfocada() && this.busqueda.trim().length > 0);
-  }
-
-  limpiarBusqueda(): void {
-    this.busqueda = '';
-    this.mostrarResultadosBusqueda.set(false);
   }
 
   private enfocarSolicitud(solicitudId: number): void {
     this.selectedSolicitudId.set(solicitudId);
     this.accionResaltada.set(true);
     this.scrollToTimelineSection();
-    setTimeout(() => this.accionResaltada.set(false), 1800);
+    this.schedule(() => this.accionResaltada.set(false), 1800);
   }
 
   private scrollToTimelineSection(): void {
     if (typeof document === 'undefined') return;
 
-    setTimeout(() => {
+    this.schedule(() => {
       const element = document.getElementById('seccion-timeline');
       if (element) {
         element.scrollIntoView({
@@ -536,72 +700,18 @@ export class CiudadanoDashboardComponent implements OnInit {
     }, 50);
   }
 
-  coincidenciasBusqueda(): Solicitud[] {
-    const query = this.busqueda.trim().toLowerCase();
-    if (!query) return [];
-
-    return this.todasSolicitudes().filter((solicitud) => {
-      const entidad = (solicitud.entidadNombre || '').toLowerCase();
-      const asunto = (solicitud.asunto || '').toLowerCase();
-      const expediente = (solicitud.expediente || '').toLowerCase();
-      const expedienteApelacion = (solicitud.apelacion?.expediente || '').toLowerCase();
-      const estadoHumano = this.estadoHumano(solicitud).toLowerCase();
-
-      return expediente.includes(query)
-        || entidad.includes(query)
-        || asunto.includes(query)
-        || expedienteApelacion.includes(query)
-        || estadoHumano.includes(query);
-    }).slice(0, 8);
-  }
-
-  seleccionarCoincidencia(solicitud: Solicitud): void {
-    this.busqueda = solicitud.expediente || '';
-    this.mostrarResultadosBusqueda.set(false);
-
-    if ((solicitud.estado || '').toUpperCase() === 'RESPONDIDA' && solicitud.expediente) {
-      this.busqueda = '';
-      this.router.navigate(['/ciudadano/solicitud', solicitud.expediente]);
-      return;
+  puedePresentarApelacion(solicitud: Solicitud | null): boolean {
+    if (!solicitud) return false;
+    if (this.tieneApelacionActiva(solicitud) || this.esApelacionResuelta(solicitud) || !!solicitud.apelacion?.expediente || !!solicitud.apelacion?.id) {
+      return false;
     }
-
-    this.enfocarSolicitud(solicitud.id);
-  }
-
-  aplicarFiltroRapido(filtro: string): void {
-    this.busqueda = filtro;
-    this.mostrarResultadosBusqueda.set(true);
-
-    const first = this.coincidenciasBusqueda()[0];
-    if (first) {
-      this.enfocarSolicitud(first.id);
-    }
-  }
-
-  seleccionarSolicitud(solicitudId: number): void {
-    this.busqueda = '';
-    this.mostrarResultadosBusqueda.set(false);
-    this.enfocarSolicitud(solicitudId);
+    const estado = (solicitud.estado || '').toUpperCase();
+    return estado === 'DENEGADA' || estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud)
+      || ampliacionPermiteApelar(this.ampliacionDe(solicitud));
   }
 
   esSolicitudAtendida(solicitud: Solicitud | null): boolean {
-    if (!solicitud || solicitud.apelacion) return false;
-    const estado = (solicitud.estado || '').toUpperCase();
-    const estadosAtendidas = new Set([
-      'RESPONDIDA',
-      'CON_RESPUESTA',
-      'ENTREGADA',
-      'DENEGADA',
-      'ENTREGA_PARCIAL',
-      'ENTREGA_TOTAL',
-      'PUEDE_APELAR',
-      'OBSERVADA',
-      'VENCIDA',
-      'ATENDIDA',
-      'FINALIZADA',
-      'RESUELTA'
-    ]);
-    return estadosAtendidas.has(estado);
+    return this.puedePresentarApelacion(solicitud);
   }
 
   apelarSolicitud(solicitud: Solicitud): void {
@@ -614,7 +724,7 @@ export class CiudadanoDashboardComponent implements OnInit {
   esSubsanacionVencida(solicitud: Solicitud | null): boolean {
     if (!solicitud) return false;
     if ((solicitud.apelacion?.estado || '').toUpperCase() === 'EN_SUBSANACION') {
-      return this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud) < 0;
+      return solicitud.apelacion?.plazoSubsanacion?.estado === 'VENCIDO';
     }
     return false;
   }
@@ -640,36 +750,182 @@ export class CiudadanoDashboardComponent implements OnInit {
   }
 
   // ── Pipeline methods ────────────────────────────────────────────
-  selectStage(key: 'todas' | 'proceso' | 'respondidas' | 'tribunal' | 'resueltas'): void {
+  selectStage(key: 'todas' | 'accion' | 'proceso' | 'respondidas' | 'apelar' | 'tribunal' | 'resueltas'): void {
+    const misma = this.selectedStageKey() === key && this.stageSearch() === '' && this.stagePage() === 1 && !this.queryLoading();
     this.selectedStageKey.set(key);
     this.stageSearch.set('');
     this.stagePage.set(1);
+    if (misma) {
+      this.scrollToStageList();
+      return;
+    }
+    this.scrollEtapaPendiente = true;
+    this.cargarDatos(false);
+  }
 
-    setTimeout(() => {
-      const element = document.getElementById('seccion-etapa-enfocada');
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        document.querySelector('[data-section="stage-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  private scrollToStageList(): void {
+    if (typeof document === 'undefined') return;
+    this.schedule(() => {
+      document.querySelector('[data-tour="cola"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
+  }
+
+  onPrimary(s: Solicitud): void {
+    if (this.loading() || this.error() || this.sessionRevision !== this.authService.cambiosSesion()
+      || !this.todasSolicitudes().some(current => current.id === s.id && current.expediente === s.expediente)) return;
+    if (this.selectedStageKey() === 'resueltas' && s.expediente) {
+      this.router.navigate(['/ciudadano/solicitud', s.expediente]);
+      return;
+    }
+    this.enfocarSolicitud(s.id);
+  }
+
+  estadoInsignia(s: Solicitud): string {
+    if (this.esSegundaInstancia(s)) {
+      if (s.apelacion?.resultado || (s.apelacion?.estado || '').startsWith('RESUELT')) {
+        return s.apelacion?.resultado || 'Resuelto';
       }
-    }, 50);
+      if (s.apelacion?.estado) {
+        if (s.apelacion.estado === 'EN_SUBSANACION') return 'En subsanación';
+        if (s.apelacion.estado === 'EN_CALIFICACION_1') return 'En primera calificación';
+        if (s.apelacion.estado === 'EN_CALIFICACION_2') return 'En 2da Calificación';
+        if (s.apelacion.estado === 'EN_RESOLUCION') return 'En Resolución Final';
+        return this.formatoEstado(s.apelacion.estado);
+      }
+      return 'Etapa por confirmar';
+    }
+    const estado = (s.estado || '').toUpperCase();
+    if (this.plazoAmpliadoVisible(s)) return 'PLAZO_AMPLIADO';
+    if (estado === 'RECEPCIONADA') return 'Recepcionada';
+    if (estado === 'EN_REVISION') return 'En revisión';
+    if (this.enPrecision(s)) return 'En precisión';
+    if (this.encauzamientoCierraOrigen(s)) return 'Encauzada';
+    if (estado === 'POR_RECOGER') return 'Por Recoger';
+    if (estado === 'ENCAUZADA') return 'Encauzada';
+    return this.formatoEstado(s.estado);
+  }
+
+  ubicacionTramite(s: Solicitud): UbicacionTramite {
+    const estadoApelacion = (s.apelacion?.estado || '').toUpperCase();
+    if (estadoApelacion === 'PENDIENTE_ELEVACION') {
+      return { label: 'Pendiente de remisión al Tribunal', instancia: 'Ante la entidad', tone: 'var(--gold-dark)', iconName: 'scale' };
+    }
+    if (this.esApelacionResuelta(s)) {
+      return { label: 'Resuelto por el Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--success)', iconName: 'gavel' };
+    }
+    if (estadoApelacion === 'EN_CALIFICACION_2') {
+      return { label: 'En segunda calificación', instancia: '2ª instancia · TTAIP', tone: 'var(--brand-700)', iconName: 'gavel' };
+    }
+    if (this.tieneApelacionActiva(s) || s.apelacion?.expediente) {
+      return { label: 'En manos del Tribunal', instancia: '2ª instancia · TTAIP', tone: 'var(--brand-700)', iconName: 'scale' };
+    }
+    const estado = (s.estado || '').toUpperCase();
+    if (this.enPrecision(s)) {
+      const label = this.observacionPendiente(s) ? 'Debe precisar su solicitud' : 'En precisión';
+      return { label, instancia: '1ª instancia · Entidad', tone: 'var(--warning)', iconName: 'alertTriangle' };
+    }
+    if (this.archivadaSinPrecision(s)) {
+      return { label: 'Archivada por falta de precisión', instancia: '1ª instancia · Entidad', tone: 'var(--muted-foreground)', iconName: 'clock' };
+    }
+    if (estado === 'POR_RECOGER') {
+      return { label: 'Lista para recoger en la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--gold-dark)', iconName: 'mailCheck' };
+    }
+    if (estado === 'ENCAUZADA') {
+      return { label: 'Encauzada a la entidad competente', instancia: '1ª instancia · Entidad', tone: 'var(--info)', iconName: 'scale' };
+    }
+    if (estado === 'RESPONDIDA') {
+      return { label: 'Resuelta por la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--success)', iconName: 'mailCheck' };
+    }
+    if (this.encauzamientoCierraOrigen(s)) {
+      const numero = this.expedienteDestino(s);
+      const destino = this.entidadDestinoEncauzada(s) || 'la entidad competente';
+      return {
+        label: numero ? `Continúa en ${numero}` : `Encauzada a ${destino}`,
+        instancia: 'Expediente nuevo',
+        tone: 'var(--info)',
+        iconName: 'scale',
+      };
+    }
+    if (estado === 'DENEGADA') {
+      return { label: 'Denegada por la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--brand-700)', iconName: 'building' };
+    }
+    if (estado === 'VENCIDA' || this.esSilencioAdministrativo(s)) {
+      return { label: 'Sin respuesta · plazo vencido', instancia: '1ª instancia · Entidad', tone: 'var(--gold-dark)', iconName: 'clock' };
+    }
+    if (this.plazoAmpliadoVisible(s)) {
+      return { label: 'Plazo ampliado', instancia: '1ª instancia · Entidad', tone: 'var(--gold-dark)', iconName: 'building' };
+    }
+    return { label: 'En revisión de la entidad', instancia: '1ª instancia · Entidad', tone: 'var(--info)', iconName: 'building' };
+  }
+
+  filaUrgencia(s: Solicitud): IndicadorBandeja | null {
+    const estado = (s.estado || '').toUpperCase();
+    if (this.requiereSubsanacionTTAIP(s)) {
+      if (s.apelacion?.plazoSubsanacion?.estado === 'VENCIDO') return { value: 'Vencido', unit: 'plazo de subsanación', tone: 'var(--destructive)' };
+      const dias = this.calcularDiasRestantesSubsanacionDesdeSolicitud(s);
+      return dias === null ? { value: s.apelacion?.plazoSubsanacion?.estado === 'PENDIENTE_INICIO' ? 'Pendiente' : 'No disponible', unit: s.apelacion?.plazoSubsanacion?.estado === 'PENDIENTE_INICIO' ? 'notificación eficaz' : 'información del plazo', tone: 'var(--muted-foreground)' }
+        : { value: Math.max(0, dias), unit: 'días háb. para subsanar', tone: 'var(--brand-700)' };
+    }
+    const estadoApelacion = s.apelacion?.estado;
+    if (estadoApelacion === 'PENDIENTE_ELEVACION') {
+      return { value: 'Pendiente', unit: 'remisión al Tribunal', tone: 'var(--gold-dark)' };
+    }
+    if (estadoApelacion === 'EN_CALIFICACION_1' && !s.apelacion?.resolucionPrimeraCalificacion && !s.apelacion?.calificacionPrimera) {
+      const plazo = s.apelacion?.plazoPrimeraCalificacion;
+      if (!plazo || typeof plazo.vencido !== 'boolean' || !Number.isSafeInteger(plazo.diasRestantes)
+        || plazo.diasRestantes < 0 || plazo.vencido !== (plazo.diasRestantes === 0)) {
+        return { value: 'Por confirmar', unit: 'plazo de primera calificación', tone: 'var(--muted-foreground)' };
+      }
+      if (plazo.vencido) return { value: 'Plazo vencido', unit: 'primera calificación pendiente', tone: 'var(--warning)' };
+      const dias = plazo.diasRestantes;
+      return {
+        value: dias,
+        unit: dias === 1 ? 'día hábil para la primera calificación' : 'días hábiles para la primera calificación',
+        tone: dias <= 1 ? 'var(--brand-700)' : dias <= 3 ? 'var(--warning)' : 'var(--info)'
+      };
+    }
+    if (estadoApelacion === 'EN_CALIFICACION_2') return this.indicadorSegundaCalificacion(s);
+    if (this.tieneApelacionActiva(s)) return { value: 'En revisión', unit: 'por el Tribunal', tone: 'var(--info)' };
+    if (this.enPrecision(s)) return this.indicadorPrecision(s);
+    if (this.archivadaSinPrecision(s)) {
+      return { value: 'Archivada', unit: 'sin precisión presentada', tone: 'var(--muted-foreground)' };
+    }
+    if (this.esSilencioAdministrativo(s)) {
+      return { value: 'Plazo vencido', unit: 'silencio administrativo negativo', tone: 'var(--brand-700)' };
+    }
+    if (estado === 'DENEGADA') {
+      return this.indicadorApelacion(s);
+    }
+    if (this.estadosEnProceso.has(estado)) {
+      const dias = this.diasRestantesParaEntidad(s);
+      if (dias === null) {
+        return { value: 'No disponible', unit: 'días háb. para que la entidad responda', tone: 'var(--info)' };
+      }
+      if (dias === 0) return { value: 'Último día', unit: 'para que la entidad responda', tone: 'var(--brand-700)' };
+      return {
+        value: dias,
+        unit: dias === 1 ? 'día háb. para que la entidad responda' : 'días háb. para que la entidad responda',
+        tone: dias <= 2 ? 'var(--brand-700)' : 'var(--info)'
+      };
+    }
+    return null;
   }
 
   goStagePage(page: number): void {
-    this.stagePage.set(Math.max(1, Math.min(page, this.stageTotalPages())));
-    setTimeout(() => document.querySelector('[data-section="stage-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
+    const next = Math.max(1, Math.min(page, this.stageTotalPages()));
+    if (next === this.stagePage()) return;
+    this.stagePage.set(next);
+    this.scrollEtapaPendiente = true;
+    this.cargarDatos(false);
   }
 
   onStageSearchChange(value: string): void {
-    this.stageSearch.set(value);
-    this.stagePage.set(1);
+    this.stageSearch.set(value.slice(0, 120)); this.stagePage.set(1);
+    clearTimeout(this.searchTimer); this.read?.unsubscribe(); this.generation++; this.queryLoading.set(true);
+    this.searchTimer = setTimeout(() => this.cargarDatos(false), 250);
   }
 
-  clearStageSearch(): void {
-    this.stageSearch.set('');
-    this.stagePage.set(1);
-  }
-
+  clearStageSearch(): void { this.stageSearch.set(''); this.stagePage.set(1); this.cargarDatos(false); }
   padCount(count: number): string {
     return String(count).padStart(2, '0');
   }
@@ -686,36 +942,29 @@ export class CiudadanoDashboardComponent implements OnInit {
     return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   }
 
-  getEstadoBadgeClass(estado: string): string {
-    const clases: { [key: string]: string } = {
-      'RECEPCIONADA': 'badge-warning',
-      'EN_REVISION': 'badge-in-process',
-      'PENDIENTE_INFORMACION': 'badge-warning',
-      'RESPONDIDA': 'badge-success',
-      'DENEGADA': 'badge-danger',
-      'VENCIDA': 'badge-muted',
-      'CONCLUIDA': 'badge-muted',
-      'PENDIENTE_ELEVACION': 'badge-warning',
-      'EN_CALIFICACION_1': 'badge-in-process',
-      'EN_SUBSANACION': 'badge-warning',
-      'EN_CALIFICACION_2': 'badge-in-process',
-      'NOTIFICACION_SEGUNDA_CALIFICACION': 'badge-in-process',
-      'EN_RESOLUCION': 'badge-in-process',
-      'RESUELTO': 'badge-success',
-      'RESUELTO_FUNDADO': 'badge-success',
-      'RESUELTO_FUNDADO_EN_PARTE': 'badge-success',
-      'RESUELTO_INFUNDADO': 'badge-muted',
-      'RESUELTO_INFUNDADO_EN_PARTE': 'badge-muted',
-      'RESUELTO_IMPROCEDENTE': 'badge-danger',
-      'RESUELTO_ESTESE_A_LO_RESUELTO': 'badge-muted',
-      'RESUELTO_NULIDAD_ACTO': 'badge-danger',
-      'TENER_POR_NO_PRESENTADO': 'badge-danger',
-      'CONCLUSION_SUSTRACCION_MATERIA': 'badge-success',
-      'CONCLUSION_DESISTIMIENTO': 'badge-muted'
-    };
+  private textoBuscable(sol: Solicitud): string {
+    const ubicacion = this.ubicacionTramite(sol);
+    return this.normalizeText([
+      sol.expediente, sol.apelacion?.expediente, sol.asunto, sol.entidadNombre, sol.descripcion,
+      sol.estado, sol.apelacion?.estado, this.estadoInsignia(sol), this.formatoEstado(sol.estado),
+      sol.apelacion?.estado ? this.formatoEstado(sol.apelacion.estado) : '', ubicacion.label, ubicacion.instancia,
+    ].filter(Boolean).join(' '));
+  }
 
-    const estadoKey = (estado || '').toUpperCase();
-    return clases[estadoKey] || 'badge-muted';
+  private anclaBuscadorEtapa(): number | null {
+    if (!this.stageSearch().trim() || this.scrollEtapaPendiente || typeof document === 'undefined') return null;
+    const input = this.elementRef.nativeElement.querySelector('[data-buscador-etapa]') as HTMLElement | null;
+    return input ? input.getBoundingClientRect().top : null;
+  }
+
+  private restaurarAnclaEtapa(top: number | null): void {
+    if (top == null) return;
+    this.schedule(() => {
+      const input = this.elementRef.nativeElement.querySelector('[data-buscador-etapa]') as HTMLElement | null;
+      if (!input || typeof window === 'undefined') return;
+      const delta = input.getBoundingClientRect().top - top;
+      if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+    }, 0);
   }
 
   timelineDotBackground(status: TimelineStep['status']): string {
@@ -751,41 +1000,51 @@ export class CiudadanoDashboardComponent implements OnInit {
   }
 
   esSilencioAdministrativo(solicitud: Solicitud): boolean {
-    return isSilencioAdministrativo(solicitud);
+    if (solicitud.respuesta && solicitud.respuesta.tipoRespuesta !== 'SILENCIO_ADMINISTRATIVO') return false;
+    const estado = (solicitud.estado || '').toUpperCase();
+    return !this.enPrecision(solicitud) && (this.estadosEnProceso.has(estado) || estado === 'VENCIDA')
+      && isSilencioAdministrativo(solicitud);
   }
 
-  private calcularEstadisticas(solicitudes: Solicitud[]): void {
-    this.totalSolicitudes.set(solicitudes.length);
-    this.enProceso.set(solicitudes.filter((solicitud) => this.estadosEnProceso.has((solicitud.estado || '').toUpperCase())).length);
-    this.respondidas.set(solicitudes.filter((solicitud) => (solicitud.estado || '').toUpperCase() === 'RESPONDIDA').length);
-    this.denegadas.set(solicitudes.filter((solicitud) => (solicitud.estado || '').toUpperCase() === 'DENEGADA').length);
-    this.vencidas.set(solicitudes.filter((solicitud) => (solicitud.estado || '').toUpperCase() === 'VENCIDA').length);
+  private validarSolicitudes(data: Solicitud[], citizen: number | undefined): boolean {
+    const ids = new Set<number>();
+    return data.every(item => {
+      if (!item || !Number.isSafeInteger(item.id) || item.id <= 0 || !item.expediente || !item.estado || item.ciudadanoId !== citizen || ids.has(item.id)) return false;
+      ids.add(item.id); return true;
+    });
+  }
 
-    this.tieneApelables.set(solicitudes.some((solicitud) => {
-      const estado = (solicitud.estado || '').toUpperCase();
-      return estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'VENCIDA';
-    }));
+  private calcularEstadisticas(): void {
+    const summary = this.resumen();
+    this.totalSolicitudes.set(summary?.total ?? 0);
+    this.enProceso.set(summary?.porEtapa['proceso'] ?? 0);
+    this.respondidas.set(summary?.porEstado['RESPONDIDA'] ?? 0);
+    this.denegadas.set(summary?.porEstado['DENEGADA'] ?? 0);
+    this.vencidas.set(summary?.porEstado['VENCIDA'] ?? 0);
+    this.tieneApelables.set((summary?.porEtapa['apelar'] ?? 0) > 0);
   }
 
   private construirAccionPrincipal(solicitud: Solicitud | null): DashboardAction | null {
     if (!solicitud) return null;
 
-    const expediente = solicitud.expediente || 'SIN-EXPEDIENTE';
+    const expediente = solicitud.expediente;
+    if (!expediente) return null;
     const entidad = solicitud.entidadNombre || 'Entidad no especificada';
     const estadoApelacion = (solicitud.apelacion?.estado || '').toUpperCase();
 
     if (estadoApelacion === 'EN_SUBSANACION' && solicitud.apelacion?.expediente) {
       const diasSubsanacion = this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud);
-      if (diasSubsanacion <= 0) {
+      const inicioPendiente = solicitud.apelacion.plazoSubsanacion?.estado === 'PENDIENTE_INICIO';
+      if (solicitud.apelacion.plazoSubsanacion?.estado === 'VENCIDO') {
         // Expired subsanación cannot be acted upon today -> do not display in "Lo que debe hacer hoy"
         return null;
       }
       return {
-        eyebrow: 'Tarea urgente - vence pronto',
-        titulo: 'Complete los documentos del Tribunal',
-        detalle: 'Su apelación requiere subsanación. Si no corrige las observaciones dentro del plazo, su recurso quedará sin efecto.',
-        metricValue: `${diasSubsanacion}`,
-        metricUnit: 'días hábiles',
+        eyebrow: inicioPendiente ? 'Plazo pendiente de inicio' : diasSubsanacion === null ? 'Plazo no disponible' : 'Subsanación ante el Tribunal',
+        titulo: 'Revise las observaciones del Tribunal',
+        detalle: 'Consulte el requerimiento y, si corresponde, presente su subsanación. El inicio y vencimiento del plazo se muestran según la evidencia registrada.',
+        metricValue: inicioPendiente ? 'Pendiente' : diasSubsanacion === null ? 'No disponible' : `${diasSubsanacion}`,
+        metricUnit: inicioPendiente ? 'notificación eficaz' : diasSubsanacion === null ? 'información del plazo' : 'días hábiles',
         ctaLabel: 'Completar subsanación',
         route: ['/ciudadano/subsanacion', solicitud.apelacion.expediente],
         icon: 'alert',
@@ -802,9 +1061,9 @@ export class CiudadanoDashboardComponent implements OnInit {
       return {
         eyebrow: 'Apelacion presentada ante la entidad',
         titulo: 'La entidad debe elevar su recurso al Tribunal',
-        detalle: `La entidad tiene 2 dias habiles para remitir el recurso. Fecha limite: ${this.formatDate(elevacion?.fechaLimiteElevacion) || 'por confirmar'}.`,
-        metricValue: '2',
-        metricUnit: 'dias habiles',
+        detalle: `Consulte la elevación registrada. Fecha límite informada: ${this.formatDate(elevacion?.fechaLimiteElevacion) || 'no disponible'}.`,
+        metricValue: 'Pendiente',
+        metricUnit: 'elevación',
         ctaLabel: 'Ver elevacion',
         route: ['/ciudadano/solicitud', expediente],
         icon: 'scale',
@@ -816,13 +1075,39 @@ export class CiudadanoDashboardComponent implements OnInit {
       };
     }
 
-    if (this.tieneApelacionActiva(solicitud)) {
+    if (estadoApelacion === 'EN_CALIFICACION_2') {
+      const plazo = this.indicadorSegundaCalificacion(solicitud);
+      const fecha = this.formatDate(solicitud.apelacion?.recepcionSubsanacion || undefined);
       return {
-        eyebrow: 'El Tribunal esta revisando su caso',
-        titulo: 'Su apelacion esta en evaluacion',
-        detalle: `El expediente ${solicitud.apelacion?.expediente || expediente} se encuentra en etapa ${this.formatoEstado(solicitud.apelacion?.estado)}. Le notificaremos cualquier avance.`,
-        metricValue: '·',
-        metricUnit: 'en estudio',
+        eyebrow: 'Segunda calificación',
+        titulo: 'El Tribunal califica su subsanación',
+        detalle: fecha
+          ? `Su escrito quedó registrado el ${fecha}. El Tribunal vuelve a calificar el recurso.`
+          : 'Su escrito de subsanación quedó registrado. El Tribunal vuelve a calificar el recurso.',
+        metricValue: String(plazo.value),
+        metricUnit: plazo.unit,
+        ctaLabel: 'Ver expediente',
+        route: ['/ciudadano/solicitud', expediente],
+        icon: 'gavel',
+        toneColor: 'var(--brand-700)',
+        toneBg: 'linear-gradient(135deg, var(--brand-subtle), var(--card) 70%)',
+        toneSoft: 'var(--brand-200)',
+        expediente,
+        entidad,
+      };
+    }
+
+    if (this.tieneApelacionActiva(solicitud)) {
+      const primeraCalificacion = estadoApelacion === 'EN_CALIFICACION_1' && !solicitud.apelacion?.resolucionPrimeraCalificacion
+        && !solicitud.apelacion?.calificacionPrimera;
+      const plazo = primeraCalificacion ? this.filaUrgencia(solicitud) : null;
+      return {
+        eyebrow: 'En revisión del Tribunal',
+        titulo: primeraCalificacion ? 'Su apelación está en primera calificación' : 'El Tribunal está revisando su apelación',
+        detalle: primeraCalificacion ? 'El Tribunal revisará si su recurso cumple los requisitos. Puede seguir el resultado en el detalle de la solicitud.'
+          : 'Abra el expediente para ver la etapa de su apelación y las decisiones disponibles.',
+        metricValue: plazo ? String(plazo.value) : '·',
+        metricUnit: plazo?.unit ?? 'en estudio',
         ctaLabel: 'Ver expediente',
         route: ['/ciudadano/solicitud', expediente],
         icon: 'gavel',
@@ -835,16 +1120,122 @@ export class CiudadanoDashboardComponent implements OnInit {
     }
 
     const estado = (solicitud.estado || '').toUpperCase();
-    if (estado === 'DENEGADA' || estado === 'VENCIDA') {
-      const dias = this.calcularDiasParaApelar(solicitud);
+    if (this.enPrecision(solicitud)) {
+      if (!this.observacionPendiente(solicitud)) return null;
+      const indicador = this.indicadorPrecision(solicitud);
       return {
-        eyebrow: 'Puede reclamar - plazo limitado',
-        titulo: 'Puede apelar ante el Tribunal',
-        detalle: estado === 'VENCIDA'
-          ? 'La entidad no respondio dentro del plazo legal. Puede presentar apelacion por silencio administrativo negativo.'
-          : 'La entidad denego su solicitud. Puede presentar apelacion dentro del plazo legal aplicable.',
-        metricValue: `${Math.max(dias, 0)}`,
-        metricUnit: 'dias para apelar',
+        eyebrow: 'Subsanación · 1ª instancia (entidad)',
+        titulo: 'Revise la precisión solicitada por la entidad',
+        detalle: `${entidad} necesita que precise su solicitud. Consulte el requerimiento antes de presentar su precisión.`,
+        metricValue: String(indicador.value),
+        metricUnit: indicador.nota ? `${indicador.unit} · ${indicador.nota}` : indicador.unit,
+        ctaLabel: 'Revisar precisión',
+        route: ['/ciudadano/precision', expediente],
+        icon: 'alert',
+        toneColor: 'var(--brand-700)',
+        toneBg: 'linear-gradient(135deg, var(--brand-subtle), var(--card) 70%)',
+        toneSoft: 'var(--brand-200)',
+        expediente,
+        entidad,
+      };
+    }
+
+    if (estado === 'POR_RECOGER') {
+      const diasCalendario = typeof solicitud.diasRestantes === 'number' ? Math.max(0, solicitud.diasRestantes) : null;
+      return {
+        eyebrow: 'Listo para recoger · entrega física',
+        titulo: 'Recoja su información en la entidad',
+        detalle: `Su información está lista. Presente su comprobante de pago y documento de identidad en ${entidad} para el recojo presencial.`,
+        metricValue: diasCalendario !== null ? `${diasCalendario}` : 'Consultar',
+        metricUnit: diasCalendario !== null ? 'días calendario' : 'plazo no informado',
+        ctaLabel: 'Ver cupón de pago',
+        route: ['/ciudadano/solicitud', expediente],
+        icon: 'check',
+        toneColor: 'var(--gold-dark)',
+        toneBg: 'linear-gradient(135deg, rgba(176,136,66,0.12), var(--card) 70%)',
+        toneSoft: 'rgba(176,136,66,0.30)',
+        expediente,
+        entidad,
+      };
+    }
+
+    if (this.encauzamientoCierraOrigen(solicitud)) {
+      const destino = this.entidadDestinoEncauzada(solicitud) || 'la entidad competente';
+      const numero = this.expedienteDestino(solicitud);
+      return {
+        eyebrow: 'Solicitud encauzada a otra entidad',
+        titulo: 'Este expediente termina aquí',
+        detalle: numero
+          ? `Su historial en ${entidad} termina en el encauzamiento. ${destino} abrió ${numero}, que empieza desde su ingreso.`
+          : `Su historial en ${entidad} termina en el encauzamiento. ${destino} abre un expediente nuevo, que empieza desde su ingreso.`,
+        metricValue: '→',
+        metricUnit: 'derivada',
+        ctaLabel: 'Ver encauzamiento',
+        route: ['/ciudadano/solicitud', expediente],
+        icon: 'scale',
+        toneColor: 'var(--info)',
+        toneBg: 'linear-gradient(135deg, rgba(29,78,216,0.10), var(--card) 70%)',
+        toneSoft: 'rgba(29,78,216,0.25)',
+        expediente,
+        entidad,
+      };
+    }
+
+    if (estado === 'ENCAUZADA') {
+      return {
+        eyebrow: 'Solicitud encauzada a otra entidad',
+        titulo: 'Su solicitud fue derivada',
+        detalle: `${entidad} no era la entidad competente y derivó su solicitud a la entidad correspondiente, que la atenderá según su competencia.`,
+        metricValue: '→',
+        metricUnit: 'derivada',
+        ctaLabel: 'Ver encauzamiento',
+        route: ['/ciudadano/solicitud', expediente],
+        icon: 'scale',
+        toneColor: 'var(--info)',
+        toneBg: 'linear-gradient(135deg, rgba(29,78,216,0.10), var(--card) 70%)',
+        toneSoft: 'rgba(29,78,216,0.25)',
+        expediente,
+        entidad,
+      };
+    }
+
+    if (this.denegatoriaEncauzada(solicitud)) {
+      const enc = this.encauzamientoVisible(solicitud);
+      const origen = enc?.entidadOrigenNombre?.trim() || entidad;
+      const destino = enc?.entidadDestinoNombre?.trim() || 'la entidad competente';
+      const numero = this.expedienteDestino(solicitud);
+      const apelacion = this.indicadorApelacion(solicitud);
+      return {
+        eyebrow: 'Denegatoria de este expediente',
+        titulo: 'Puede apelar esta denegatoria',
+        detalle: numero
+          ? `${origen} denegó este expediente y ahí termina su historial. ${destino} abrió ${numero}, que empieza desde su ingreso. La apelación es contra esta denegatoria.`
+          : `${origen} denegó este expediente y lo encauzó a ${destino}. ${destino} abre un expediente nuevo, que empieza desde su ingreso. La apelación es contra esta denegatoria.`,
+        metricValue: String(apelacion.value),
+        metricUnit: apelacion.unit,
+        ctaLabel: 'Apelar la denegatoria',
+        route: ['/ciudadano/nueva-apelacion'],
+        queryParams: { solicitudId: solicitud.id },
+        icon: 'scale',
+        toneColor: 'var(--brand-700)',
+        toneBg: 'linear-gradient(135deg, var(--brand-subtle), var(--card) 70%)',
+        toneSoft: 'var(--brand-200)',
+        expediente,
+        entidad,
+      };
+    }
+
+    if (estado === 'DENEGADA' || estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud)) {
+      const esSilencio = estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud);
+      const apelacion = this.indicadorApelacion(solicitud);
+      return {
+        eyebrow: esSilencio ? 'Silencio administrativo · puede apelar' : 'Consulta de apelación',
+        titulo: 'Revise las opciones de apelación',
+        detalle: esSilencio
+          ? 'La entidad no respondió dentro del plazo legal. Puede presentar apelación por silencio administrativo negativo.'
+          : 'La entidad denegó su solicitud. Puede presentar apelación dentro de 15 días hábiles desde el día siguiente a la respuesta registrada.',
+        metricValue: String(apelacion.value),
+        metricUnit: apelacion.unit,
         ctaLabel: 'Apelar al Tribunal',
         route: ['/ciudadano/nueva-apelacion'],
         queryParams: { solicitudId: solicitud.id },
@@ -860,8 +1251,8 @@ export class CiudadanoDashboardComponent implements OnInit {
     if (estado === 'RESPONDIDA') {
       return {
         eyebrow: 'Respuesta disponible',
-        titulo: 'Su informacion ya esta lista',
-        detalle: 'La entidad envio una respuesta. Revise el contenido y descargue los documentos adjuntos desde el detalle del expediente.',
+        titulo: 'La entidad registró una respuesta',
+        detalle: 'Consulte la respuesta registrada y los documentos que existan en el detalle. Este estado no acredita entrega ni notificación eficaz.',
         metricValue: '✓',
         metricUnit: 'lista',
         ctaLabel: 'Ver respuesta',
@@ -875,13 +1266,18 @@ export class CiudadanoDashboardComponent implements OnInit {
       };
     }
 
+    const plazoAmpliacion = this.accionPlazoAmpliacion(solicitud, expediente, entidad);
+    if (plazoAmpliacion) return plazoAmpliacion;
+
+    if (!this.estadosEnProceso.has(estado)) return null;
     const diasEntidad = this.diasRestantesParaEntidad(solicitud);
+    const diasVal = diasEntidad === null ? 'No disponible' : diasEntidad === 0 ? 'Último día' : String(diasEntidad);
     return {
-      eyebrow: 'Esperando respuesta de la entidad',
-      titulo: 'La entidad esta preparando su respuesta',
-      detalle: `${entidad} aun esta dentro del plazo de atencion. Le notificaremos por correo cuando exista una respuesta oficial.`,
-      metricValue: `${Math.max(diasEntidad, 0)}`,
-      metricUnit: 'dias habiles',
+      eyebrow: 'Seguimiento de solicitud',
+      titulo: 'Consulte su solicitud en la entidad',
+      detalle: `Consulte el estado y las actuaciones registradas por ${entidad}.`,
+      metricValue: diasVal,
+      metricUnit: diasEntidad === 0 ? 'para que la entidad responda' : diasVal === '1' ? 'día hábil para responder' : 'días hábiles para responder',
       ctaLabel: 'Ver mi solicitud',
       route: ['/ciudadano/solicitud', expediente],
       icon: 'clock',
@@ -907,46 +1303,116 @@ export class CiudadanoDashboardComponent implements OnInit {
     const estado = (solicitud.estado || '').toUpperCase();
     const estadoApelacion = (solicitud.apelacion?.estado || '').toUpperCase();
 
-    if (this.estadosEnProceso.has(estado)) {
+    const observaciones = this.observacionesDeSolicitud(solicitud).sort((a, b) =>
+      (a.fechaObservacion ?? '').localeCompare(b.fechaObservacion ?? ''));
+    for (const obs of observaciones) {
+      const pendiente = this.enPrecision(solicitud) && obs.estado === 'PENDIENTE_SUBSANACION';
+      steps.push({
+        key: `precision-${obs.id}`, label: 'Solicitud de precisión', date: this.formatDate(obs.fechaObservacion),
+        meta: pendiente ? 'En espera de su precisión' : undefined, status: pendiente ? 'active' : 'done',
+      });
+      if (obs.estado === 'SUBSANADA') {
+        steps.push({
+          key: `precision-registrada-${obs.id}`, label: 'Precisión registrada',
+          date: this.formatDate(obs.fechaSubsanacion), status: 'done',
+        });
+      }
+    }
+
+    if (solicitud.encauzamientoAlcance === 'TOTAL' || solicitud.encauzamientoAlcance === 'PARCIAL') {
+      if (!this.respuestaRegistrada(solicitud)) this.agregarPasoEncauzamiento(steps, solicitud);
+    }
+
+    const ampliacion = this.ampliacionCoincidente(solicitud);
+    const atiendePlazo = this.estadosEnProceso.has(estado)
+      && !this.enPrecision(solicitud)
+      && !this.archivadaSinPrecision(solicitud)
+      && !this.esSilencioAdministrativo(solicitud);
+    if (ampliacion && !atiendePlazo) {
+      steps.push({
+        key: 'plazo-prolongado',
+        label: 'Plazo prolongado',
+        date: this.formatDate(ampliacion.fechaNotificacionAmpliacion || ampliacion.fechaSolicitudAmpliacion),
+        status: 'done',
+      });
+    }
+
+    if (this.enPrecision(solicitud)) {
+      steps.push({ key: 'respuesta', label: 'Respuesta de la entidad', status: 'pending' });
+    } else if (this.archivadaSinPrecision(solicitud)) {
+      steps.push({ key: 'archivo', label: 'Archivada sin precisión', status: 'done' });
+    } else if (this.esSilencioAdministrativo(solicitud)) {
+      steps.push({ key: 'plazo-entidad', label: 'Plazo vencido - SAN', status: 'done', meta: 'Silencio administrativo negativo' });
+      steps.push({ key: 'respuesta', label: 'Sin respuesta de la entidad', status: 'skipped' });
+      steps.push({ key: 'apelacion', label: 'Puede apelar al Tribunal', status: this.tieneApelacionActiva(solicitud) ? 'done' : 'active' });
+    } else if (this.encauzamientoCierraOrigen(solicitud)) {
+      // El paso de encauzamiento ya cerró el historial de este expediente.
+    } else if (this.estadosEnProceso.has(estado)) {
       const dias = this.diasRestantesParaEntidad(solicitud);
       const vencimiento = this.formatDate(solicitud.fechaLimite);
+      const diasLabel = dias === null ? 'Plazo en evaluación' : dias === 0 ? 'Último día para responder'
+        : `${dias} ${dias === 1 ? 'día hábil' : 'días hábiles'}`;
+      const original = ampliacion ? this.formatDate(ampliacion.fechaLimiteOriginal) : '';
+      const ampliada = ampliacion ? this.formatDate(ampliacion.fechaLimiteAmpliada) : '';
+      const meta = original && ampliada
+        ? `${diasLabel} - prolongado de ${original} a ${ampliada}`
+        : `${diasLabel}${vencimiento ? ` - fecha límite ${vencimiento}` : ''}`;
       steps.push({
         key: 'plazo-entidad',
         label: 'Plazo de la entidad',
-        meta: `${Math.max(dias, 0)}d restantes${vencimiento ? ` - vence ${vencimiento}` : ''}`,
+        meta,
         status: 'active'
       });
       steps.push({ key: 'respuesta', label: 'Respuesta de la entidad', status: 'pending' });
     } else if (estado === 'RESPONDIDA') {
-      const resultado = solicitud.respuesta?.tipoRespuesta ? this.formatoEstado(solicitud.respuesta.tipoRespuesta) : 'recibida';
-      steps.push({ key: 'plazo-entidad', label: 'Plazo cumplido', meta: 'Atencion cerrada', status: 'done' });
+      const resultado = solicitud.respuesta?.tipoRespuesta ? this.formatoEstado(solicitud.respuesta.tipoRespuesta) : 'Recibida';
       steps.push({
         key: 'respuesta',
         label: `Respuesta - ${resultado}`,
         date: this.formatDate(solicitud.respuesta?.fechaRespuesta),
         status: 'done'
       });
+      this.agregarPasoEncauzamiento(steps, solicitud);
     } else if (estado === 'DENEGADA') {
-      steps.push({ key: 'plazo-entidad', label: 'Plazo cumplido', status: 'done' });
-      steps.push({ key: 'respuesta', label: 'Denegada por la entidad', date: this.formatDate(solicitud.respuesta?.fechaRespuesta), status: 'done' });
-      steps.push({ key: 'apelacion', label: 'Puede apelar al Tribunal', status: this.tieneApelacionActiva(solicitud) ? 'done' : 'active' });
-    } else if (estado === 'VENCIDA') {
-      steps.push({ key: 'plazo-entidad', label: 'Plazo vencido - SAN', status: 'done', meta: 'Silencio administrativo negativo' });
-      steps.push({ key: 'respuesta', label: 'Sin respuesta de la entidad', status: 'skipped' });
-      steps.push({ key: 'apelacion', label: 'Puede apelar al Tribunal', status: this.tieneApelacionActiva(solicitud) ? 'done' : 'active' });
+      steps.push({
+        key: 'respuesta',
+        label: 'Denegatoria total',
+        date: this.formatDate(solicitud.respuesta?.fechaRespuesta),
+        status: 'done'
+      });
+      this.agregarPasoEncauzamiento(steps, solicitud);
+      if (!this.denegatoriaEncauzada(solicitud)) {
+        steps.push({ key: 'apelacion', label: 'Puede apelar al Tribunal', status: this.tieneApelacionActiva(solicitud) ? 'done' : 'active' });
+      }
+    }
+
+    const recepcionSubsanacion = solicitud.apelacion?.recepcionSubsanacion || undefined;
+    const enSegunda = estadoApelacion === 'EN_CALIFICACION_2';
+    if (recepcionSubsanacion || enSegunda) {
+      steps.push({
+        key: 'subsanacion-ttaip',
+        label: 'Subsanación presentada',
+        date: this.formatDate(recepcionSubsanacion),
+        status: 'done',
+      });
     }
 
     if (this.tieneApelacionActiva(solicitud)) {
       const elevacion = solicitud.apelacion?.elevacion;
       const pendienteElevacion = estadoApelacion === 'PENDIENTE_ELEVACION';
+      const plazoSegunda = enSegunda ? this.indicadorSegundaCalificacion(solicitud) : null;
       steps.push({
         key: 'tribunal',
         label: pendienteElevacion
           ? 'Pendiente de elevacion por la entidad'
-          : `Tribunal - ${this.formatoEstado(estadoApelacion)}`,
+          : enSegunda
+            ? 'Segunda calificación'
+            : `Tribunal - ${this.formatoEstado(estadoApelacion)}`,
         meta: pendienteElevacion
           ? `Vence ${this.formatDate(elevacion?.fechaLimiteElevacion) || 'por confirmar'}`
-          : solicitud.apelacion?.expediente || undefined,
+          : plazoSegunda
+            ? `${plazoSegunda.value} ${plazoSegunda.unit}`
+            : solicitud.apelacion?.expediente || undefined,
         status: 'active'
       });
       steps.push({ key: 'resolucion', label: 'Resolucion final', status: 'pending' });
@@ -967,17 +1433,47 @@ export class CiudadanoDashboardComponent implements OnInit {
     const estado = (solicitud.estado || '').toUpperCase();
     const estadoApelacion = (solicitud.apelacion?.estado || '').toUpperCase();
 
-    if (estadoApelacion === 'EN_SUBSANACION') {
-      return 100 + Math.max(0, 5 - this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud));
+    if (this.enPrecision(solicitud)) {
+      return 110;
     }
 
-    if (this.estadosApelacionActivos.has(estadoApelacion)) return 85;
-    if (estado === 'VENCIDA') return 82;
-    if (estado === 'DENEGADA') return 78;
-    if (estado === 'RESPONDIDA') return 30;
+    if (estadoApelacion === 'EN_SUBSANACION') {
+      if (solicitud.apelacion?.plazoSubsanacion?.estado === 'VENCIDO') return 0;
+      const dias = this.calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud);
+      return dias === null ? 85 : Math.max(1, 100 - dias * 8);
+    }
 
-    const dias = this.diasRestantesParaEntidad(solicitud);
-    return 55 + Math.max(0, 4 - dias);
+    if (estado === 'DENEGADA' && !this.esSilencioAdministrativo(solicitud)) {
+      const d = typeof solicitud.diasRestantes === 'number' ? solicitud.diasRestantes : null;
+      return d !== null && d > 0 ? Math.max(1, 80 - d) : 78;
+    }
+
+    if (estado === 'VENCIDA' || this.esSilencioAdministrativo(solicitud)) {
+      return 75;
+    }
+
+    if (estado === 'POR_RECOGER') {
+      return 70;
+    }
+
+    if (this.estadosEnProceso.has(estado)) {
+      const dias = this.diasRestantesParaEntidad(solicitud);
+      return dias !== null && dias <= 2 ? 60 : 20;
+    }
+
+    if (estado === 'RESPONDIDA') {
+      return 30;
+    }
+
+    if (this.tieneApelacionActiva(solicitud)) {
+      return 25;
+    }
+
+    if (estado === 'ENCAUZADA') {
+      return 15;
+    }
+
+    return 0;
   }
 
   private tieneApelacionActiva(solicitud: Solicitud): boolean {
@@ -995,39 +1491,218 @@ export class CiudadanoDashboardComponent implements OnInit {
     return estado.toLowerCase();
   }
 
-  private diasRestantesParaEntidad(solicitud: Solicitud): number {
-    if (typeof solicitud.diasRestantes === 'number') {
-      return solicitud.diasRestantes;
+  private enPrecision(solicitud: Solicitud): boolean {
+    return ['PENDIENTE_INFORMACION', 'EN_PRECISION', 'OBSERVADA'].includes((solicitud.estado || '').toUpperCase());
+  }
+
+  private observacionesDeSolicitud(solicitud: Solicitud) {
+    return (solicitud.observaciones ?? []).filter(obs => obs?.id != null && Number.isSafeInteger(obs.id)
+      && obs.id > 0 && obs.solicitudId === solicitud.id);
+  }
+
+  private observacionPendiente(solicitud: Solicitud) {
+    return this.observacionesDeSolicitud(solicitud).find(obs => obs.estado === 'PENDIENTE_SUBSANACION');
+  }
+
+  private archivadaSinPrecision(solicitud: Solicitud): boolean {
+    return ['CONCLUIDA', 'ARCHIVADA'].includes((solicitud.estado || '').toUpperCase())
+      && this.observacionesDeSolicitud(solicitud).some(obs => obs.estado === 'NO_SUBSANADA' || obs.estado === 'ARCHIVADA');
+  }
+
+  private indicadorPrecision(solicitud: Solicitud): IndicadorBandeja {
+    const dias = this.observacionPendiente(solicitud)?.diasRestantes;
+    const tone = 'var(--warning)';
+    if (dias == null || !Number.isSafeInteger(dias)) {
+      return { value: 'Plazo no disponible', unit: 'solicitud de precisión', tone };
     }
-
-    const fechaLimite = this.parseFecha(solicitud.fechaLimite);
-    if (!fechaLimite) return 0;
-
-    return Math.ceil((fechaLimite.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (dias < 0) return { value: 'Fecha registrada vencida', unit: 'precisión pendiente', tone };
+    const nota = 'Según la fecha registrada';
+    if (dias === 0) return { value: 'Último día', unit: 'para precisar', tone, nota };
+    return { value: dias, unit: dias === 1 ? 'día hábil para precisar' : 'días hábiles para precisar', tone, nota };
   }
 
-  private calcularDiasParaApelar(solicitud: Solicitud): number {
-    const base = this.parseFecha(solicitud.respuesta?.fechaRespuesta)
-      || this.parseFecha(solicitud.fechaLimite)
-      || this.parseFecha(solicitud.fechaPresentacion);
-
-    if (!base) return 15;
-
-    const fechaCaducidad = new Date(base);
-    fechaCaducidad.setDate(fechaCaducidad.getDate() + 15);
-    return Math.ceil((fechaCaducidad.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  private aplicarDetalle(id: number, detalle: ExpedienteDetalle | null): void {
+    if (this.destroyed || this.solicitudPrincipal()?.id !== id) return;
+    const ancla = this.anclaBuscadorEtapa();
+    this.detalleVista.set(detalle && detalle.id === id ? detalle : null);
+    this.aplicarAmpliacion(id, detalle?.ampliacionesPlazo ?? null);
+    this.restaurarAnclaEtapa(ancla);
   }
 
-  private calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud: Solicitud): number {
-    if (!solicitud.apelacion?.fechaSubsanacion || !solicitud.apelacion?.diasSubsanacion) return 0;
+  private respuestaRegistrada(solicitud: Solicitud): boolean {
+    const estado = (solicitud.estado || '').toUpperCase();
+    if (estado === 'DENEGADA' || estado === 'RESPONDIDA' || estado === 'CONCLUIDA') return true;
+    const id = solicitud.respuesta?.id;
+    return typeof id === 'number' && id > 0;
+  }
 
-    const fechaSubsanacion = this.parseFecha(solicitud.apelacion.fechaSubsanacion);
-    if (!fechaSubsanacion) return 0;
+  private encauzamientoCierraOrigen(solicitud: Solicitud | null): boolean {
+    if (!solicitud || solicitud.encauzamientoAlcance !== 'TOTAL' || this.respuestaRegistrada(solicitud)) return false;
+    const estado = (solicitud.estado || '').toUpperCase();
+    return estado === 'RECEPCIONADA' || estado === 'EN_REVISION' || estado === 'PENDIENTE_INFORMACION';
+  }
 
-    const fechaLimite = new Date(fechaSubsanacion);
-    fechaLimite.setDate(fechaLimite.getDate() + solicitud.apelacion.diasSubsanacion);
+  private expedienteDestino(solicitud: Solicitud | null): string {
+    return this.numeroDeEncauzamiento(this.encauzamientoVisible(solicitud));
+  }
 
-    return Math.ceil((fechaLimite.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  private numeroDeEncauzamiento(enc: { expedienteDerivado?: string | null; trazabilidad?: string | null } | null | undefined): string {
+    const directo = enc?.expedienteDerivado?.trim();
+    if (directo) return directo;
+    return /Expediente de destino: (SAIP-\d{4}-\d+)/.exec(enc?.trazabilidad ?? '')?.[1] ?? '';
+  }
+
+  denegatoriaEncauzada(solicitud: Solicitud | null): boolean {
+    if (!solicitud) return false;
+    const estado = (solicitud.estado || '').toUpperCase();
+    const denegada = estado === 'DENEGADA' || solicitud.respuesta?.tipoRespuesta === 'DENEGACION_TOTAL';
+    return denegada && solicitud.encauzamientoAlcance === 'TOTAL';
+  }
+
+  private encauzamientoVisible(solicitud: Solicitud | null) {
+    const detalle = this.detalleVista();
+    if (!solicitud || !detalle || detalle.id !== solicitud.id) return null;
+    return (detalle.encauzamientos ?? []).find(item =>
+      item.alcance === 'TOTAL'
+      && (item.estadoEncauzamiento === 'DERIVADO' || item.estadoEncauzamiento === 'REGISTRADO')) ?? null;
+  }
+
+  private entidadDestinoEncauzada(solicitud: Solicitud): string {
+    return this.encauzamientoVisible(solicitud)?.entidadDestinoNombre?.trim()
+      || solicitud.entidadNombre?.trim()
+      || '';
+  }
+
+  private agregarPasoEncauzamiento(steps: TimelineStep[], solicitud: Solicitud): void {
+    if (solicitud.encauzamientoAlcance !== 'TOTAL' && solicitud.encauzamientoAlcance !== 'PARCIAL') return;
+    const detalle = this.detalleVista();
+    const enc = detalle && detalle.id === solicitud.id
+      ? (detalle.encauzamientos ?? []).find(item =>
+        item.estadoEncauzamiento === 'DERIVADO' || item.estadoEncauzamiento === 'REGISTRADO')
+      : undefined;
+    const destino = enc?.entidadDestinoNombre?.trim();
+    const total = solicitud.encauzamientoAlcance === 'TOTAL';
+    const numero = total ? this.numeroDeEncauzamiento(enc) : '';
+    steps.push({
+      key: 'encauzamiento',
+      label: total ? (destino ? `Encauzada a ${destino}` : 'Encauzada a otra entidad') : 'Encauzamiento parcial',
+      date: this.formatDate(enc?.fechaEncauzamiento),
+      meta: numero ? `Continúa en ${numero}` : undefined,
+      status: 'done',
+    });
+  }
+
+  private aplicarAmpliacion(id: number, lista: AmpliacionPlazoSolicitud[] | null): void {
+    if (this.destroyed || this.solicitudPrincipal()?.id !== id) return;
+    const ampliacion = lista?.find(item => item.solicitudId === id && item.estadoAmpliacion !== 'CANCELADA') ?? null;
+    this.ampliacionSolicitudId.set(id);
+    this.ampliacionVista.set(ampliacion);
+  }
+
+  private ampliacionDe(solicitud: Solicitud | null): AmpliacionPlazoSolicitud | null {
+    const cargada = this.ampliacionCoincidente(solicitud);
+    if (cargada) return cargada;
+    const propias = (solicitud as { ampliacionesPlazo?: AmpliacionPlazoSolicitud[] | null } | null)?.ampliacionesPlazo;
+    return propias?.find(item => item.solicitudId === solicitud?.id && item.estadoAmpliacion !== 'CANCELADA') ?? null;
+  }
+
+  private diasDeAmpliacion(ampliacion: AmpliacionPlazoSolicitud): number | null {
+    const cronograma = diasApelacionCronograma(ampliacion);
+    if (cronograma !== null && cronograma >= 0) return cronograma;
+    const entrega = entregaApelable(ampliacion);
+    if (!entrega) return null;
+    return diasHabilesParaApelar(aISO(entrega.fechaEntregaReal) ?? aISO(entrega.fechaProgramada));
+  }
+
+  private accionPlazoAmpliacion(solicitud: Solicitud, expediente: string, entidad: string): DashboardAction | null {
+    const ampliacion = this.ampliacionDe(solicitud);
+    if (!ampliacion || !ampliacionPermiteApelar(ampliacion) || solicitud.respuesta) return null;
+    const dias = this.diasDeAmpliacion(ampliacion);
+    const porEntrega = diasApelacionCronograma(ampliacion) === null || (diasApelacionCronograma(ampliacion) ?? -1) < 0;
+    return {
+      eyebrow: porEntrega ? 'Entrega recibida · puede apelar' : 'Cronograma · puede apelar',
+      titulo: porEntrega ? 'Puede apelar la entrega recibida' : 'Puede apelar el cronograma de ampliación',
+      detalle: porEntrega
+        ? 'Recibió una entrega del cronograma. Puede presentar su apelación durante 15 días hábiles. El Tribunal evaluará si procede.'
+        : 'El plazo ordinario ya terminó. Tiene 15 días hábiles para apelar la ampliación. Recibió el cronograma, así que no es silencio administrativo.',
+      metricValue: dias === null || dias < 0 ? 'Sí' : String(dias),
+      metricUnit: dias === null || dias < 0 ? 'puede apelar' : dias === 1 ? 'día hábil para apelar' : 'días hábiles para apelar',
+      ctaLabel: 'Apelar al Tribunal',
+      route: ['/ciudadano/apelacion/nueva', expediente],
+      icon: 'scale',
+      toneColor: 'var(--gold-dark)',
+      toneBg: 'linear-gradient(135deg, rgba(146, 100, 14, 0.12), var(--card) 70%)',
+      toneSoft: 'rgba(146, 100, 14, 0.28)',
+      expediente,
+      entidad,
+    };
+  }
+
+  private plazoAmpliadoVisible(solicitud: Solicitud): boolean {
+    const estado = (solicitud.estado || '').toUpperCase();
+    if (solicitud.respuesta) return false;
+    if (estado !== 'RECEPCIONADA' && estado !== 'EN_REVISION' && estado !== 'EN_PROCESO') return false;
+    return solicitud.plazoAmpliado === true || this.ampliacionCoincidente(solicitud) != null;
+  }
+
+  private ampliacionCoincidente(solicitud: Solicitud | null): AmpliacionPlazoSolicitud | null {
+    const ampliacion = this.ampliacionVista();
+    if (!solicitud || !ampliacion || ampliacion.solicitudId !== solicitud.id || ampliacion.estadoAmpliacion === 'CANCELADA') return null;
+    return ampliacion;
+  }
+
+  private indicadorApelacion(solicitud: Solicitud): IndicadorBandeja {
+    if ((solicitud.estado || '').toUpperCase() === 'VENCIDA' || this.esSilencioAdministrativo(solicitud)) {
+      return { value: 'Sin', unit: 'plazo perentorio', tone: 'var(--gold-dark)' };
+    }
+    const dias = this.diasParaApelar(solicitud);
+    if (dias === null) return { value: 'No disponible', unit: 'días para apelar', tone: 'var(--gold-dark)' };
+    if (dias < 0) return { value: 'Vencido', unit: 'plazo para apelar', tone: 'var(--brand-700)' };
+    if (dias === 0) return { value: 'Último día', unit: 'para apelar', tone: 'var(--brand-700)' };
+    return {
+      value: dias,
+      unit: dias === 1 ? 'día hábil para apelar' : 'días hábiles para apelar',
+      tone: dias <= 3 ? 'var(--brand-700)' : 'var(--gold-dark)',
+    };
+  }
+
+  /** Plazo operativo de segunda calificación, contado desde el día siguiente a la recepción del escrito. */
+  private indicadorSegundaCalificacion(solicitud: Solicitud): IndicadorBandeja {
+    const inicio = (solicitud.apelacion?.recepcionSubsanacion || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(inicio)) {
+      return { value: 'En curso', unit: 'segunda calificación', tone: 'var(--info)' };
+    }
+    const dias = PLAZO_META_POR_CLAVE.TTAIP_CALIFICACION_2.porDefecto;
+    const limite = sumarHabiles(recepcionEfectiva(inicio), dias);
+    const hoy = hoyLima();
+    if (hoy > limite) return { value: 'Plazo vencido', unit: 'segunda calificación pendiente', tone: 'var(--warning)' };
+    const restantes = habilesEntre(hoy, limite);
+    if (restantes === 0) return { value: 'Último día', unit: 'de la segunda calificación', tone: 'var(--brand-700)' };
+    return {
+      value: restantes,
+      unit: restantes === 1 ? 'día hábil para la segunda calificación' : 'días hábiles para la segunda calificación',
+      tone: restantes <= 3 ? 'var(--warning)' : 'var(--info)',
+    };
+  }
+
+  /** 15 días hábiles del mapa, contados desde el día siguiente a la respuesta registrada. */
+  private diasParaApelar(solicitud: Solicitud): number | null {
+    const ancla = aISO(solicitud.respuesta?.fechaRespuesta);
+    if (!ancla) return null;
+    const limite = sumarHabiles(ancla, 15);
+    const hoy = hoyLima();
+    if (hoy > limite) return -1;
+    const desde = hoy <= ancla ? ancla : sumarDias(hoy, -1);
+    return habilesEntre(desde, limite);
+  }
+
+  private diasRestantesParaEntidad(solicitud: Solicitud): number | null {
+    return typeof solicitud.diasRestantes === 'number' && Number.isFinite(solicitud.diasRestantes) ? solicitud.diasRestantes : null;
+  }
+
+  private calcularDiasRestantesSubsanacionDesdeSolicitud(solicitud: Solicitud): number | null {
+    const plazo = solicitud.apelacion?.plazoSubsanacion;
+    return !plazo || plazo.estado === 'PENDIENTE_INICIO' ? null : plazo.diasHabilesRestantes ?? null;
   }
 
   private formatDate(valor?: string): string | undefined {
@@ -1068,9 +1743,14 @@ export class CiudadanoDashboardComponent implements OnInit {
     const [anio, mes, dia] = partes;
     return new Date(anio, mes - 1, dia);
   }
+  private schedule(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const generation = this.generation, revision = this.sessionRevision;
+    const timer = setTimeout(() => {
+      this.timers.delete(timer);
+      if (!this.destroyed && generation === this.generation && revision === this.authService.cambiosSesion()) callback();
+    }, delay);
+    this.timers.add(timer);
+    return timer;
+  }
+
 }
-
-
-
-
-

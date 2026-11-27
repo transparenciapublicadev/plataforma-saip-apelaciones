@@ -1,17 +1,19 @@
-import { Component, ChangeDetectionStrategy, OnInit, signal, inject, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, signal, inject, computed, effect, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
-import { SolicitudService } from '../../services/solicitud.service';
-import { ApelacionService } from '../../services/apelacion.service';
+import { PanelQueryService } from '../../services/panel-query.service';
+import { PanelSolicitud as Solicitud, PanelPage, PanelSummary, validPanelPage } from '../../models/panel-query.model';
 import { AuthService } from '../../services/auth.service';
-import { EstadoSolicitud, Solicitud } from '../../models/solicitud.model';
-import { ElevacionApelacionTtaip } from '../../models/apelacion.model';
-import { canSendManualResponse, isSilencioAdministrativo } from '../../utils/silencio-administrativo.util';
+import { FuncionarioService } from '../../services/funcionario.service';
+import { Subscription } from 'rxjs';
+import { BucketKey, QueueItem, positiveId, normalizeSearch, queueItem, readInstitutionList, canNavigateToResponse } from './funcionario-dashboard.model';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { TourStep } from '../../core/guided-tour/guided-tour.model';
 
-type BucketKey = 'san' | 'hoy' | 'semana' | 'plazo' | 'respondidas';
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { PaginationComponent } from '../../shared/pagination.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 
 interface BucketMeta {
   key: BucketKey;
@@ -22,533 +24,331 @@ interface BucketMeta {
   bg: string;
 }
 
-interface QueueItem {
-  solicitud: Solicitud;
-  bucket: BucketKey;
-  diasRestantes: number;
-  iniciales: string;
-  prioridad: 'alta' | 'media' | 'baja';
-  tema: string;
-}
-
-interface DistribucionDia {
-  dia: number;
-  count: number;
-  width: number;
-  color: string;
-}
-
 import {
-  LucideBuilding2, LucideCompass, LucideTrendingUp, LucideShieldAlert,
+  LucideBuilding2, LucideCompass, LucideShieldAlert,
   LucideArrowRight, LucideAlertTriangle, LucideFlame, LucideCalendar,
   LucideCheckCircle2, LucideInbox, LucideSearch, LucideUser,
-  LucideSend, LucideChevronRight, LucideLayers, LucideTarget
+  LucideSend, LucideChevronRight, LucideLayers, LucideTarget,
+  LucideFileChartColumn
 } from '@lucide/angular';
 
 @Component({
   selector: 'app-funcionario-dashboard',
   imports: [
     RouterLink, FormsModule, DatePipe,
-    LucideBuilding2, LucideCompass, LucideTrendingUp, LucideShieldAlert,
+    StatusBadgeComponent, PaginationComponent, YaikuCargandoComponent,
+    LucideBuilding2, LucideCompass, LucideShieldAlert,
     LucideArrowRight, LucideAlertTriangle, LucideFlame, LucideCalendar,
     LucideCheckCircle2, LucideInbox, LucideSearch, LucideUser,
-    LucideSend, LucideChevronRight, LucideLayers, LucideTarget
+    LucideSend, LucideChevronRight, LucideLayers, LucideTarget,
+    LucideFileChartColumn
   ],
   templateUrl: './funcionario-dashboard.component.html',
   styleUrl: './funcionario-dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class FuncionarioDashboardComponent implements OnInit {
-  private readonly solicitudService = inject(SolicitudService);
-  private readonly apelacionService = inject(ApelacionService);
+export class FuncionarioDashboardComponent implements OnInit, OnDestroy {
+  private readonly panelService = inject(PanelQueryService);
+  private readonly funcionarioService = inject(FuncionarioService);
   private readonly authService = inject(AuthService);
   private readonly tourService = inject(GuidedTourService);
-
+  private read = new Subscription();
+  private generation = 0;
+  private initialized = false;
+  private destroyed = false;
+  private revision = -1;
+  readonly revisionConsulta = signal(-1);
+  readonly contextoVigente = computed(() => this.revisionConsulta() === this.authService.cambiosSesion());
   readonly tourSteps: TourStep[] = [
-    { selector: '[data-tour="e-hero"]', title: 'Tu día de un vistazo', body: 'Aquí ves la fecha, cuántas solicitudes tienes en bandeja y cuántas están en silencio administrativo (SAN) o vencen hoy.' },
-    { selector: '[data-tour="e-cumplimiento"]', title: 'Cumplimiento del plazo legal', body: 'Tu porcentaje de solicitudes respondidas dentro de los 10 días hábiles de ley, comparado con el mes anterior.' },
-    { selector: '[data-tour="e-buckets"]', title: 'Bandeja por SLA', body: 'El corazón de tu trabajo: cada columna agrupa las solicitudes por urgencia de plazo. Toca una para enfocar esa cola.' },
-    { selector: '[data-tour="e-cola"]', title: 'Cola enfocada', body: 'La lista de solicitudes de la bandeja seleccionada, ordenadas por vencimiento. Desde aquí respondes o revisas cada expediente.', align: 'start', onEnter: () => this.selectBucket('san') },
-    { selector: '[data-tour="e-carga"]', title: 'Distribución de carga', body: 'Un vistazo a cuántas solicitudes vencen en cada día hábil restante, para anticipar tu semana.' },
-    { selector: '[data-tour="e-batch"]', title: 'Oportunidad de batch', body: 'Temas que se repiten entre las solicitudes pendientes: te conviene preparar respuestas tipo para resolver en lote.' },
+    { selector: '[data-tour="e-hero"]', title: 'Tu día de un vistazo', body: 'Aquí ves la fecha, cuántas solicitudes tienes en bandeja y cuántas están en silencio administrativo o vencen hoy.' },
+    { selector: '[data-tour="e-cumplimiento"]', title: 'Respuestas registradas en plazo', body: 'El indicador compara la fecha de la respuesta con el plazo registrado. Incluye solicitudes vencidas sin respuesta y muestra por separado las que aún están pendientes.' },
+    { selector: '[data-tour="e-buckets"]', title: 'Bandeja por plazo', body: 'El corazón de tu trabajo: cada columna agrupa las solicitudes por urgencia de plazo. Toca una para enfocar esa cola.' },
+    { selector: '[data-tour="e-cola"]', title: 'Solicitudes de la bandeja', body: 'La lista de solicitudes de la bandeja seleccionada, ordenadas por vencimiento. Desde aquí respondes o revisas cada expediente.', align: 'start' },
+    { selector: '[data-tour="e-carga"]', title: 'Vencimientos de la semana', body: 'Un vistazo a cuántas solicitudes vencen en cada día hábil restante, para anticipar tu semana.' },
     { selector: '[data-tour="e-norma"]', title: 'Norma aplicable', body: 'Recordatorio de los plazos legales clave (Ley N° 27806) y qué ocurre si vencen: silencio negativo y derecho de apelación.' },
   ];
-
-  private readonly plazoLegal = 10;
-
   readonly buckets: BucketMeta[] = [
-    {
-      key: 'san',
-      label: 'Vencidas (SAN)',
-      eyebrow: 'Silencio negativo · acción urgente',
-      icon: 'alert',
-      color: 'var(--brand-700)',
-      bg: 'var(--brand-subtle)'
-    },
-    {
-      key: 'hoy',
-      label: 'Hoy o mañana',
-      eyebrow: 'Vencen en ≤1 día háb.',
-      icon: 'flame',
-      color: 'var(--brand-600)',
-      bg: 'rgba(200,16,46,0.06)'
-    },
-    {
-      key: 'semana',
-      label: 'Esta semana',
-      eyebrow: '2 a 5 días hábiles',
-      icon: 'calendar',
-      color: 'var(--warning)',
-      bg: 'rgba(217,119,6,0.10)'
-    },
-    {
-      key: 'plazo',
-      label: 'Cómodo en plazo',
-      eyebrow: 'Más de 5 días háb.',
-      icon: 'check',
-      color: 'var(--success)',
-      bg: 'rgba(5,150,105,0.10)'
-    },
-    {
-      key: 'respondidas',
-      label: 'Respondidas',
-      eyebrow: 'Cerradas este periodo',
-      icon: 'inbox',
-      color: 'var(--info)',
-      bg: 'rgba(29,78,216,0.08)'
-    }
+    { key: 'todas', label: 'Todas las solicitudes', eyebrow: 'Vista general · sin filtro de plazo', icon: 'inbox', color: 'var(--brand-700)', bg: 'var(--brand-subtle)' },
+    { key: 'san', label: 'Vencidas', eyebrow: 'Silencio negativo · acción urgente', icon: 'alert', color: 'var(--brand-700)', bg: 'var(--brand-subtle)' },
+    { key: 'hoy', label: 'Hoy o mañana', eyebrow: 'Vencen en ≤1 día háb.', icon: 'flame', color: 'var(--brand-600)', bg: 'color-mix(in srgb, var(--brand-600) 8%, transparent)' },
+    { key: 'semana', label: 'Esta semana', eyebrow: '2 a 5 días hábiles', icon: 'calendar', color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 10%, transparent)' },
+    { key: 'plazo', label: 'Cómodo en plazo', eyebrow: 'Más de 5 días háb.', icon: 'check', color: 'var(--success)', bg: 'color-mix(in srgb, var(--success) 10%, transparent)' },
+    { key: 'precision', label: 'En precisión', eyebrow: 'En espera del administrado', icon: 'alert', color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 10%, transparent)' },
+    { key: 'respondidas', label: 'Respondidas', eyebrow: 'Con respuesta registrada', icon: 'inbox', color: 'var(--info)', bg: 'color-mix(in srgb, var(--info) 8%, transparent)' },
+    { key: 'derivadas', label: 'Derivadas', eyebrow: 'Mismo expediente · otra entidad', icon: 'inbox', color: 'var(--brand-700)', bg: 'var(--brand-subtle)' },
   ];
-
   solicitudes = signal<Solicitud[]>([]);
-  loading = signal<boolean>(true);
-  error = signal<string>('');
-  elevacionesPendientes = signal<ElevacionApelacionTtaip[]>([]);
-  elevacionEnProceso = signal<number | null>(null);
-  referenciasElevacion: Record<number, string> = {};
-
-  selectedBucket = signal<BucketKey>('san');
-  busqueda = signal<string>('');
-
-  nombreEntidad = signal<string>('');
-  nombreFuncionario = signal<string>('');
-  entidadId = signal<number>(0);
-
-  readonly donutRadius = 26;
-  readonly donutCirc = 2 * Math.PI * this.donutRadius;
-
-  readonly fechaHoy = computed(() => {
-    return new Date().toLocaleDateString('es-PE', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long'
-    });
+  loading = signal(true);
+  readonly queryLoading = signal(false);
+  readonly pagina = signal<PanelPage<Solicitud> | null>(null);
+  readonly resumen = signal<PanelSummary | null>(null);
+  private searchTimer?: ReturnType<typeof setTimeout>;
+  error = signal('');
+  errorTipo = signal<'sesion' | 'validacion' | 'autenticacion' | 'autorizacion' | 'no-encontrado' | 'red' | 'servidor' | 'incompleta' | null>(null);
+  informacionIncompleta = signal(false);
+  selectedBucket = signal<BucketKey>('todas');
+  busqueda = signal('');
+  nombreEntidad = signal('');
+  nombreFuncionario = signal('');
+  entidadId = signal(0);
+  readonly estados = ['RECEPCIONADA', 'EN_REVISION', 'PENDIENTE_INFORMACION', 'RESPONDIDA', 'DENEGADA', 'CONCLUIDA', 'VENCIDA'];
+  readonly queueItems = computed(() => this.solicitudes().map(queueItem));
+  readonly counts = computed(() => ({ todas: this.resumen()?.total ?? 0,
+    san: this.resumen()?.porEtapa['san'] ?? 0, hoy: this.resumen()?.porEtapa['hoy'] ?? 0,
+    semana: this.resumen()?.porEtapa['semana'] ?? 0, plazo: this.resumen()?.porEtapa['plazo'] ?? 0,
+    precision: this.resumen()?.porEtapa['precision'] ?? 0,
+    respondidas: this.resumen()?.porEtapa['respondidas'] ?? 0,
+    derivadas: this.resumen()?.porEtapa['derivada'] ?? 0 }));
+  readonly bucketActivoMeta = computed(() => this.buckets.find(bucket => bucket.key === this.selectedBucket()) ?? this.buckets[0]);
+  readonly totalActivas = computed(() => Math.max(0, ['RECEPCIONADA', 'EN_REVISION', 'PENDIENTE_INFORMACION', 'VENCIDA']
+    .reduce((n, state) => n + (this.resumen()?.porEstado[state] ?? 0), 0) - (this.resumen()?.porEtapa['derivada'] ?? 0)));
+  readonly registroRespuestas = computed(() => {
+    if (!this.contextoVigente()) return null;
+    const resumen = this.resumen();
+    const registro = resumen?.registroRespuestas;
+    if (!registro) return null;
+    const cantidades = [registro.enPlazo, registro.fueraDePlazo, registro.pendientes, registro.noEvaluadas];
+    return cantidades.every(n => Number.isSafeInteger(n) && n >= 0)
+      && cantidades.reduce((total, n) => total + n, 0) === resumen.total ? registro : null;
   });
-
-  readonly queueItems = computed(() => this.solicitudes().map((solicitud) => this.mapSolicitud(solicitud)));
-
-  readonly counts = computed<Record<BucketKey, number>>(() => {
-    const base: Record<BucketKey, number> = {
-      san: 0,
-      hoy: 0,
-      semana: 0,
-      plazo: 0,
-      respondidas: 0
-    };
-
-    for (const item of this.queueItems()) {
-      base[item.bucket] += 1;
-    }
-
-    return base;
+  readonly evaluadas = computed(() => {
+    const registro = this.registroRespuestas();
+    return registro ? registro.enPlazo + registro.fueraDePlazo : 0;
   });
-
-  readonly totalActivas = computed(() => {
-    const c = this.counts();
-    return c.san + c.hoy + c.semana + c.plazo;
+  readonly cumplimiento = computed<number | null>(() => {
+    const registro = this.registroRespuestas(), evaluadas = this.evaluadas();
+    if (!registro) return null;
+    return evaluadas > 0 ? Math.round((registro.enPlazo / evaluadas) * 100) : 0;
   });
-
-  readonly cumplimiento = computed(() => {
-    const c = this.counts();
-    const cerradas = c.respondidas + c.san;
-    if (cerradas <= 0) return 100;
-    return Math.round((c.respondidas / cerradas) * 100);
+  readonly donutCircunferencia = 2 * Math.PI * 26;
+  private readonly donutDibujado = signal(false);
+  private donutFrame = 0;
+  readonly donutDashOffset = computed(() => {
+    const val = this.donutDibujado() ? (this.cumplimiento() ?? 0) : 0;
+    return this.donutCircunferencia - (val / 100) * this.donutCircunferencia;
   });
-
   readonly donutAccent = computed(() => {
     const val = this.cumplimiento();
-    if (val >= 80) return 'var(--success)';
-    if (val >= 60) return 'var(--warning)';
-    return 'var(--brand-700)';
+    if (val === null) return 'var(--muted-foreground)';
+    return val >= 80 ? 'var(--success)' : val >= 60 ? 'var(--warning)' : 'var(--brand-700)';
   });
-
-  readonly donutOffset = computed(() => {
-    const value = Math.max(0, Math.min(100, this.cumplimiento()));
-    return this.donutCirc - (value / 100) * this.donutCirc;
-  });
-
-  readonly bucketActivoMeta = computed(() => {
-    const selected = this.selectedBucket();
-    return this.buckets.find((bucket) => bucket.key === selected) ?? this.buckets[0];
-  });
-
-  readonly filtradas = computed(() => {
-    const bucket = this.selectedBucket();
-    const query = this.busqueda().trim().toLowerCase();
-
-    const list = this.queueItems().filter((item) => item.bucket === bucket);
-
-    const byQuery = query
-      ? list.filter((item) => {
-          const expediente = (item.solicitud.expediente || '').toLowerCase();
-          const ciudadano = (item.solicitud.ciudadanoNombre || '').toLowerCase();
-          const asunto = (item.solicitud.asunto || '').toLowerCase();
-          return expediente.includes(query) || ciudadano.includes(query) || asunto.includes(query);
-        })
-      : list;
-
-    return [...byQuery].sort((a, b) => this.prioridadSortValue(a) - this.prioridadSortValue(b));
-  });
-
-  readonly distribucionDias = computed<DistribucionDia[]>(() => {
-    const bins = new Map<number, number>();
-    for (let day = 0; day <= this.plazoLegal; day += 1) {
-      bins.set(day, 0);
+  readonly fechaHoy = computed(() => new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }));
+  readonly filtradas = computed(() => this.queueItems());
+  readonly distribucionDias = computed(() => {
+    const counts = this.resumen()?.porDiasRestantes;
+    if (!counts || typeof counts !== 'object' || Array.isArray(counts)) return null;
+    const groups = Object.entries(counts);
+    if (groups.some(([day, count]) => !/^\d+$/.test(day) || String(Number(day)) !== day
+      || !Number.isSafeInteger(Number(day)) || !Number.isSafeInteger(count) || count < 0)) return null;
+    if (!groups.length) return [];
+    const dias = Array.from({ length: 11 }, (_, dia) => dia);
+    for (const key of Object.keys(counts)) {
+      const dia = Number(key);
+      if (Number.isSafeInteger(dia) && dia > 10) dias.push(dia);
     }
-
-    for (const item of this.queueItems()) {
-      if (item.bucket === 'hoy' || item.bucket === 'semana' || item.bucket === 'plazo') {
-        const day = Math.max(0, Math.min(this.plazoLegal, item.diasRestantes));
-        bins.set(day, (bins.get(day) || 0) + 1);
-      }
-    }
-
-    const max = Math.max(...Array.from(bins.values()), 1);
-
-    const result: DistribucionDia[] = [];
-    for (let day = 0; day <= this.plazoLegal; day += 1) {
-      const count = bins.get(day) || 0;
-      const danger = day <= 1;
-      const warn = day <= 5 && day > 1;
-      const color = danger ? 'var(--brand-700)' : warn ? 'var(--warning)' : 'var(--success)';
-      result.push({
-        dia: day,
-        count,
-        width: count === 0 ? 4 : (count / max) * 100,
-        color
-      });
-    }
-
-    return result;
+    const valores = dias.map(dia => Number(counts[String(dia)] ?? 0));
+    const max = Math.max(1, ...valores);
+    return dias.sort((a, b) => a - b).map(dia => {
+      const count = Number(counts[String(dia)] ?? 0);
+      return { dia, count, width: count / max * 100, color: dia <= 1 ? 'var(--brand-700)' : dia <= 5 ? 'var(--warning)' : 'var(--success)' };
+    });
   });
-
-  readonly topTemas = computed(() => {
-    const temasMap = new Map<string, number>();
-
-    for (const item of this.queueItems()) {
-      if (item.bucket === 'respondidas') continue;
-      temasMap.set(item.tema, (temasMap.get(item.tema) || 0) + 1);
+  readonly topTemas = computed(() => Object.entries(this.resumen()?.porTipoInformacion ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 4));
+  readonly paginaActual = signal(1);
+  private readonly pageSize = 4;
+  readonly totalRegistros = computed(() => this.pagina()?.totalElementos ?? 0);
+  readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.totalRegistros() / this.pageSize)));
+  readonly paginaSegura = computed(() => Math.min(this.paginaActual(), this.totalPaginas()));
+  readonly inicioRegistro = computed(() => this.totalRegistros() ? (this.paginaSegura() - 1) * this.pageSize + 1 : 0);
+  readonly finRegistro = computed(() => Math.min(this.paginaSegura() * this.pageSize, this.totalRegistros()));
+  readonly filtradasVisibles = computed(() => this.filtradas());
+  get busquedaModel(): string { return this.busqueda(); }
+  set busquedaModel(value: string) { this.busqueda.set(value.slice(0, 120)); this.paginaActual.set(1); clearTimeout(this.searchTimer); this.read.unsubscribe(); this.generation++; this.solicitudes.set([]); this.queryLoading.set(true); this.searchTimer = setTimeout(() => this.cargarSolicitudes(false), 250); }
+  limpiarBusqueda(): void {
+    if (this.busqueda()) {
+      this.busqueda.set('');
+      this.paginaActual.set(1);
+      this.cargarSolicitudes(false);
     }
-
-    return Array.from(temasMap.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 4);
-  });
-
-  get busquedaModel(): string {
-    return this.busqueda();
   }
 
-  set busquedaModel(value: string) {
-    this.busqueda.set(value);
+  getAreaLabel(solicitud: { areaResponsable?: string | null; encargadoArea?: string | null }): string {
+    const area = solicitud.areaResponsable?.trim();
+    if (!area) return 'Sin asignar';
+    const encargado = solicitud.encargadoArea?.trim();
+    return encargado ? `${area} · ${encargado}` : area;
   }
 
+  private programarDonut(valor: number | null): void {
+    if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.donutFrame);
+    this.donutDibujado.set(false);
+    if (valor === null) return;
+    const dibujar = () => this.donutDibujado.set(true);
+    if (typeof requestAnimationFrame !== 'function') {
+      dibujar();
+      return;
+    }
+    this.donutFrame = requestAnimationFrame(() => {
+      this.donutFrame = requestAnimationFrame(dibujar);
+    });
+  }
+
+  constructor() {
+    effect(() => {
+      const revision = this.authService.cambiosSesion();
+      if (this.initialized && revision !== this.revision) untracked(() => this.cargarSolicitudes());
+    });
+    effect(() => {
+      const valor = this.cumplimiento();
+      untracked(() => this.programarDonut(valor));
+    });
+  }
   ngOnInit(): void {
-    const sesion = this.authService.obtenerSesion();
-    if (sesion) {
-      this.nombreFuncionario.set(sesion.nombre || 'Funcionario');
-      this.nombreEntidad.set(sesion.entidadNombre || 'Entidad');
-      this.entidadId.set(sesion.entidadId || 0);
-      this.cargarSolicitudes();
-      this.cargarElevacionesPendientes();
-      this.tourService.checkAutoStart('saip_tour_funcionario', this.tourSteps);
-    }
+    this.initialized = true;
+    this.cargarSolicitudes();
   }
-
-  readonly paginaActual = signal<number>(1);
-  readonly itemsPorPagina = signal<number>(10);
-
-  readonly totalRegistros = computed(() => this.filtradas().length);
-  readonly totalPaginas = computed(() => Math.ceil(this.totalRegistros() / this.itemsPorPagina()) || 1);
-  readonly inicioRegistro = computed(() => this.totalRegistros() === 0 ? 0 : (this.paginaActual() - 1) * this.itemsPorPagina() + 1);
-  readonly finRegistro = computed(() => Math.min(this.paginaActual() * this.itemsPorPagina(), this.totalRegistros()));
-  readonly filtradasVisibles = computed(() => {
-    const start = (this.paginaActual() - 1) * this.itemsPorPagina();
-    return this.filtradas().slice(start, start + this.itemsPorPagina());
-  });
-
+  ngOnDestroy(): void {
+    if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.donutFrame);
+    this.tourService.endTourFor('saip_tour_funcionario');
+    this.destroyed = true;
+    this.generation++;
+    this.read.unsubscribe();
+    clearTimeout(this.searchTimer);
+  }
   selectBucket(bucket: BucketKey): void {
+    if (this.selectedBucket() === bucket) return;
+    if (bucket !== 'todas' && this.counts()[bucket] === 0) return;
     this.selectedBucket.set(bucket);
     this.paginaActual.set(1);
+    this.cargarSolicitudes(false);
   }
+  cambiarPagina(page: number): void { if (Number.isSafeInteger(page) && page >= 1 && page <= this.totalPaginas() && page !== this.paginaActual()) { this.paginaActual.set(page); this.cargarSolicitudes(false); } }
+  get isFirstVisit(): boolean { return this.tourService.isFirstVisit('saip_tour_funcionario'); }
+  startTour(): void { this.tourService.startTour('saip_tour_funcionario', this.tourSteps); }
 
-  cambiarPagina(pagina: number): void {
-    if (pagina >= 1 && pagina <= this.totalPaginas()) {
-      this.paginaActual.set(pagina);
+  cargarSolicitudes(reloadContext = true): void {
+    clearTimeout(this.searchTimer);
+    if (this.destroyed) return;
+    this.tourService.endTourFor('saip_tour_funcionario');
+    const revision = this.authService.cambiosSesion();
+    const changed = revision !== this.revision;
+    this.read.unsubscribe(); this.read = new Subscription();
+    const generation = ++this.generation;
+    this.revision = revision; this.revisionConsulta.set(revision);
+    this.solicitudes.set([]); this.pagina.set(null); this.error.set(''); this.errorTipo.set(null); this.loading.set(changed || !this.resumen()); this.queryLoading.set(true); this.informacionIncompleta.set(false);
+    if (changed) { this.nombreEntidad.set(''); this.nombreFuncionario.set(''); this.entidadId.set(0); this.resumen.set(null); this.busqueda.set(''); this.selectedBucket.set('todas'); this.paginaActual.set(1); }
+    let session: ReturnType<AuthService['obtenerSesion']> = null;
+    try { session = this.authService.obtenerSesion(); } catch { /* No query for malformed local session. */ }
+    if (!session?.token && this.authService.cerrandoSesion?.()) {
+      this.error.set(''); this.loading.set(true); this.queryLoading.set(false); return;
     }
-  }
-
-  cambiarItemsPorPagina(items: number): void {
-    this.itemsPorPagina.set(items);
-    this.paginaActual.set(1);
-  }
-
-  get isFirstVisit(): boolean {
-    return this.tourService.isFirstVisit('saip_tour_funcionario');
-  }
-
-  startTour(): void {
-    this.tourService.startTour('saip_tour_funcionario', this.tourSteps);
-  }
-
-  cargarSolicitudes(): void {
-    this.loading.set(true);
-    const entidadId = this.entidadId();
-
-    if (entidadId === 0) {
-      this.error.set('No se encontró la entidad');
-      this.loading.set(false);
-      return;
+    if (!session?.token || session.tipoUsuario !== 'FUNCIONARIO' || !positiveId(session.funcionarioId)
+      || !positiveId(session.usuarioId) || session.usuarioId !== session.funcionarioId) {
+      this.error.set('Su sesión de funcionario está incompleta. Inicie sesión mediante el acceso interno.');
+      this.errorTipo.set('sesion');
+      this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null); return;
     }
-
-    this.solicitudService.findByEntidadId(entidadId).subscribe({
-      next: (data) => {
-        this.solicitudes.set(data.map((solicitud) => this.normalizeSolicitudEstado(solicitud)));
-        this.loading.set(false);
-      },
-      error: (err) => {
-        const mensaje = err.error?.mensaje || err.message || 'Error desconocido';
-        this.error.set(`Error al cargar solicitudes: ${mensaje} (${err.status || 'sin conexion'})`);
-        this.loading.set(false);
-        console.error('Error al cargar solicitudes:', err);
-      }
-    });
-  }
-
-  getEstadoBadgeClass(estado: string): string {
-    const clases: { [key: string]: string } = {
-      'RECEPCIONADA': 'badge-warning',
-      'EN_REVISION': 'badge-in-process',
-      'PENDIENTE_INFORMACION': 'badge-warning',
-      'RESPONDIDA': 'badge-success',
-      'DENEGADA': 'badge-danger',
-      'VENCIDA': 'badge-danger',
-      'CONCLUIDA': 'badge-muted'
+    const actor = session.funcionarioId, token = session.token;
+    const current = () => {
+      try {
+        const actual = this.authService.obtenerSesion();
+        return !this.destroyed && generation === this.generation && revision === this.authService.cambiosSesion()
+          && actual?.token === token && actual?.usuarioId === actor && actual?.funcionarioId === actor;
+      } catch { return false; }
     };
-
-    return clases[(estado || '').toUpperCase()] || 'badge-muted';
-  }
-
-  getEstadoDisplay(solicitud: Solicitud): string {
-    if (isSilencioAdministrativo(solicitud)) {
-      return 'SILENCIO_ADMINISTRATIVO';
-    }
-
-    return (solicitud.estado || 'SIN_ESTADO').replaceAll('_', ' ');
-  }
-
-  getPrioridadClass(prioridad: QueueItem['prioridad']): string {
-    if (prioridad === 'alta') return 'pill pill-high';
-    if (prioridad === 'media') return 'pill pill-medium';
-    return 'pill pill-low';
-  }
-
-  getDiasColor(bucket: BucketKey): string {
-    return this.buckets.find((item) => item.key === bucket)?.color ?? 'var(--brand-600)';
-  }
-
-  cargarElevacionesPendientes(): void {
-    const entidadId = this.entidadId();
-    if (entidadId === 0) return;
-
-    this.apelacionService.findPendientesElevacionByEntidadId(entidadId).subscribe({
-      next: (elevaciones) => this.elevacionesPendientes.set(elevaciones),
-      error: (err) => {
-        const mensaje = err.error?.detail || err.error?.mensaje || 'No se pudo consultar la bandeja de elevaciones';
-        this.error.set(mensaje);
-      }
-    });
-  }
-
-  elevarApelacion(elevacion: ElevacionApelacionTtaip): void {
-    const referencia = (this.referenciasElevacion[elevacion.apelacionId] || '').trim();
-    if (!referencia) {
-      this.error.set('Ingrese la referencia documental del expediente elevado al TTAIP');
-      return;
-    }
-
-    this.elevacionEnProceso.set(elevacion.apelacionId);
-    this.error.set('');
-    this.apelacionService.elevar(elevacion.apelacionId, {
-      responsableEntidad: this.nombreFuncionario(),
-      referenciaExpedienteElevado: referencia
-    }).subscribe({
-      next: () => {
-        delete this.referenciasElevacion[elevacion.apelacionId];
-        this.elevacionEnProceso.set(null);
-        this.cargarElevacionesPendientes();
-      },
-      error: (err) => {
-        this.elevacionEnProceso.set(null);
-        this.error.set(err.error?.detail || err.error?.mensaje || 'No se pudo elevar la apelación al TTAIP');
-      }
-    });
-  }
-
-  getDiasValor(item: QueueItem): string {
-    if (item.bucket === 'san') {
-      return `+${Math.abs(item.diasRestantes)}d`;
-    }
-
-    return `${item.diasRestantes}d`;
-  }
-
-  canResponder(solicitud: Solicitud): boolean {
-    if (!canSendManualResponse(solicitud)) {
-      return false;
-    }
-
-    const estado = (solicitud.estado || '').toUpperCase();
-    return estado === 'RECEPCIONADA' || estado === 'EN_REVISION' || estado === 'PENDIENTE_INFORMACION';
-  }
-
-  logout(): void {
-    this.authService.cerrarSesion();
-  }
-
-  private mapSolicitud(solicitud: Solicitud): QueueItem {
-    const normalized = this.normalizeSolicitudEstado(solicitud);
-    const diasRestantes = this.calcularDiasRestantes(normalized);
-    const bucket = this.obtenerBucket(normalized, diasRestantes);
-
-    return {
-      solicitud: normalized,
-      bucket,
-      diasRestantes,
-      iniciales: this.obtenerIniciales(normalized.ciudadanoNombre || 'Ciudadano'),
-      prioridad: this.obtenerPrioridad(normalized, diasRestantes),
-      tema: this.inferirTema(normalized.asunto || '')
+    const failure = (err: { status?: number }) => {
+      if (!current() || this.authService.cerrandoSesion?.()) return;
+      const messages: Record<number, string> = {
+        400: 'La consulta institucional no es válida.', 422: 'Revise los datos de la consulta institucional.',
+        401: 'La sesión no permite consultar. Inicie sesión nuevamente con el acceso interno.',
+        403: 'No tiene autorización para consultar esta entidad o funcionario.',
+        404: 'No se encontró el funcionario o recurso institucional solicitado.',
+      };
+      this.error.set(messages[err.status ?? 0] ?? (err.status === 0 ? 'No hay conexión. Puede reintentar.' : 'No se pudo consultar la información institucional. Puede reintentar.'));
+      this.errorTipo.set(err.status === 400 || err.status === 422 ? 'validacion' : err.status === 401 ? 'autenticacion' : err.status === 403 ? 'autorizacion' : err.status === 404 ? 'no-encontrado' : err.status === 0 ? 'red' : 'servidor');
+      this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null);
     };
+    const loadPage = (entidad: number) => {
+      const page = this.paginaActual() - 1, size = this.pageSize;
+      const etapa = this.selectedBucket() === 'derivadas' ? 'derivada' : this.selectedBucket();
+      this.read.add(this.panelService.solicitudes({ pagina: page, tamano: size, busqueda: this.busqueda().trim(),
+        etapa }).subscribe({
+        next: data => {
+          if (!current()) return;
+          const verified = validPanelPage<Solicitud>(data, page, size) ? readInstitutionList(data.contenido, entidad) : null;
+          if (!verified) { this.error.set('La respuesta está incompleta o no permite verificar la entidad y los recursos solicitados.');
+            this.errorTipo.set('incompleta'); this.resumen.set(null); this.loading.set(false); this.queryLoading.set(false); return; }
+          this.pagina.set(data); this.resumen.set(data.resumen); this.solicitudes.set(verified);
+          this.informacionIncompleta.set(verified.some(item => !this.estados.includes(item.estado)
+            || !item.asunto || !this.fechaVisible(item.fechaPresentacion) || !Number.isSafeInteger(item.diasRestantes)));
+          this.loading.set(false); this.queryLoading.set(false);
+        }, error: failure,
+      }));
+    };
+    if (!reloadContext && !changed && positiveId(this.entidadId())) { loadPage(this.entidadId()); return; }
+    this.read.add(this.funcionarioService.findById(actor).subscribe({
+      next: funcionario => {
+        if (!current()) return;
+        if (!funcionario || funcionario.id !== actor || !positiveId(funcionario.entidadId) || funcionario.activo !== true) {
+          this.error.set('La información del funcionario o su entidad está incompleta. Reintente la consulta.');
+          this.errorTipo.set('incompleta'); this.loading.set(false); this.queryLoading.set(false); this.resumen.set(null); return;
+        }
+        this.entidadId.set(funcionario.entidadId);
+        this.nombreEntidad.set(typeof funcionario.entidadNombre === 'string' ? funcionario.entidadNombre.trim() : '');
+        this.nombreFuncionario.set(typeof funcionario.nombreCompleto === 'string' ? funcionario.nombreCompleto.trim() : '');
+        loadPage(funcionario.entidadId);
+      }, error: failure,
+    }));
   }
 
-  private normalizeSolicitudEstado(solicitud: Solicitud): Solicitud {
-    const currentEstado = (solicitud.estado || '').toUpperCase();
-    if (this.isSolicitudTerminal(currentEstado)) {
-      return solicitud;
-    }
-
-    const respuesta = solicitud.respuesta;
-    if (!respuesta?.tipoRespuesta) {
-      return solicitud;
-    }
-
-    const tipoRespuesta = respuesta.tipoRespuesta.toUpperCase();
-    const estado: EstadoSolicitud = tipoRespuesta.includes('DENEGACION') ? 'DENEGADA' : 'RESPONDIDA';
-    return { ...solicitud, estado };
+  getEstadoDisplay(solicitud: Solicitud): string { return solicitud.estado || 'SIN_ESTADO'; }
+  getPrioridadClass(priority: string | null): string {
+    if (!priority) return 'pill';
+    return priority === 'ALTA' || priority === 'URGENTE' ? 'pill pill-high' : priority === 'MEDIA' || priority === 'NORMAL' ? 'pill pill-medium' : 'pill pill-low';
   }
-
-  private isSolicitudTerminal(estado: string): boolean {
-    return estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'CONCLUIDA';
+  getDiasColor(bucket: BucketKey): string { return this.buckets.find(item => item.key === bucket)?.color ?? 'var(--muted-foreground)'; }
+  getMetaLabel(item: QueueItem): string {
+    const isResp = ['RESPONDIDA', 'DENEGADA', 'CONCLUIDA'].includes(item.solicitud.estado) || item.solicitud.respuesta != null;
+    if (isResp) return 'Respondida el';
+    const enPrecision = item.solicitud.estado === 'PENDIENTE_INFORMACION'
+      || (Array.isArray(item.solicitud.observaciones) && item.solicitud.observaciones.some(o => o && o.estado === 'PENDIENTE_SUBSANACION'));
+    if (enPrecision) return 'Plazo p/ precisar';
+    if (item.solicitud.estado === 'VENCIDA' || (item.diasRestantes !== null && item.diasRestantes < 0)) return 'En silencio administrativo';
+    return 'Plazo p/ responder';
   }
-
-  private obtenerBucket(solicitud: Solicitud, diasRestantes: number): BucketKey {
-    const estado = (solicitud.estado || '').toUpperCase();
-
-    if (this.isSolicitudTerminal(estado)) {
-      return 'respondidas';
+  getMetaValue(item: QueueItem): string {
+    const isResp = ['RESPONDIDA', 'DENEGADA', 'CONCLUIDA'].includes(item.solicitud.estado) || item.solicitud.respuesta != null;
+    if (isResp) {
+      const fecha = item.solicitud.respuesta?.fechaRespuesta;
+      if (fecha && this.fechaVisible(fecha)) {
+        const [y, m, d] = fecha.substring(0, 10).split('-');
+        return `${d}/${m}/${y}`;
+      }
+      return fecha || '—';
     }
-
-    if (estado === 'VENCIDA' || isSilencioAdministrativo(solicitud) || diasRestantes < 0) {
-      return 'san';
+    const enPrecision = item.solicitud.estado === 'PENDIENTE_INFORMACION'
+      || (Array.isArray(item.solicitud.observaciones) && item.solicitud.observaciones.some(o => o && o.estado === 'PENDIENTE_SUBSANACION'));
+    if (enPrecision) {
+      const obs = Array.isArray(item.solicitud.observaciones) ? item.solicitud.observaciones.find(o => o && o.estado === 'PENDIENTE_SUBSANACION') : null;
+      const fecha = obs?.fechaLimiteSubsanacion;
+      if (fecha && this.fechaVisible(fecha)) {
+        const [y, m, d] = fecha.substring(0, 10).split('-');
+        return `${d}/${m}/${y}`;
+      }
+      return fecha || '—';
     }
-
-    if (diasRestantes <= 1) return 'hoy';
-    if (diasRestantes <= 5) return 'semana';
-    return 'plazo';
+    if (item.solicitud.estado === 'VENCIDA' || (item.diasRestantes !== null && item.diasRestantes < 0)) {
+      if (item.diasRestantes === null) return 'Días no informados';
+      const diasVencidos = Math.abs(item.diasRestantes);
+      return `+${diasVencidos} ${diasVencidos === 1 ? 'día háb.' : 'días háb.'}`;
+    }
+    if (item.diasRestantes === null) return 'Plazo no informado';
+    const d = item.diasRestantes;
+    if (d === 0) return 'Vence hoy';
+    return `${d} ${d === 1 ? 'día háb.' : 'días háb.'}`;
   }
-
-  private obtenerPrioridad(solicitud: Solicitud, diasRestantes: number): QueueItem['prioridad'] {
-    const estado = (solicitud.estado || '').toUpperCase();
-
-    if (estado === 'VENCIDA' || isSilencioAdministrativo(solicitud) || diasRestantes <= 1) {
-      return 'alta';
-    }
-
-    if (diasRestantes <= 5) {
-      return 'media';
-    }
-
-    return 'baja';
-  }
-
-  private prioridadSortValue(item: QueueItem): number {
-    if (item.bucket === 'san') {
-      return item.diasRestantes;
-    }
-
-    if (item.bucket === 'respondidas') {
-      return 1000 + item.diasRestantes;
-    }
-
-    return item.diasRestantes;
-  }
-
-  private calcularDiasRestantes(solicitud: Solicitud): number {
-    if (typeof solicitud.diasRestantes === 'number') {
-      return solicitud.diasRestantes;
-    }
-
-    const fechaLimite = this.parseFecha(solicitud.fechaLimite);
-    if (!fechaLimite) return 0;
-
-    return Math.ceil((fechaLimite.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  }
-
-  private obtenerIniciales(nombreCompleto: string): string {
-    return nombreCompleto
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase() || '')
-      .join('') || 'CI';
-  }
-
-  private inferirTema(asunto: string): string {
-    const texto = asunto.toLowerCase();
-
-    if (texto.includes('presupuesto') || texto.includes('financ') || texto.includes('gasto')) return 'Presupuesto';
-    if (texto.includes('contrato') || texto.includes('licitación') || texto.includes('licitacion') || texto.includes('adenda')) return 'Contratos';
-    if (texto.includes('convenio')) return 'Convenios';
-    if (texto.includes('planilla') || texto.includes('personal') || texto.includes('servir')) return 'Personal';
-    if (texto.includes('acta') || texto.includes('sesión') || texto.includes('sesion') || texto.includes('directorio')) return 'Actas';
-
-    return 'General';
-  }
-
-  private parseFecha(valor?: string): Date | null {
-    if (!valor) return null;
-
-    const fecha = new Date(valor);
-    if (!Number.isNaN(fecha.getTime())) return fecha;
-
-    const partes = valor.split(/[\/\-]/).map((item) => Number(item));
-    if (partes.length !== 3 || partes.some((item) => Number.isNaN(item))) return null;
-
-    if (valor.includes('/')) {
-      const [dia, mes, anio] = partes;
-      return new Date(anio, mes - 1, dia);
-    }
-
-    const [anio, mes, dia] = partes;
-    return new Date(anio, mes - 1, dia);
+  canResponder(solicitud: Solicitud): boolean { return this.contextoVigente() && !this.loading() && !this.error() && canNavigateToResponse(solicitud); }
+  fechaVisible(value: unknown): string | null {
+    return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(value) && Number.isFinite(Date.parse(value)) ? value : null;
   }
 }

@@ -74,6 +74,13 @@ public class EncauzamientoSolicitud {
     @Column(columnDefinition = "TEXT")
     private String trazabilidad;
 
+    /** Expediente nuevo de la entidad de destino. El de origen conserva su historial hasta este encauzamiento. */
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_solicitud_derivada")
+    private Solicitud solicitudDerivada;
+
     @Column(name = "fecha_creacion", nullable = false)
     private LocalDateTime fechaCreacion;
 

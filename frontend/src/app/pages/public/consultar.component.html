@@ -1,222 +1,236 @@
-<div class="min-h-screen bg-background">
+<div class="consulta-page min-h-screen bg-background">
   <section class="relative bg-paper border-b border-border overflow-hidden">
-    <div class="absolute top-0 right-0 w-[420px] h-[420px] rounded-full opacity-[0.05] -translate-y-1/3 translate-x-1/4" style="background: radial-gradient(circle, var(--brand-600), transparent 70%)"></div>
+    <div aria-hidden="true" class="absolute top-0 right-0 w-[420px] h-[420px] rounded-full opacity-[0.04] -translate-y-1/3 translate-x-1/4" style="background: radial-gradient(circle, var(--brand-600), transparent 70%)"></div>
     <div class="relative max-w-3xl mx-auto px-6 md:px-10 pt-28 pb-12" data-hero>
       <a routerLink="/" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
-        <svg lucideArrowRight class="w-4 h-4 rotate-180"></svg>
+        <svg aria-hidden="true" lucideArrowLeft class="w-4 h-4"></svg>
         Volver al inicio
       </a>
 
       <div class="text-center">
         <div class="w-14 h-14 mx-auto rounded-lg flex items-center justify-center mb-5" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), var(--shadow-sm)">
-          <svg lucideSearch class="w-7 h-7 text-white"></svg>
+          <svg aria-hidden="true" lucideSearch class="w-7 h-7 text-white"></svg>
         </div>
-        <span class="eyebrow">Consulta publica · Sin sesion</span>
-        <h1 class="font-display mt-3" style="font-size: clamp(32px, 3.6vw, 44px); line-height: 1.06; letter-spacing: -0.025em">
-          Estado de su <span class="italic" style="color: var(--brand-700)">solicitud</span>
+        <span class="eyebrow">Consulta pública · Sin necesidad de sesión</span>
+        <h1 class="font-display consulta-heading mt-3">
+          Estado de su <span class="italic" style="color: var(--brand-700)">expediente</span>
         </h1>
         <div class="mt-5 mx-auto h-[1.5px] w-16" style="background: var(--gold)"></div>
         <p class="text-muted-foreground max-w-lg mx-auto mt-5">
-          Ingrese el numero de expediente SAIP para consultar el estado sin necesidad de iniciar sesion.
+          Consulte el estado de su solicitud SAIP o de su apelación ante el Tribunal sin iniciar sesión.
         </p>
       </div>
     </div>
   </section>
 
   <div class="max-w-3xl mx-auto px-6 md:px-10 py-10">
-    <section class="form-shell mb-7" data-reveal>
-      <div class="p-6 md:p-7">
+    <section class="form-shell mb-7" aria-label="Buscar expediente SAIP o TTAIP">
+      <form class="p-6 md:p-7" novalidate (submit)="onSubmit($event)" [attr.aria-busy]="buscando()">
         <label class="field-label" for="expediente">Número de expediente</label>
         <div class="flex flex-col sm:flex-row gap-3 mt-1.5">
           <div class="flex-1 relative">
-            <svg lucideFileText class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
+            <svg aria-hidden="true" lucideFileText class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
             <input
               id="expediente"
+              type="text"
               class="field-input has-icon-left !pl-10 font-mono"
-              placeholder="SAIP-2025-00847"
+              placeholder="SAIP-2026-00001"
+              required
+              aria-required="true"
+              maxlength="50"
+              autocomplete="off"
+              spellcheck="false"
+              [attr.aria-invalid]="errorValidacion() ? 'true' : null"
+              aria-describedby="expediente-hint expediente-error"
               [value]="query()"
               (input)="onQueryInput($event)"
             />
           </div>
+          <!-- Honeypot anti-bots: invisible y fuera del orden de tabulacion -->
+          <input type="text" name="sitio_web" [value]="trampa()" (input)="trampa.set($any($event.target).value)" tabindex="-1" autocomplete="off" aria-hidden="true" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0" />
           <button
-            type="button"
+            type="submit"
             class="btn-brand !px-6 disabled:opacity-50 disabled:cursor-not-allowed"
-            [disabled]="!query().trim() || buscando()"
-            (click)="buscar()"
+            [disabled]="buscando() || !query().trim() || !prueba()"
           >
             @if (buscando()) {
-              <span class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+              <span aria-hidden="true" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+              Consultando…
             } @else {
-              <svg lucideSearch class="w-4 h-4"></svg>
+              <svg aria-hidden="true" lucideSearch class="w-4 h-4"></svg>
               Buscar
             }
           </button>
         </div>
-        <span class="field-hint">Ingrese el número completo del expediente (SAIP o TTAIP), por ejemplo <span class="font-mono">SAIP-2025-00001</span>.</span>
-      </div>
+        <p id="expediente-hint" class="field-hint">Ingrese el número completo, por ejemplo <span class="font-mono">SAIP-2026-00001</span> o <span class="font-mono break-words">00001-2026-JUS/TTAIP</span>.</p>
+        <p id="expediente-error" class="field-hint text-destructive" role="alert">{{ errorValidacion() }}</p>
+        <div class="mt-4">
+          <app-captcha-pow (pruebaChange)="prueba.set($event)" [reinicio]="reinicio()"></app-captcha-pow>
+        </div>
+        @if (aviso()) {
+          <p role="alert" class="mt-3 text-sm flex items-start gap-2" style="color: var(--brand-700)">
+            <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4 mt-0.5 shrink-0"></svg>
+            {{ aviso() }}
+          </p>
+        }
+      </form>
     </section>
 
-    @if (noEncontrado()) {
+    @if (buscando()) {
+      <app-yaiku-cargando mensaje="Consultando el resumen público…" />
+      <p class="text-sm text-muted-foreground text-center -mt-8 mb-7">Puede editar el número para cancelar esta búsqueda.</p>
+    }
+
+    @if (mensaje()) {
       <section class="form-shell mb-7 border-[var(--brand-200)] animate-fade-in-up">
-        <div class="p-8 text-center">
+        <div id="consulta-feedback" tabindex="-1" role="alert" class="p-8 text-center">
           <div class="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-4" style="background: var(--brand-50); border: 1px solid var(--brand-200)">
-            <svg lucideXCircle class="w-6 h-6" style="color: var(--brand-700)"></svg>
+            @if (noEncontrado()) { <svg aria-hidden="true" lucideXCircle class="w-6 h-6" style="color: var(--brand-700)"></svg> }
+            @else { <svg aria-hidden="true" lucideAlertTriangle class="w-6 h-6" style="color: var(--brand-700)"></svg> }
           </div>
-          <h3 class="font-display" style="font-size: 20px; letter-spacing: -0.015em">Expediente no encontrado</h3>
-          <p class="text-sm text-muted-foreground mt-2 mb-5">No existe expediente con número <span class="code-chip">{{ query() }}</span></p>
-          <button type="button" class="btn-ghost-brand" (click)="limpiarBusqueda()">Intentar de nuevo</button>
+          <h2 class="font-display consulta-feedback-title">{{ noEncontrado() ? 'Expediente no encontrado' : estadoConsulta() === 'limite' ? 'Demasiadas consultas' : estadoConsulta() === 'incompleta' ? 'Información incompleta' : 'No se pudo completar la consulta' }}</h2>
+          <p class="text-sm text-muted-foreground mt-2 mb-5">{{ mensaje() }}</p>
+          <div class="flex flex-wrap justify-center gap-3">
+            @if (reintentable()) { <button type="button" class="btn-brand" (click)="buscar()">Reintentar consulta</button> }
+            <button type="button" class="btn-ghost-brand" (click)="limpiarBusqueda()">Realizar otra consulta</button>
+            @if (estadoConsulta() === 'autenticacion') { <a routerLink="/login" class="btn-ghost-brand">Acceso de administrados</a> }
+          </div>
         </div>
       </section>
     }
 
     @if (resultado(); as data) {
-      <div class="space-y-5 animate-fade-in-up">
+      <div id="consulta-resultado" tabindex="-1" aria-labelledby="consulta-resultado-titulo" class="space-y-5 animate-fade-in-up">
+        <h2 id="consulta-resultado-titulo" class="sr-only">Resumen público del expediente</h2>
+        <p role="status" aria-live="polite" class="text-sm text-muted-foreground">Resultado para {{ data.codigoConsultado }}.</p>
+        @if (data.faltantes.length) {
+          <aside role="status" class="consulta-notice rounded-lg p-4 text-sm">
+            <h3 class="font-medium">Información incompleta</h3>
+            <p class="mt-1">No se recibieron: {{ data.faltantes.join('; ') }}. Los datos faltantes no acreditan ausencia de actuaciones.</p>
+          </aside>
+        }
         <section class="form-shell">
-          <div class="form-section-header flex items-center justify-between">
+          <div class="form-section-header flex flex-wrap items-start sm:items-center justify-between gap-4">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
                 @switch (data.estado) {
                   @case ('EN_PROCESO') {
-                    <svg lucideClock class="w-5 h-5" [style.color]="statusIconColor(data.estado)"></svg>
+                    <svg aria-hidden="true" lucideClock class="w-5 h-5" [style.color]="statusIconColor(data.estado)"></svg>
                   }
                   @case ('RESPONDIDA') {
-                    <svg lucideCheckCircle2 class="w-5 h-5" [style.color]="statusIconColor(data.estado)"></svg>
+                    <svg aria-hidden="true" lucideCheckCircle2 class="w-5 h-5" [style.color]="statusIconColor(data.estado)"></svg>
                   }
                   @case ('APELADA') {
-                    <svg lucideAlertTriangle class="w-5 h-5" [style.color]="statusIconColor(data.estado)"></svg>
+                    <svg aria-hidden="true" lucideAlertTriangle class="w-5 h-5" [style.color]="statusIconColor(data.estado)"></svg>
                   }
                   @case ('DENEGADA') {
-                    <svg lucideXCircle class="w-5 h-5" [style.color]="statusIconColor(data.estado)"></svg>
+                    <svg aria-hidden="true" lucideXCircle class="w-5 h-5" [style.color]="statusIconColor(data.estado)"></svg>
                   }
                   @case ('VENCIDA') {
-                    <svg lucideArchive class="w-5 h-5" [style.color]="statusIconColor(data.estado)"></svg>
+                    <svg aria-hidden="true" lucideAlertTriangle class="w-5 h-5" [style.color]="statusIconColor(data.estado)"></svg>
                   }
                   @default {
-                    <svg lucideArchive class="w-5 h-5" [style.color]="statusIconColor(data.estado)"></svg>
+                    <svg aria-hidden="true" lucideArchive class="w-5 h-5" [style.color]="statusIconColor(data.estado)"></svg>
                   }
                 }
               </div>
               <div>
-                <span class="eyebrow">Expediente</span>
-                <div class="font-mono font-semibold mt-0.5" style="font-size: 15px">{{ data.expediente }}</div>
+                <span class="eyebrow">Expediente {{ data.consultaTtaip ? 'TTAIP' : 'SAIP' }}</span>
+                <div class="font-mono font-semibold mt-0.5 consulta-summary-code">{{ data.codigoConsultado }}</div>
               </div>
             </div>
-            <div class="text-right">
-              <div class="font-display" style="font-size: 36px; line-height: 1; letter-spacing: -0.025em; color: var(--brand-700)">
-                {{ data.diasTranscurridos }}
+            @if (!data.consultaTtaip) {
+            <div class="text-right ml-auto">
+              <div class="font-display consulta-days">
+                @if (data.diasTranscurridos !== null) { {{ data.diasTranscurridos }} }
+                @else { <span class="text-sm font-sans">No informado</span> }
               </div>
               <div class="text-[10px] tracking-widest uppercase text-muted-foreground mt-1">días transcurridos</div>
             </div>
+            }
           </div>
 
           <div class="p-6 md:p-7 space-y-4">
             <div class="flex items-center gap-3">
               <span class="eyebrow">Estado</span>
-              <span [class]="estadoBadgeClass(data.estado)">{{ estadoEtiqueta(data.estado) }}</span>
+              <app-status-badge [status]="data.consultaTtaip ? data.apelacionEstado || 'Por confirmar' : estadoEtiqueta(data.estado)"></app-status-badge>
             </div>
 
             <div class="grid md:grid-cols-2 gap-3">
               <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--card); border: 1px solid var(--border)">
-                <svg lucideBuilding2 class="w-4 h-4 mt-0.5 shrink-0 text-[var(--brand-700)]"></svg>
+                <svg aria-hidden="true" lucideBuilding2 class="w-4 h-4 mt-0.5 shrink-0 text-[var(--brand-700)]"></svg>
                 <div>
                   <div class="text-[10px] tracking-widest uppercase text-muted-foreground">Entidad</div>
-                  <div class="text-sm text-foreground mt-0.5">{{ data.entidad }}</div>
+                  <div class="text-sm text-foreground mt-0.5">{{ data.entidad || 'Nombre no informado' }}</div>
                 </div>
               </div>
               <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--card); border: 1px solid var(--border)">
-                <svg lucideCalendar class="w-4 h-4 mt-0.5 shrink-0 text-[var(--brand-700)]"></svg>
+                <svg aria-hidden="true" lucideCalendar class="w-4 h-4 mt-0.5 shrink-0 text-[var(--brand-700)]"></svg>
                 <div>
                   <div class="text-[10px] tracking-widest uppercase text-muted-foreground">Fecha de presentación</div>
-                  <div class="text-sm text-foreground mt-0.5 font-mono">{{ data.fechaPresentacion }}</div>
+                  <div class="text-sm text-foreground mt-0.5 font-mono">{{ (data.consultaTtaip ? data.apelacionFecha : data.fechaPresentacion) || 'Fecha no informada' }}</div>
                 </div>
               </div>
             </div>
 
             <div class="rounded-lg p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-              <div class="eyebrow" style="color: var(--brand-700)">Asunto</div>
-              <p class="text-sm text-foreground/85 mt-1.5 leading-relaxed">{{ data.asunto }}</p>
+              <div class="eyebrow" style="color: var(--brand-700)">Detalle del pedido</div>
+              <p class="text-sm text-foreground/85 mt-1.5 leading-relaxed">El asunto y el contenido del pedido no forman parte de esta consulta pública. Consúltelos en el panel del administrado con acceso autorizado.</p>
             </div>
 
             <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
-              <div class="flex items-center justify-between mb-1">
-                <div class="eyebrow">Solicitante (Administrado)</div>
-                <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-brand-50 text-brand-700 border border-brand-200">{{ data.tipoPersona }}</span>
-              </div>
-              <p class="text-sm text-foreground mt-1 font-mono">{{ data.ciudadano }}</p>
-              <p class="text-[11px] text-muted-foreground mt-1 italic">Datos parcialmente ocultos por privacidad</p>
+              <div class="eyebrow">Solicitante · resumen público</div>
+              <p class="text-sm text-foreground mt-1 font-mono">{{ data.ciudadano || 'Identificación enmascarada no informada' }}</p>
+              <p class="text-[11px] text-muted-foreground mt-1 italic">Identificación enmascarada proporcionada por la consulta pública; no se deduce el tipo de persona.</p>
             </div>
+            @if (data.apelacionExpediente && (!data.consultaTtaip || data.expedienteSaip || data.resolucionResultado)) {
+              <div class="rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border)">
+                @if (!data.consultaTtaip) {
+                  <h3 class="eyebrow">Apelación vinculada</h3>
+                  <p class="code-chip mt-2">{{ data.apelacionExpediente }}</p>
+                  <div class="mt-2"><app-status-badge [status]="data.apelacionEstado || 'Por confirmar'"></app-status-badge></div>
+                } @else if (data.expedienteSaip) {
+                  <h3 class="eyebrow">Solicitud SAIP vinculada</h3>
+                  <p class="code-chip mt-2">{{ data.expedienteSaip }}</p>
+                }
+                @if (data.resolucionResultado) {
+                  <div class="flex items-center flex-wrap gap-2 mt-2">Resultado <app-status-badge [status]="data.resolucionResultado"></app-status-badge></div>
+                }
+              </div>
+            }
           </div>
         </section>
 
         <section class="form-shell">
           <div class="form-section-header">
             <span class="eyebrow">Historial</span>
-            <div class="form-section-title flex items-center gap-2">
-              <svg lucideClock class="w-5 h-5" style="color: var(--brand-700)"></svg>
-              Trazabilidad del tramite
-            </div>
+            <h3 class="form-section-title flex items-center gap-2">
+              <svg aria-hidden="true" lucideClock class="w-5 h-5" style="color: var(--brand-700)"></svg>
+              Fechas de registros disponibles
+            </h3>
           </div>
           <div class="p-6 md:p-7">
-            <div class="reference-timeline">
-              @for (item of data.timeline; track item.title + item.date; let isLast = $last) {
-                <article class="reference-timeline-item">
-                  @if (!isLast) {
-                    <span [class]="timelineLineClass(item.status)" aria-hidden="true"></span>
-                  }
-                  <div [class]="timelineIconShellClass(item)">
-                    @switch (item.icon) {
-                      @case ('mail') {
-                        <svg lucideMail class="w-5 h-5"></svg>
-                      }
-                      @case ('search') {
-                        <svg lucideSearch class="w-5 h-5"></svg>
-                      }
-                      @case ('filecheck') {
-                        <svg lucideFileCheck class="w-5 h-5"></svg>
-                      }
-                      @case ('gavel') {
-                        <svg lucideGavel class="w-5 h-5"></svg>
-                      }
-                      @case ('scale') {
-                        <svg lucideScale class="w-5 h-5"></svg>
-                      }
-                      @default {
-                        <svg lucideCheckCircle2 class="w-5 h-5"></svg>
-                      }
-                    }
-                  </div>
-                  <div class="flex-1 pb-6">
-                    <div [class]="timelineCardClass(item.status)">
-                      <div class="flex items-start justify-between gap-3">
-                        <div class="flex-1">
-                          <h4 class="text-sm font-medium" [class.text-muted-foreground]="item.status === 'pending'">{{ item.title }}</h4>
-                          <p class="text-sm mt-1" [class.reference-timeline-pending-copy]="item.status === 'pending'">{{ item.description }}</p>
-                        </div>
-                        <span [class]="timelineDateClass(item.status)">{{ item.date }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              }
-            </div>
+            @if (data.timeline.length) { <app-timeline [events]="data.timeline"></app-timeline> }
+            @else { <p role="status" class="text-sm text-muted-foreground">No se recibieron fechas válidas para mostrar registros. Esto no confirma ausencia de actuaciones.</p> }
+            <p class="text-xs text-muted-foreground mt-2">Este resumen no incluye el historial completo. Registrar una respuesta o resolución no acredita entrega, notificación eficaz, firma ni emisión documental verificadas. No se calculan plazos en esta pantalla.</p>
           </div>
         </section>
 
-        <section class="rounded-lg p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style="background: linear-gradient(135deg, var(--brand-subtle), var(--card) 60%); border: 1px solid var(--brand-200)">
+        <section class="consulta-details rounded-lg p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <span class="eyebrow" style="color: var(--brand-700)">Necesita mas detalle</span>
-            <h4 class="font-display mt-1" style="font-size: 20px; letter-spacing: -0.015em">Inicie sesion para acceso completo</h4>
-            <p class="text-sm text-muted-foreground mt-1">Revise documentos adjuntos, respuestas y acciones sobre su expediente.</p>
+            <span class="eyebrow" style="color: var(--brand-700)">¿Necesita más detalle?</span>
+            <h3 class="font-display mt-1 consulta-feedback-title">Acceda al panel del administrado</h3>
+            <p class="text-sm text-muted-foreground mt-1">Inicie sesión para consultar únicamente los expedientes y documentos que su cuenta tenga autorizados. Conocer un código no concede acceso.</p>
           </div>
           <a routerLink="/login" class="btn-brand whitespace-nowrap">
-            Iniciar sesion
-            <svg lucideArrowRight class="w-4 h-4"></svg>
+            Iniciar sesión
+            <svg aria-hidden="true" lucideArrowRight class="w-4 h-4"></svg>
           </a>
         </section>
       </div>
     }
 
-    @if (!resultado() && !noEncontrado() && !buscando()) {
+    @if (estadoConsulta() === 'inicial') {
       <section
         class="grid md:grid-cols-3 gap-4"
         data-motion-stagger
@@ -227,28 +241,28 @@
         <article class="form-shell" data-motion-item>
           <div class="p-6 text-center">
             <div class="w-11 h-11 rounded-lg mx-auto mb-4 flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
-              <svg lucideEye class="w-5 h-5 text-[var(--brand-700)]"></svg>
+              <svg aria-hidden="true" lucideEye class="w-5 h-5 text-[var(--brand-700)]"></svg>
             </div>
-            <h4 class="font-display" style="font-size: 17px; letter-spacing: -0.012em">Consulta publica</h4>
-            <p class="text-sm text-muted-foreground mt-1.5 leading-relaxed">Sin iniciar sesion, vea el estado basico de cualquier expediente.</p>
+            <h2 class="font-display consulta-info-title">Consulta pública</h2>
+            <p class="text-sm text-muted-foreground mt-1.5 leading-relaxed">Consulte el resumen de una solicitud SAIP o una apelación TTAIP con su número de expediente.</p>
           </div>
         </article>
         <article class="form-shell" data-motion-item>
           <div class="p-6 text-center">
             <div class="w-11 h-11 rounded-lg mx-auto mb-4 flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
-              <svg lucideClock class="w-5 h-5 text-[var(--info)]"></svg>
+              <svg aria-hidden="true" lucideClock class="w-5 h-5 text-[var(--info)]"></svg>
             </div>
-            <h4 class="font-display" style="font-size: 17px; letter-spacing: -0.012em">Seguimiento en tiempo real</h4>
-            <p class="text-sm text-muted-foreground mt-1.5 leading-relaxed">Trazabilidad completa con eventos fechados y estado actual.</p>
+            <h2 class="font-display consulta-info-title">Fechas informadas</h2>
+            <p class="text-sm text-muted-foreground mt-1.5 leading-relaxed">Se muestran solo registros y fechas recibidos. El resumen no sustituye el historial completo.</p>
           </div>
         </article>
         <article class="form-shell" data-motion-item>
           <div class="p-6 text-center">
             <div class="w-11 h-11 rounded-lg mx-auto mb-4 flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
-              <svg lucideShield class="w-5 h-5 text-[var(--gold-dark)]"></svg>
+              <svg aria-hidden="true" lucideShield class="w-5 h-5 text-[var(--gold-dark)]"></svg>
             </div>
-            <h4 class="font-display" style="font-size: 17px; letter-spacing: -0.012em">Datos protegidos</h4>
-            <p class="text-sm text-muted-foreground mt-1.5 leading-relaxed">La identidad del solicitante se muestra parcialmente por privacidad.</p>
+            <h2 class="font-display consulta-info-title">Acceso al expediente</h2>
+            <p class="text-sm text-muted-foreground mt-1.5 leading-relaxed">Los documentos y las acciones del expediente requieren acceso autenticado y autorización.</p>
           </div>
         </article>
       </section>

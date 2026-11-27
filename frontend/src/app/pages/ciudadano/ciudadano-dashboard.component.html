@@ -1,4 +1,4 @@
-<div class="saip-page min-h-screen bg-background">
+<div class="saip-page citizen-dashboard min-h-screen bg-background" [attr.aria-busy]="loading()">
   <!-- ── HERO ────────────────────────────────────────────────────────── -->
   <div class="relative bg-paper border-b border-border overflow-hidden">
     <div class="absolute top-0 right-0 w-[480px] h-[480px] rounded-full opacity-[0.05] -translate-y-1/3 translate-x-1/4 pointer-events-none" style="background: radial-gradient(circle, var(--brand-600), transparent 70%)"></div>
@@ -7,6 +7,7 @@
     <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
       <div class="flex items-center gap-2 mb-2">
         <span class="eyebrow !mb-0">Mi espacio ciudadano · Ley de Transparencia</span>
+        @if (ciudadanoId() > 0) {
         @if (tipoPersona() === 'JURIDICA') {
           <span class="bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
             <svg lucideBuilding2 class="w-3 h-3"></svg> Persona Jurídica
@@ -16,15 +17,16 @@
             <svg lucideUser class="w-3 h-3"></svg> Persona Natural
           </span>
         }
+        }
       </div>
 
-      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mt-1">
-        <div>
-          <h1 class="font-display" style="font-size: clamp(30px, 3.4vw, 44px); line-height: 1.05; letter-spacing: -0.025em">
+      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-5 mt-1">
+        <div class="min-w-0 flex-1">
+          <h1 class="font-display break-words" style="font-size: clamp(32px, 3.6vw, 46px); line-height: 1.05; letter-spacing: -0.025em">
             @if (tipoPersona() === 'JURIDICA') {
-              Bienvenido(a), <span class="italic text-brand-700 dark:text-brand-400">{{ razonSocial() || nombreUsuario() }}</span>
+              Bienvenido(a), <span class="italic" style="color: var(--brand-700)">{{ razonSocial() || nombreUsuario() }}</span>
             } @else {
-              Bienvenido(a), <span class="italic text-brand-700 dark:text-brand-400">{{ nombreCompleto() || nombreUsuario() }}</span>
+              Bienvenido(a), <span class="italic" style="color: var(--brand-700)">{{ nombreCompleto() || nombreUsuario() }}</span>
             }
           </h1>
           <div class="mt-2 text-xs font-mono text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -38,28 +40,18 @@
               @if (dni()) { <span><strong class="text-foreground font-semibold">DNI:</strong> {{ dni() }}</span> }
             }
           </div>
-          <p class="text-[var(--muted-foreground)] mt-2 max-w-2xl text-sm">{{ resumenActivasTexto() }}</p>
+          <p class="text-[var(--muted-foreground)] mt-2 max-w-2xl text-sm">{{ loading() ? 'Consultando sus solicitudes…' : error() ? 'Su información no está disponible en esta consulta.' : resumenActivasTexto() }}</p>
         </div>
-        <div class="flex items-center gap-3 self-start md:self-auto">
-          <button type="button" (click)="startTour()" class="btn-ghost-brand h-10 px-4 inline-flex items-center gap-2 text-sm font-medium whitespace-nowrap relative" title="Ver tutorial guiado">
+        <div class="citizen-actions flex flex-wrap sm:flex-nowrap items-center gap-3 shrink-0 self-start">
+          <button type="button" (click)="profileDialog.abrir()" aria-haspopup="dialog" class="btn-ghost-brand !px-4 !py-3 inline-flex items-center gap-2"><svg lucideUserPen class="w-4 h-4" aria-hidden="true"></svg>Mi perfil</button>
+          <button type="button" (click)="startTour()" class="btn-ghost-brand !px-4 !py-3 inline-flex items-center gap-2 text-sm font-medium whitespace-nowrap" title="Ver tutorial guiado">
             <svg lucideCompass class="w-4 h-4"></svg>
             <span>Ver tutorial</span>
-            @if (isFirstVisit) {
-              <span class="relative flex h-2 w-2 ml-0.5" title="Tutorial disponible">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-              </span>
-            }
           </button>
-          @if (tieneApelables()) {
-            <a routerLink="/ciudadano/nueva-apelacion" class="btn-ghost-brand h-10 px-4 inline-flex items-center gap-2 text-sm font-medium">
-              <svg lucideScale class="w-4 h-4"></svg>
-              Apelar
-            </a>
-          }
-          <a data-tour="nueva" routerLink="/ciudadano/nueva-saip" class="btn-brand h-10 px-6 inline-flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
+          <a routerLink="/ciudadano/borradores" class="btn-ghost-brand !px-4 !py-3 inline-flex items-center gap-2 text-sm font-medium whitespace-nowrap">Borradores</a>
+          <a data-tour="nueva" routerLink="/ciudadano/nueva-saip" class="btn-brand !px-6 !py-3 inline-flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
             <svg lucidePlus class="w-4 h-4"></svg>
-            Pedir informacion
+            Pedir información
           </a>
         </div>
       </div>
@@ -69,18 +61,14 @@
   <!-- ── BODY ────────────────────────────────────────────────────────── -->
   <div class="max-w-7xl mx-auto px-6 md:px-10 py-10">
     @if (loading()) {
-      <div class="text-center py-16">
-        <div class="spinner spinner-lg mx-auto"></div>
-        <p class="mt-4 text-[var(--niebla)] text-sm">Cargando solicitudes...</p>
-      </div>
+      <app-yaiku-cargando mensaje="Cargando solicitudes..." />
     } @else if (error()) {
-      <div class="alert alert-error p-6 text-center">
+      <div role="alert" class="alert alert-error p-6 text-center">
         <p>{{ error() }}</p>
-        <button (click)="cargarDatos()" class="btn-brand mt-4">Reintentar</button>
+        <button type="button" (click)="cargarDatos()" class="btn-brand mt-4">Reintentar</button>
       </div>
     } @else {
-      <div class="space-y-8">
-
+      <div class="space-y-8" style="overflow-anchor: none">
         <!-- ── PIPELINE: Mis solicitudes de un vistazo ──────────────── -->
         <section data-tour="resumen">
           <div class="flex items-baseline justify-between mb-3">
@@ -90,26 +78,20 @@
             </span>
             <span class="text-xs text-muted-foreground hidden md:inline">Toque una etapa para filtrar la lista</span>
           </div>
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
             @for (stage of pipeline(); track stage.key; let last = $last) {
               <button type="button"
                 (click)="stage.count > 0 && selectStage(stage.key)"
                 [disabled]="stage.count === 0"
                 [attr.aria-pressed]="selectedStageKey() === stage.key"
-                class="relative rounded-lg p-4 text-left transition-all overflow-hidden group"
-                [class.opacity-50]="stage.count === 0"
-                [class.pointer-events-none]="stage.count === 0"
-                [class.cursor-not-allowed]="stage.count === 0"
-                [class.border-dashed]="stage.count === 0"
-                [class.bg-slate-50\/40]="stage.count === 0"
-                [class.dark:bg-slate-900\/20]="stage.count === 0"
-                [class.hover:-translate-y-0.5]="stage.count > 0"
-                [style.background]="selectedStageKey() === stage.key ? 'var(--brand-subtle)' : (stage.count === 0 ? 'transparent' : 'var(--card)')"
-                [style.border]="'1px solid ' + (selectedStageKey() === stage.key ? 'var(--brand-700)' : 'var(--border)')"
-                [style.box-shadow]="selectedStageKey() === stage.key ? 'var(--shadow-md)' : 'var(--shadow-sm)'"
+                class="relative rounded-lg p-4 text-left transition-all overflow-hidden group disabled:cursor-not-allowed enabled:hover:-translate-y-0.5"
+                [style.background]="selectedStageKey() === stage.key ? stage.bg : 'var(--card)'"
+                [style.border]="'1.5px solid ' + (selectedStageKey() === stage.key ? stage.color : 'var(--border)')"
+                [style.box-shadow]="selectedStageKey() === stage.key ? '0 0 0 3px ' + stage.bg : 'var(--shadow-sm)'"
+                [style.opacity]="stage.count > 0 ? 1 : 0.6"
               >
                 @if (selectedStageKey() === stage.key) {
-                  <span class="absolute top-0 left-0 right-0 h-[3px]" [style.background]="stage.color"></span>
+                  <span class="absolute left-0 top-0 bottom-0 w-1" [style.background]="stage.color"></span>
                 }
                 @if (!last) {
                   <span class="hidden lg:flex absolute top-1/2 -right-[10px] -translate-y-1/2 z-10 w-5 h-5 rounded-full items-center justify-center" style="background: var(--background); border: 1px solid var(--border)">
@@ -120,6 +102,7 @@
                   <span class="font-display font-mono text-[11px] tracking-widest" [style.color]="stage.color" style="letter-spacing: 0.05em">{{ stage.num }}</span>
                   @switch (stage.iconName) {
                     @case ('layers') { <svg lucideLayers class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
+                    @case ('alertTriangle') { <svg lucideAlertTriangle class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
                     @case ('hourglass') { <svg lucideHourglass class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
                     @case ('mailCheck') { <svg lucideMailCheck class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
                     @case ('scale') { <svg lucideScale class="w-4 h-4" [style.color]="stage.color" [style.opacity]="stage.count > 0 ? 1 : 0.5"></svg> }
@@ -130,78 +113,113 @@
                 <div class="font-display" style="font-size: 26px; line-height: 1; letter-spacing: -0.025em" [style.color]="stage.count > 0 ? stage.color : 'var(--muted-foreground)'">
                   {{ padCount(stage.count) }}
                 </div>
-                <div class="text-xs font-semibold mt-1.5" style="color: var(--foreground)">{{ stage.label }}</div>
+                <div class="text-xs font-semibold mt-1.5" [style.color]="selectedStageKey() === stage.key ? stage.color : 'var(--foreground)'">{{ stage.label }}</div>
                 <div class="text-[10px] tracking-wide text-muted-foreground mt-0.5">{{ stage.desc }}</div>
               </button>
             }
           </div>
-        </section>
 
-        <!-- ── SMART SEARCH ─────────────────────────────────────────── -->
-        <section data-tour="buscar">
-          <div class="relative rounded-xl overflow-visible" [style.background]="'var(--card)'" [style.border]="'1px solid ' + (busquedaEnfocada() ? 'var(--brand-300)' : 'var(--border)')" [style.boxShadow]="busquedaEnfocada() ? '0 0 0 4px var(--brand-subtle), var(--shadow-sm)' : 'var(--shadow-sm)'">
-            <span class="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style="background: linear-gradient(180deg, var(--brand-700), var(--gold))"></span>
-            <div class="flex items-center gap-3 px-5 py-4">
-              <svg class="w-5 h-5 shrink-0" [style.color]="busquedaEnfocada() ? 'var(--brand-700)' : 'var(--muted-foreground)'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-              <div class="flex-1 min-w-0">
-                <span class="eyebrow block" [style.color]="busquedaEnfocada() ? 'var(--brand-700)' : ''">Buscar mi expediente</span>
-                <input type="text" [(ngModel)]="busqueda" (focus)="onSearchFocus()" (blur)="onSearchBlur()" (input)="onSearchInput()" placeholder="Escriba la entidad, el tema o el numero (ej: SUNAT, educacion, SAIP-2025...)" class="w-full bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground/70 mt-0.5" style="font-size: 15px" />
+          <!-- BUSCADOR GLOBAL — independiente del filtro de etapa -->
+          <div id="buscador-global-container" class="relative mt-3">
+            <div
+              class="rounded-xl flex items-center gap-3 px-4 py-3.5 transition-shadow"
+              [style.background]="'var(--card)'"
+              [style.border]="'1px solid ' + (globalOpen() ? 'var(--brand-700)' : 'var(--border)')"
+              style="border-left: 3px solid var(--brand-700)"
+              [style.box-shadow]="globalOpen() ? 'var(--shadow-md)' : 'var(--shadow-sm)'"
+              [style.border-bottom-left-radius]="globalOpen() ? '0' : undefined"
+              [style.border-bottom-right-radius]="globalOpen() ? '0' : undefined"
+            >
+              <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                <svg lucideSearch class="w-4 h-4" style="color: var(--brand-700)"></svg>
               </div>
-              @if (busqueda.trim()) {
-                <button (click)="limpiarBusqueda()" class="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[color:var(--muted)] transition-colors shrink-0" type="button">
-                  <svg class="w-4 h-4 text-[var(--muted-foreground)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M18 6 6 18M6 6l12 12"/></svg>
-                </button>
+              <div class="flex-1 min-w-0">
+                <span class="eyebrow block">Buscar mi expediente</span>
+                <input
+                  type="text"
+                  [value]="globalQuery()"
+                  (input)="onGlobalSearchChange($any($event.target).value)"
+                  (keydown)="onGlobalKeyDown($event)"
+                  placeholder="Estado, expediente SAIP, expediente del Tribunal, entidad o tema"
+                  class="w-full bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground/70 mt-0.5"
+                  aria-label="Buscar entre todas mis solicitudes"
+                  [attr.aria-expanded]="globalOpen()"
+                  role="combobox"
+                  aria-controls="buscador-global-resultados" aria-autocomplete="list" autocomplete="off" [attr.aria-activedescendant]="globalOpen() && globalResults().length ? 'citizen-result-' + globalResults()[globalIdx()]?.id : null" #globalSearch
+                />
+              </div>
+              @if (globalOpen()) {
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="code-chip hidden sm:inline-flex" style="font-size: 11px">
+                    {{ globalResults().length }} resultado{{ globalResults().length === 1 ? '' : 's' }}
+                  </span>
+                  <button
+                    type="button"
+                    (click)="clearGlobalSearch(); globalSearch.focus()"
+                    aria-label="Limpiar búsqueda"
+                    class="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-[color:var(--muted)] transition-colors"
+                  >
+                    <svg lucideX class="w-4 h-4"></svg>
+                  </button>
+                </div>
+              } @else {
+                <span class="code-chip shrink-0 hidden sm:inline-flex" style="font-size: 11px">
+                  {{ resumen()?.total ?? todasSolicitudes().length }} en total
+                </span>
               }
-              <span class="hidden md:inline-flex items-center gap-1 text-[10px] font-mono tracking-wider text-[var(--muted-foreground)] border border-[var(--border)] rounded px-1.5 py-0.5">
-                {{ busqueda.trim() ? coincidenciasBusqueda().length + ' resultado(s)' : todasSolicitudes().length + ' en total' }}
-              </span>
             </div>
 
-            @if (mostrarResultadosBusqueda() && busqueda.trim()) {
-              <div class="absolute left-0 right-0 top-full mt-2 rounded-xl overflow-hidden z-30" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)">
-                @if (coincidenciasBusqueda(); as resultados) {
-                  @if (resultados.length === 0) {
-                    <div class="p-6 text-center">
-                      <div class="w-10 h-10 mx-auto rounded-full flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
-                        <svg class="w-4 h-4" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            @if (globalOpen()) {
+              <div
+                id="buscador-global-resultados"
+                role="listbox"
+                class="absolute left-0 right-0 top-full z-30 rounded-b-xl overflow-hidden max-h-[340px] overflow-y-auto"
+                style="background: var(--card); border: 1px solid var(--brand-700); border-top: none; box-shadow: var(--shadow-lg, var(--shadow-md))"
+              >
+                @if (globalResults().length === 0) {
+                  <div class="px-4 py-8 text-center">
+                    <svg lucideInbox class="w-6 h-6 mx-auto text-muted-foreground mb-2"></svg>
+                    <p class="text-sm text-muted-foreground">
+                      Ningún expediente coincide con «<span class="font-semibold text-foreground">{{ globalQuery() }}</span>».
+                    </p>
+                    <p class="text-xs text-muted-foreground mt-1">Pruebe con el nombre de la entidad o el número de expediente.</p>
+                  </div>
+                } @else {
+                  @for (solicitud of globalResults(); track solicitud.id; let idx = $index) {
+                    <button
+                      type="button"
+                      role="option"
+                      [attr.aria-selected]="idx === globalIdx()" [id]="'citizen-result-' + solicitud.id"
+                      (mouseenter)="globalIdx.set(idx)"
+                      (click)="abrirExpediente(solicitud)"
+                      class="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors border-t border-[var(--border)] first:border-t-0"
+                      [style.background]="idx === globalIdx() ? 'var(--brand-subtle)' : 'transparent'"
+                    >
+                      <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                        <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
                       </div>
-                      <p class="text-sm text-foreground/85">No encontramos expedientes con "<span class="font-semibold">{{ busqueda }}</span>"</p>
-                      <p class="text-xs text-[var(--muted-foreground)] mt-1">Pruebe con otra entidad, numero o tema.</p>
-                    </div>
-                  } @else {
-                    <div class="max-h-[360px] overflow-y-auto custom-scrollbar">
-                      @for (resultado of resultados; track resultado.id) {
-                        <button type="button" (mousedown)="$event.preventDefault()" (click)="seleccionarCoincidencia(resultado)" class="w-full px-5 py-3 flex items-center gap-3 transition-colors hover:bg-[color:var(--brand-subtle)] text-left border-t border-[var(--border)] first:border-t-0">
-                          <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle)">
-                            <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700)"></svg>
-                          </div>
-                          <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                              <span class="code-chip">{{ resultado.expediente }}</span>
-                              <span [class]="'badge ' + getEstadoBadgeClass(resultado.estado)">{{ formatoEstado(resultado.estado) }}</span>
-                            </div>
-                            <div class="text-sm text-foreground/85 mt-1 truncate">{{ resultado.entidadNombre }} · {{ resultado.asunto }}</div>
-                          </div>
-                          <svg class="w-4 h-4 text-[var(--muted-foreground)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
-                        </button>
-                      }
-                    </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="code-chip" style="font-size: 11px"><span aria-hidden="true">SAIP</span> {{ solicitud.expediente }}</span>
+                          @if (solicitud.apelacion?.expediente) {
+                            <span class="code-chip code-chip-alt" style="font-size: 11px"><span aria-hidden="true">TTAIP</span> {{ solicitud.apelacion.expediente }}</span>
+                          }
+                          <app-status-badge [status]="estadoInsignia(solicitud)" [raw]="denegatoriaEncauzada(solicitud)" [toneOverride]="denegatoriaEncauzada(solicitud) ? 'rose' : null"></app-status-badge>
+                        </div>
+                        <div class="text-sm text-foreground mt-1 truncate" [title]="solicitud.entidadNombre + ' · ' + solicitud.asunto">
+                          <span class="font-semibold">{{ solicitud.entidadNombre }}</span> · {{ solicitud.asunto }}
+                        </div>
+                      </div>
+                      <svg lucideChevronRight class="w-4 h-4 text-muted-foreground shrink-0"></svg>
+                    </button>
                   }
+                  <div class="px-4 py-2 text-[11px] text-muted-foreground flex items-center gap-3" style="background: var(--muted); border-top: 1px solid var(--border)">
+                    <span>↑ ↓ para moverse</span><span>Enter para abrir</span><span>Esc para cerrar</span>
+                  </div>
                 }
               </div>
             }
           </div>
-
-          @if (!busqueda.trim()) {
-            <div class="flex items-center gap-2 mt-3 flex-wrap">
-              <span class="text-[11px] uppercase tracking-wider text-[var(--muted-foreground)]">Filtros rapidos:</span>
-              @for (filtro of filtrosRapidos; track filtro) {
-                <button type="button" (click)="aplicarFiltroRapido(filtro)" class="text-xs px-3 py-1 rounded-full transition-colors hover:bg-[color:var(--brand-subtle)] hover:text-[color:var(--brand-700)]" style="background: var(--card); border: 1px solid var(--border)">
-                  {{ filtro }}
-                </button>
-              }
-            </div>
-          }
         </section>
 
 
@@ -213,7 +231,7 @@
                 <svg lucideSparkles class="w-3 h-3" style="color: var(--gold)"></svg>
                 Lo que debe hacer hoy
               </span>
-              <p class="text-xs text-muted-foreground mt-1">La gestion mas urgente entre todas sus solicitudes. Atienda esto primero.</p>
+              <p class="text-xs text-muted-foreground mt-1">La gestión más urgente entre todas sus solicitudes. Atienda esto primero.</p>
             </div>
             <section id="lo-que-debe-hacer-hoy" class="relative overflow-hidden rounded-xl" [class.action-focus-pulse]="accionResaltada()" [style.background]="accion.toneBg" [style.border]="'1px solid ' + accion.toneSoft" style="box-shadow: var(--shadow-sm)">
               <span class="absolute left-0 top-0 bottom-0 w-1" [style.background]="'linear-gradient(180deg, ' + accion.toneColor + ', var(--gold))'"></span>
@@ -231,14 +249,10 @@
                 </div>
 
                 <div class="min-w-0">
-                  @if (esSubsanacionVencida(solicitudPrincipal())) {
-                    <span class="bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400 font-bold text-xs px-2.5 py-1 rounded-md border border-red-300 dark:border-red-800 inline-block mb-1">PLAZO VENCIDO</span>
-                  } @else {
-                    <span class="eyebrow flex items-center gap-2" [style.color]="accion.toneColor">
-                      <svg lucideBell class="w-3 h-3"></svg>
-                      {{ accion.eyebrow }}
-                    </span>
-                  }
+                  <span class="eyebrow flex items-center gap-2" [style.color]="accion.toneColor">
+                    <svg lucideBell class="w-3 h-3"></svg>
+                    {{ accion.eyebrow }}
+                  </span>
                   <h2 class="font-display mt-1.5" style="font-size: clamp(22px, 2.2vw, 28px); letter-spacing: -0.02em; line-height: 1.15">{{ accion.titulo }}</h2>
                   <div class="flex items-center gap-2 mt-2 flex-wrap">
                     <!-- SAIP chip -->
@@ -256,31 +270,18 @@
                     <span class="text-xs text-[var(--muted-foreground)]">·</span>
                     <span class="text-sm text-foreground/85 truncate">{{ accion.entidad }}</span>
                   </div>
-                  @if (esSubsanacionVencida(solicitudPrincipal())) {
-                    <p class="text-sm text-foreground/80 mt-2 leading-relaxed max-w-2xl">El plazo legal de 2 días hábiles ha vencido. Su recurso de apelación se resolverá como tener por no presentado.</p>
-                  } @else {
-                    <p class="text-sm text-foreground/80 mt-2 leading-relaxed max-w-2xl">{{ accion.detalle }}</p>
-                  }
+                  <p class="text-sm text-foreground/80 mt-2 leading-relaxed max-w-2xl">{{ accion.detalle }}</p>
                 </div>
 
                 <div class="flex items-center gap-5 md:flex-col md:items-end md:gap-3">
-                  @if (esSubsanacionVencida(solicitudPrincipal())) {
-                    <div class="text-right md:order-2">
-                      <span class="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Plazo Vencido</span>
-                    </div>
-                    <button disabled class="opacity-50 cursor-not-allowed bg-slate-500 text-white font-medium px-4 py-2 rounded-lg text-sm inline-flex items-center gap-2 md:order-1 whitespace-nowrap">
-                      <span>Plazo Vencido</span>
-                    </button>
-                  } @else {
-                    <div class="text-right md:order-2">
-                      <div class="font-display" [style.color]="accion.toneColor" style="font-size: 44px; line-height: 0.9; letter-spacing: -0.03em">{{ accion.metricValue }}</div>
-                      <div class="text-[10px] tracking-widest uppercase text-[var(--muted-foreground)] mt-1.5">{{ accion.metricUnit }}</div>
-                    </div>
-                    <a [routerLink]="accion.route" [queryParams]="accion.queryParams || null" class="btn-brand !px-5 md:order-1 whitespace-nowrap inline-flex items-center gap-2">
-                      {{ accion.ctaLabel }}
-                      <svg lucideArrowRight class="w-4 h-4"></svg>
-                    </a>
-                  }
+                  <div class="text-right md:order-2">
+                    <div class="font-display" [style.color]="accion.toneColor" style="font-size: 44px; line-height: 0.9; letter-spacing: -0.03em">{{ accion.metricValue }}</div>
+                    <div class="text-[10px] tracking-widest uppercase text-[var(--muted-foreground)] mt-1.5">{{ accion.metricUnit }}</div>
+                  </div>
+                  <a [routerLink]="accion.route" [queryParams]="accion.queryParams || null" class="btn-brand !px-5 md:order-1 whitespace-nowrap inline-flex items-center gap-2">
+                    {{ accion.ctaLabel }}
+                    <svg lucideArrowRight class="w-4 h-4"></svg>
+                  </a>
                 </div>
               </div>
             </section>
@@ -288,8 +289,8 @@
         }
 
         <!-- ── ESTÁ VIENDO ESTA SOLICITUD (TIMELINE) ────────────────── -->
-        @if (solicitudPrincipal(); as principal) {
-          <section id="seccion-timeline" data-tour="detalle" class="form-shell overflow-hidden" style="scroll-margin-top: 96px">
+        @if (solicitudTrazada(); as principal) {
+          <section id="seccion-timeline" data-tour="detalle" class="form-shell overflow-hidden" style="scroll-margin-top: 7rem">
             <div class="form-section-header flex items-start gap-4">
               <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                 <svg lucideBuilding2 class="w-4.5 h-4.5 text-brand-700"></svg>
@@ -309,10 +310,10 @@
                     <!-- TTAIP chip -->
                     <span class="inline-flex items-center gap-1.5 rounded-md pl-0.5 pr-2 py-0.5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                       <span class="text-[9px] font-bold tracking-widest uppercase px-1.5 py-[3px] rounded" style="background: var(--brand-700); color: #fff">TTAIP</span>
-                      <span class="font-mono text-[11px] text-foreground/85">{{ principal.apelacion?.expediente }}</span>
+                      <span class="font-mono text-[11px] text-foreground/85">{{ principal.apelacion.expediente }}</span>
                     </span>
                   }
-                  <span [class]="'badge ' + getEstadoBadgeClass(principal.estado)">{{ formatoEstado(principal.estado) }}</span>
+                  <app-status-badge [status]="estadoInsignia(principal)" [raw]="denegatoriaEncauzada(principal)" [toneOverride]="denegatoriaEncauzada(principal) ? 'rose' : null"></app-status-badge>
                 </div>
                 <h3 class="font-display mt-2" style="font-size: 20px; letter-spacing: -0.015em; line-height: 1.25">{{ principal.asunto }}</h3>
                 <p class="text-sm text-[var(--muted-foreground)] mt-0.5">{{ principal.entidadNombre }} · presentada el {{ principal.fechaPresentacion | date:'dd/MM/yyyy' }}</p>
@@ -320,17 +321,18 @@
 
                 <!-- ¿Dónde está ahora? — location chip -->
                 @if (ubicacionPrincipal(); as ubic) {
-                  <div class="mt-3 inline-flex items-center gap-2.5 rounded-lg pl-2.5 pr-3.5 py-2" [style.border-left]="'3px solid ' + ubic.tone" style="background: var(--card); border: 1px solid var(--border)">
+                  <div class="mt-3 inline-flex max-w-full items-center gap-2.5 overflow-x-auto rounded-lg py-2 pl-2.5 pr-3.5 [scrollbar-width:thin]" [style.border-left]="'3px solid ' + ubic.tone" style="background: var(--card); border: 1px solid var(--border)">
                     @switch (ubic.iconName) {
                       @case ('gavel') { <svg lucideGavel class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
                       @case ('scale') { <svg lucideScale class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
                       @case ('mailCheck') { <svg lucideMailCheck class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
                       @case ('clock') { <svg lucideClock class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
+                      @case ('alertTriangle') { <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
                       @default { <svg lucideBuilding2 class="w-4 h-4 shrink-0" [style.color]="ubic.tone"></svg> }
                     }
                     <div class="leading-tight">
                       <div class="text-[10px] tracking-widest uppercase text-muted-foreground">¿Donde esta ahora?</div>
-                      <div class="text-sm font-semibold" [style.color]="ubic.tone">{{ ubic.label }}</div>
+                      <div class="whitespace-nowrap text-sm font-semibold" [style.color]="ubic.tone">{{ ubic.label }}</div>
                     </div>
                     <span class="text-[11px] text-muted-foreground border-l border-border pl-2.5 ml-1 self-stretch flex items-center">{{ ubic.instancia }}</span>
                   </div>
@@ -338,61 +340,83 @@
               </div>
             </div>
 
-            <div class="p-6 md:p-8">
-              <div class="relative">
-                <div class="hidden md:block absolute top-[18px] left-0 right-0 h-px" style="background: var(--border)"></div>
-                <div class="hidden md:block absolute top-[18px] left-0 h-px transition-all duration-700" [style.width.%]="timelineLineProgress()" style="background: linear-gradient(90deg, var(--brand-700), var(--gold))"></div>
-
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-5 md:gap-2 relative">
-                  @for (step of timelineDisplaySteps(); track step.key) {
-                    <div data-motion-item class="flex md:flex-col gap-3 md:gap-2 md:text-center">
-                      <div class="relative md:flex md:justify-center">
+            <div class="px-6 py-6 md:px-8 md:py-8">
+              <div class="overflow-x-auto overscroll-x-contain scroll-smooth pb-1 [scrollbar-width:thin]" tabindex="0" aria-label="Recorrido de la solicitud. Deslice horizontalmente para ver los pasos que no caben.">
+                <div class="relative inline-flex min-w-full">
+                  <div class="pointer-events-none absolute top-[18px] right-6 left-6 h-px" style="background: var(--border)" aria-hidden="true"></div>
+                  <ol aria-label="Seguimiento de la solicitud" class="relative flex min-w-full flex-nowrap items-start justify-between gap-1">
+                    @for (step of timelinePrincipal(); track step.key) {
+                      <li data-motion-item class="flex shrink-0 flex-col items-center gap-2 px-3 text-center" [attr.aria-current]="step.status === 'active' ? 'step' : null">
                         <div
-                          class="w-9 h-9 rounded-full flex items-center justify-center relative z-10 transition-all duration-300"
+                          class="relative z-10 flex h-9 w-9 items-center justify-center rounded-full transition-all duration-300"
                           [style.background]="timelineDotBackground(step.status)"
                           [style.border]="timelineDotBorder(step.status)"
                           [style.box-shadow]="timelineDotShadow(step.status)"
                         >
                           @if (step.status === 'done') {
-                            <svg lucideCheckCircle2 class="w-4 h-4 text-white"></svg>
+                            <svg lucideCheckCircle2 class="h-4 w-4 text-white"></svg>
                           } @else if (step.status === 'active') {
-                            <span class="w-2.5 h-2.5 rounded-full bg-white"></span>
+                            <span class="h-2.5 w-2.5 rounded-full bg-white"></span>
                           } @else if (step.status === 'skipped') {
-                            <span class="text-white text-xs font-bold leading-none">!</span>
+                            <span class="text-xs font-bold leading-none text-white">!</span>
                           } @else {
-                            <span class="w-1.5 h-1.5 rounded-full opacity-40" style="background: var(--muted-foreground)"></span>
+                            <span class="h-1.5 w-1.5 rounded-full opacity-40" style="background: var(--muted-foreground)"></span>
                           }
                         </div>
-                      </div>
-                      <div class="flex-1 md:flex-none">
-                        <div class="text-xs font-semibold tracking-tight" [style.color]="timelineLabelColor(step.status)">{{ step.label }}</div>
-                        @if (step.date) {
-                          <div class="font-mono text-[11px] text-[var(--muted-foreground)] mt-0.5">{{ step.date }}</div>
-                        }
-                        @if (step.meta) {
-                          <div class="text-[11px] mt-0.5" [style.color]="timelineMetaColor(step.status)">{{ step.meta }}</div>
-                        }
-                      </div>
-                    </div>
-                  }
+                        <div>
+                          <div class="whitespace-nowrap text-xs font-semibold tracking-tight" [style.color]="timelineLabelColor(step.status)">{{ step.label }}</div>
+                          @if (step.date) {
+                            <div class="mt-0.5 whitespace-nowrap font-mono text-[11px] text-[var(--muted-foreground)]">{{ step.date }}</div>
+                          }
+                          @if (step.meta) {
+                            <div class="mt-0.5 whitespace-nowrap text-[11px]" [style.color]="timelineMetaColor(step.status)">{{ step.meta }}</div>
+                          }
+                        </div>
+                      </li>
+                    }
+                  </ol>
                 </div>
               </div>
+
+              @if (precisionPrincipal(); as precision) {
+                <div class="mt-7 rounded-lg p-4 flex flex-wrap items-center gap-4" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
+                  <svg aria-hidden="true" lucideAlertTriangle class="w-5 h-5 shrink-0" style="color: var(--warning)"></svg>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium">Precisión de su solicitud</p>
+                    @if (precision.expediente) {
+                      <p class="mt-1 text-sm font-semibold" [style.color]="precision.indicador.tone">
+                        {{ precision.indicador.value }} · {{ precision.indicador.unit }}
+                      </p>
+                    }
+                    <p class="text-xs text-muted-foreground mt-1">
+                      @if (precision.fechaRegistrada) {
+                        Fecha registrada para precisar: {{ precision.fechaRegistrada }}.
+                      } @else if (precision.expediente) {
+                        Sin fecha registrada para precisar.
+                      } @else {
+                        El requerimiento no está disponible en este resumen. Consulte el expediente completo.
+                      }
+                    </p>
+                    @if (precision.expediente) {
+                      <p class="text-xs text-muted-foreground mt-1">El plazo legal se cuenta desde el día siguiente a la notificación válida. No se dispone de una fecha de notificación validada.</p>
+                    }
+                  </div>
+                  @if (precision.expediente) {
+                    <a [routerLink]="['/ciudadano/precision', precision.expediente]" class="btn-ghost-brand">Revisar precisión</a>
+                  }
+                </div>
+              }
 
               @if (plazoEntidadPrincipal(); as plazo) {
                 <div class="mt-7 rounded-lg p-4 flex items-center gap-4" [style.border-left]="'3px solid ' + plazo.tone" style="background: var(--card); border: 1px solid var(--border)">
                   <svg lucideClock class="w-5 h-5 shrink-0" [style.color]="plazo.tone"></svg>
                   <div class="flex-1 min-w-0">
-                    <div class="flex items-baseline justify-between gap-2 mb-1.5">
-                      <span class="text-sm font-medium">Plazo legal · 10 dias habiles</span>
-                      <span class="font-mono text-xs whitespace-nowrap" [style.color]="plazo.tone">
-                        {{ plazo.restantes }}d restantes · {{ plazo.pct }}%
-                      </span>
-                    </div>
-                    <div class="h-1.5 rounded-full overflow-hidden" style="background: var(--muted)">
-                      <div class="h-full rounded-full transition-all duration-700" [style.width.%]="plazo.pct" [style.background]="plazo.tone"></div>
+                    <div class="flex flex-wrap items-baseline justify-between gap-2">
+                      <span class="text-sm font-medium">Plazo de respuesta</span>
+                      <span class="font-mono text-xs" [style.color]="plazo.tone">{{ plazo.restantes === null ? 'No disponible' : (plazo.restantes === 0 ? 'Último día' : plazo.restantes + (plazo.restantes === 1 ? ' día hábil restante' : ' días hábiles restantes')) }}</span>
                     </div>
                     @if (plazo.fechaLimite) {
-                      <div class="text-[11px] text-[var(--muted-foreground)] mt-1">Vence el {{ plazo.fechaLimite }}</div>
+                      <div class="text-[11px] text-[var(--muted-foreground)] mt-1">Fecha límite: {{ plazo.fechaLimite }}</div>
                     }
                   </div>
                 </div>
@@ -401,14 +425,14 @@
               @if (subsanacionPrincipal(); as subsanacion) {
                 <div class="mt-7 rounded-lg p-5 flex flex-col md:flex-row md:items-center gap-5" [style.background]="subsanacion.vencido ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), var(--card) 70%)' : 'linear-gradient(135deg, var(--brand-subtle), var(--card) 70%)'" [style.border]="'1px solid ' + (subsanacion.vencido ? 'var(--destructive)' : 'var(--brand-200)')">
                   <div class="flex items-center gap-5">
-                    @if (subsanacion.vencido || subsanacion.dias <= 0) {
+                    @if (subsanacion.vencido) {
                       <div class="text-center pr-5 border-r border-[var(--border)] min-w-[90px]">
                         <div class="text-center font-bold text-red-600 dark:text-red-400 text-base leading-tight">PLAZO<br><span class="text-xs font-normal">VENCIDO</span></div>
                       </div>
                     } @else {
                       <div class="text-center pr-5 border-r border-[var(--border)]">
-                        <div class="font-display" style="font-size: 40px; line-height: 1; color: var(--brand-700)">{{ subsanacion.dias }}</div>
-                        <div class="text-[10px] tracking-widest uppercase text-[var(--muted-foreground)] mt-1">dia hab.</div>
+                        <div class="font-display" style="font-size: 40px; line-height: 1; color: var(--brand-700)">{{ subsanacion.dias ?? '—' }}</div>
+                        <div class="text-[10px] tracking-widest uppercase text-[var(--muted-foreground)] mt-1">{{ subsanacion.pendiente ? 'inicio pendiente' : subsanacion.dias === null ? 'plazo no disponible' : 'día háb.' }}</div>
                       </div>
                     }
                     <div class="text-center pr-5 border-r border-[var(--border)]">
@@ -418,22 +442,24 @@
                   </div>
                   <div class="flex-1">
                     <div class="flex items-center gap-2 flex-wrap mb-1">
-                      @if (subsanacion.vencido || subsanacion.dias <= 0) {
+                      @if (subsanacion.vencido) {
                         <span class="text-red-700 dark:text-red-400 font-bold text-xs uppercase tracking-wider">PLAZO DE SUBSANACIÓN VENCIDO</span>
                       } @else {
                         <span class="eyebrow" style="color: var(--brand-700)">Acción requerida del Tribunal</span>
                       }
                     </div>
                     <p class="text-sm text-foreground/85">
-                      @if (subsanacion.vencido || subsanacion.dias <= 0) {
-                        El plazo de 2 días hábiles para responder observaciones ha vencido. El recurso se tendrá por no presentado conforme a ley.
+                      @if (subsanacion.vencido) {
+                        El plazo informado para este requerimiento ha vencido. Consulte el estado del recurso y las actuaciones registradas.
+                      } @else if (subsanacion.pendiente) {
+                        <span role="status">Plazo pendiente de inicio: falta acreditar la notificación eficaz de este requerimiento al recurrente. Consulte el requerimiento y su estado actual.</span>
                       } @else {
-                        Responda {{ subsanacion.observaciones }} para que su apelación pase a la siguiente calificación. Caso contrario, se tendrá por no presentada.
+                        Revise las observaciones del requerimiento registrado antes de presentar su subsanación.
                       }
                     </p>
                   </div>
                   @if (subsanacion.expediente) {
-                    @if (subsanacion.vencido || subsanacion.dias <= 0) {
+                    @if (subsanacion.vencido) {
                       <button disabled class="opacity-50 cursor-not-allowed bg-slate-500 text-white font-medium px-4 py-2 rounded-lg text-sm inline-flex items-center gap-1.5 whitespace-nowrap">
                         <svg lucideLock class="w-4 h-4"></svg>
                         <span>Plazo Vencido</span>
@@ -453,13 +479,13 @@
                   <svg lucideFileText class="w-4 h-4"></svg>
                   Ver expediente completo
                 </a>
-                @if (esSolicitudAtendida(principal)) {
+                @if (puedePresentarApelacion(principal)) {
                   <button type="button"
                     (click)="apelarSolicitud(principal)"
-                    class="btn-brand inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-medium px-4 py-2 rounded-lg shadow-sm transition-colors"
-                    title="Impugnar respuesta de la entidad ante el Tribunal de Transparencia">
+                    class="btn-ghost-brand inline-flex items-center gap-2"
+                    title="Presentar apelación ante el Tribunal de Transparencia">
                     <svg lucideScale class="w-4 h-4"></svg>
-                    <span>Apelar al Tribunal</span>
+                    <span>Presentar apelación</span>
                   </button>
                 }
               </div>
@@ -468,12 +494,12 @@
         }
 
         <!-- ── ETAPA ENFOCADA (STAGE-FILTERED LIST) ─────────────────── -->
-        @if (stageAll().length > 0 || stageFiltered().length > 0) {
-          <section id="seccion-etapa-enfocada" data-section="stage-list" data-tour="cola" class="form-shell" style="scroll-margin-top: 96px">
+        <section id="seccion-etapa-enfocada" data-section="stage-list" data-tour="cola" class="form-shell" style="scroll-margin-top: 7rem">
             <div class="form-section-header flex items-center gap-3 flex-wrap">
               <div class="w-9 h-9 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                 @switch (selectedStageMeta().iconName) {
                   @case ('layers') { <svg lucideLayers class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
+                  @case ('alertTriangle') { <svg lucideAlertTriangle class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
                   @case ('hourglass') { <svg lucideHourglass class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
                   @case ('mailCheck') { <svg lucideMailCheck class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
                   @case ('scale') { <svg lucideScale class="w-4 h-4" [style.color]="selectedStageMeta().color"></svg> }
@@ -484,14 +510,14 @@
               <div class="flex-1 min-w-[180px]">
                 <span class="eyebrow">Etapa enfocada</span>
                 <div class="font-display" style="font-size: 17px; letter-spacing: -0.01em">
-                  {{ selectedStageMeta().label }} · <span class="font-mono">{{ stageAll().length }}</span>
+                  {{ selectedStageMeta().label }} · <span class="font-mono">{{ selectedStageMeta().count }}</span>
                 </div>
                 <p class="text-xs text-muted-foreground mt-0.5">{{ selectedStageMeta().desc }}</p>
               </div>
-              @if (stageAll().length > 0) {
-                <div class="flex items-center gap-2 rounded-lg px-3 py-2 w-full sm:w-[440px]" style="background: var(--input-background, var(--card)); border: 1px solid var(--border)">
+              @if (selectedStageMeta().count > 0 || stageSearch()) {
+                <div class="flex items-center gap-2 rounded-lg px-3 py-2 w-full sm:w-[400px]" style="background: var(--input-background, var(--card)); border: 1px solid var(--border)">
                   <svg class="w-4 h-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                  <input [ngModel]="stageSearch()" (ngModelChange)="onStageSearchChange($event)" placeholder="Busque por entidad, tema o N° (ej. SUNAT, salud, 00654)" class="w-full bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground/70" />
+                  <input data-buscador-etapa type="search" autocomplete="off" [attr.aria-label]="'Buscar dentro de la etapa ' + selectedStageMeta().label" [ngModel]="stageSearch()" (ngModelChange)="onStageSearchChange($event)" placeholder="Estado, SAIP, Tribunal, entidad o tema" class="w-full bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground/70" />
                   @if (stageSearch()) {
                     <button type="button" (click)="clearStageSearch()" class="w-6 h-6 rounded flex items-center justify-center hover:bg-[color:var(--muted)] transition-colors shrink-0">
                       <svg class="w-3.5 h-3.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M18 6 6 18M6 6l12 12"/></svg>
@@ -506,6 +532,7 @@
                 <div class="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-3" style="background: var(--muted); border: 1px solid var(--border)">
                   @switch (selectedStageMeta().iconName) {
                     @case ('layers') { <svg lucideLayers class="w-5 h-5 text-muted-foreground"></svg> }
+                    @case ('alertTriangle') { <svg lucideAlertTriangle class="w-5 h-5 text-muted-foreground"></svg> }
                     @case ('hourglass') { <svg lucideHourglass class="w-5 h-5 text-muted-foreground"></svg> }
                     @case ('mailCheck') { <svg lucideMailCheck class="w-5 h-5 text-muted-foreground"></svg> }
                     @case ('scale') { <svg lucideScale class="w-5 h-5 text-muted-foreground"></svg> }
@@ -515,7 +542,7 @@
                 </div>
                 <p class="text-sm text-muted-foreground">
                   @if (stageSearch()) {
-                    Ningun expediente de «{{ selectedStageMeta().label }}» coincide con "<span class="font-semibold text-foreground">{{ stageSearch() }}</span>".
+                    Ningún expediente de «{{ selectedStageMeta().label }}» coincide con «<span class="font-semibold text-foreground">{{ stageSearch() }}</span>».
                   } @else {
                     No tiene solicitudes en la etapa «{{ selectedStageMeta().label }}».
                   }
@@ -524,22 +551,34 @@
             } @else {
               <div class="p-4 space-y-2">
                 @for (solicitud of stageVisible(); track solicitud.id) {
+                  @let esResueltas = selectedStageKey() === 'resueltas';
+                  @let isActive = !esResueltas && solicitud.id === solicitudPrincipal()?.id;
+                  @let ubic = ubicacionTramite(solicitud);
+                  @let urg = filaUrgencia(solicitud);
+
                   <div class="w-full rounded-md flex items-stretch gap-1 transition-colors"
-                    [style.background]="solicitud.id === solicitudPrincipal()?.id ? 'var(--brand-subtle)' : 'var(--card)'"
-                    [style.border]="'1px solid ' + (solicitud.id === solicitudPrincipal()?.id ? 'var(--brand-700)' : 'var(--border)')">
+                    [style.background]="isActive ? 'var(--brand-subtle)' : 'var(--card)'"
+                    [style.border]="'1px solid ' + (isActive ? 'var(--brand-700)' : 'var(--border)')">
                     <button type="button"
-                      (click)="seleccionarSolicitud(solicitud.id)"
+                      (click)="onPrimary(solicitud)" [attr.aria-pressed]="selectedStageKey() !== 'resueltas' ? solicitudPrincipal()?.id === solicitud.id : null"
                       class="flex-1 min-w-0 p-3 flex items-center gap-3 text-left rounded-l-md hover:bg-[color:var(--brand-subtle)] transition-colors">
-                      <div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle)">
-                        @switch (selectedStageMeta().iconName) {
-                          @case ('layers') { <svg lucideLayers class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
-                          @case ('hourglass') { <svg lucideHourglass class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
-                          @case ('mailCheck') { <svg lucideMailCheck class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
-                          @case ('scale') { <svg lucideScale class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
-                          @case ('gavel') { <svg lucideGavel class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
-                          @case ('checkCircle') { <svg lucideCheckCircle2 class="w-3.5 h-3.5" [style.color]="selectedStageMeta().color"></svg> }
+                      <!-- InstanciaTag -->
+                      <div class="flex flex-col items-center justify-center rounded-md shrink-0 w-11 py-1.5"
+                        [style.background]="esSegundaInstancia(solicitud) ? 'var(--brand-subtle)' : 'var(--info-subtle, rgba(29,78,216,0.08))'"
+                        [style.border]="'1px solid ' + (esSegundaInstancia(solicitud) ? 'var(--brand-200)' : 'rgba(29,78,216,0.25)')"
+                        [title]="esSegundaInstancia(solicitud) ? 'Segunda instancia · apelación ante el Tribunal (TTAIP)' : 'Primera instancia · ante la entidad pública'">
+                        @if (esSegundaInstancia(solicitud)) {
+                          <svg lucideGavel class="w-3.5 h-3.5" style="color: var(--brand-700)"></svg>
+                        } @else {
+                          <svg lucideBuilding2 class="w-3.5 h-3.5" style="color: var(--info)"></svg>
                         }
+                        <span class="font-display leading-none mt-0.5" [style.color]="esSegundaInstancia(solicitud) ? 'var(--brand-700)' : 'var(--info)'" style="font-size: 14px; letter-spacing: -0.01em">
+                          {{ esSegundaInstancia(solicitud) ? '2ª' : '1ª' }}
+                        </span>
+                        <span class="text-[8px] tracking-wide uppercase text-muted-foreground leading-none mt-0.5">inst.</span>
                       </div>
+
+                      <!-- Información central -->
                       <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
                           <!-- SAIP chip -->
@@ -551,23 +590,53 @@
                             <!-- TTAIP chip -->
                             <span class="inline-flex items-center gap-1.5 rounded-md pl-0.5 pr-2 py-0.5" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
                               <span class="text-[9px] font-bold tracking-widest uppercase px-1.5 py-[3px] rounded" style="background: var(--brand-700); color: #fff">TTAIP</span>
-                              <span class="font-mono text-[11px] text-foreground/85">{{ solicitud.apelacion?.expediente }}</span>
+                              <span class="font-mono text-[11px] text-foreground/85">{{ solicitud.apelacion.expediente }}</span>
                             </span>
                           }
-                          @if (selectedStageKey() === 'resueltas' && solicitud.apelacion?.resultado) {
-                            <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded" [style.background]="solicitud.apelacion?.resultado === 'FUNDADO' ? 'rgba(21,128,61,0.10)' : 'var(--brand-subtle)'" [style.color]="solicitud.apelacion?.resultado === 'FUNDADO' ? 'var(--success)' : 'var(--brand-700)'" [style.border]="'1px solid ' + (solicitud.apelacion?.resultado === 'FUNDADO' ? 'rgba(21,128,61,0.25)' : 'var(--brand-200)')">
-                              Fallo: {{ formatoEstado(solicitud.apelacion?.resultado) }}
+                          @if (esResueltas && solicitud.apelacion?.resultado) {
+                            <span class="inline-flex items-center gap-1 text-[11px] font-semibold">
+                              <span class="text-[10px] tracking-wide uppercase text-muted-foreground">Resultado:</span>
+                              <app-status-badge [status]="estadoInsignia(solicitud)" [raw]="denegatoriaEncauzada(solicitud)" [toneOverride]="denegatoriaEncauzada(solicitud) ? 'rose' : null"></app-status-badge>
                             </span>
                           } @else {
-                            <span [class]="'badge ' + getEstadoBadgeClass(solicitud.estado)">{{ formatoEstado(solicitud.estado) }}</span>
+                            <app-status-badge [status]="estadoInsignia(solicitud)" [raw]="denegatoriaEncauzada(solicitud)" [toneOverride]="denegatoriaEncauzada(solicitud) ? 'rose' : null"></app-status-badge>
                           }
-                          @if (solicitud.id === solicitudPrincipal()?.id) {
+                          @if (isActive) {
                             <span class="text-[10px] tracking-wide uppercase font-semibold" style="color: var(--brand-700)">Viendo ahora</span>
                           }
                         </div>
                         <div class="text-sm text-foreground/85 mt-1 truncate">{{ solicitud.entidadNombre }} · {{ solicitud.asunto }}</div>
+
+                        <!-- ¿Dónde está ahora? — ubicación e instancia del trámite -->
+                        <div class="flex items-center gap-1.5 mt-1 min-w-0">
+                          @switch (ubic.iconName) {
+                            @case ('gavel') { <svg lucideGavel class="w-3 h-3 shrink-0" [style.color]="ubic.tone"></svg> }
+                            @case ('scale') { <svg lucideScale class="w-3 h-3 shrink-0" [style.color]="ubic.tone"></svg> }
+                            @case ('alertTriangle') { <svg lucideAlertTriangle class="w-3 h-3 shrink-0" [style.color]="ubic.tone"></svg> }
+                            @case ('mailCheck') { <svg lucideMailCheck class="w-3 h-3 shrink-0" [style.color]="ubic.tone"></svg> }
+                            @case ('clock') { <svg lucideClock class="w-3 h-3 shrink-0" [style.color]="ubic.tone"></svg> }
+                            @default { <svg lucideBuilding2 class="w-3 h-3 shrink-0" [style.color]="ubic.tone"></svg> }
+                          }
+                          <span class="text-[11px] font-medium truncate" [style.color]="ubic.tone">{{ ubic.label }}</span>
+                          <span class="text-[11px] text-muted-foreground shrink-0 border-l border-border pl-1.5">{{ ubic.instancia }}</span>
+                        </div>
+                        @if (urg) {
+                          <p class="mt-1.5 text-xs sm:hidden" [style.color]="urg.tone">{{ urg.value }} · {{ urg.unit }}@if (urg.nota) { · {{ urg.nota }} }</p>
+                        }
                       </div>
+
+                      <!-- Métrica de urgencia -->
+                      @if (urg) {
+                        <div class="hidden sm:flex flex-col items-end shrink-0 pl-2 w-[104px]">
+                          <span class="font-display leading-none text-right" [style.color]="urg.tone" style="font-size: 22px; letter-spacing: -0.02em">{{ urg.value }}</span>
+                          <span class="text-[9px] tracking-wide uppercase text-muted-foreground mt-1 text-right leading-tight">{{ urg.unit }}</span>
+                          @if (urg.nota) {
+                            <span class="text-[10px] text-muted-foreground mt-1 text-right leading-tight">{{ urg.nota }}</span>
+                          }
+                        </div>
+                      }
                     </button>
+                    <!-- Botón directo al detalle completo del expediente -->
                     <a [routerLink]="['/ciudadano/solicitud', solicitud.expediente]"
                       title="Ver detalle completo"
                       class="shrink-0 flex items-center gap-1.5 px-3 my-2 mr-2 rounded-md text-xs font-semibold transition-colors hover:brightness-105"
@@ -579,35 +648,26 @@
                 }
 
                 <!-- Pagination -->
-                @if (stageTotalPages() > 1) {
-                  <div class="flex items-center justify-between pt-3 mt-2 border-t border-[var(--border)]">
-                    <span class="text-xs text-muted-foreground">
-                      {{ stageRangeFrom() }}–{{ stageRangeTo() }} de {{ stageFiltered().length }}
-                    </span>
-                    <div class="flex items-center gap-1">
-                      <button type="button" (click)="goStagePage(stageSafePage() - 1)" [disabled]="stageSafePage() <= 1" class="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-[color:var(--brand-subtle)] disabled:opacity-40 disabled:cursor-default" style="border: 1px solid var(--border)">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m15 18-6-6 6-6"/></svg>
-                      </button>
-                      <span class="text-xs font-mono px-2">{{ stageSafePage() }} / {{ stageTotalPages() }}</span>
-                      <button type="button" (click)="goStagePage(stageSafePage() + 1)" [disabled]="stageSafePage() >= stageTotalPages()" class="w-8 h-8 rounded-md flex items-center justify-center transition-colors hover:bg-[color:var(--brand-subtle)] disabled:opacity-40 disabled:cursor-default" style="border: 1px solid var(--border)">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 18 6-6-6-6"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                }
+                <app-pagination
+                  [page]="stageSafePage()"
+                  [totalPages]="stageTotalPages()"
+                  [total]="stageFiltered().length"
+                  [rangeFrom]="stageRangeFrom()"
+                  [rangeTo]="stageRangeTo()"
+                  (goTo)="goStagePage($event)">
+                </app-pagination>
               </div>
             }
           </section>
-        }
 
 
         <!-- ── EMPTY STATE ──────────────────────────────────────────── -->
-        @if (solicitudesActivas().length === 0 && historicas().length === 0) {
+        @if (!stageSearch().trim() && (resumen()?.total ?? 0) === 0 && solicitudesActivas().length === 0 && historicas().length === 0) {
           <div class="text-center py-20">
             <div class="w-16 h-16 mx-auto rounded-lg flex items-center justify-center mb-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
               <svg lucideInbox class="w-7 h-7 text-brand-700"></svg>
             </div>
-            <h3 class="font-display" style="font-size: 24px; letter-spacing: -0.015em">Aun no ha presentado solicitudes</h3>
+            <h3 role="status" class="font-display" style="font-size: 24px; letter-spacing: -0.015em">Aún no ha presentado solicitudes</h3>
             <p class="text-[var(--muted-foreground)] mt-2 mb-6 max-w-md mx-auto">El derecho de acceso a la informacion publica esta garantizado por la Ley N. 27806.</p>
             <a routerLink="/ciudadano/nueva-saip" class="btn-brand !px-6 !py-3 inline-flex items-center gap-2">
               <svg lucidePlus class="w-4 h-4"></svg>
@@ -630,52 +690,52 @@
                 <h2 class="font-display mt-0.5" style="font-size: clamp(20px, 2vw, 24px); letter-spacing: -0.02em">
                   Necesita <span class="italic" style="color: var(--brand-700)">orientacion</span>?
                 </h2>
-                <p class="text-sm text-[var(--muted-foreground)] mt-1">Si algo no le queda claro, tiene varias formas de comunicarse con nosotros. Es gratuito.</p>
+                <p class="text-sm text-[var(--muted-foreground)] mt-1">Consulte nuestra guía de ayuda. Los canales de contacto se mostrarán cuando estén configurados.</p>
               </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3" data-motion-stagger data-motion-y="10" data-motion-duration="0.34" data-motion-delay-step="0.045">
-              <button data-motion-item type="button" (click)="startTour()" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
+              <a data-motion-item routerLink="/ayuda" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
                 <div class="w-9 h-9 rounded-md flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
                   <svg lucideHelpCircle class="w-4 h-4 text-brand-700"></svg>
                 </div>
                 <div class="text-sm font-semibold text-foreground">Preguntas frecuentes</div>
                 <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Respuestas a dudas comunes.</div>
                 <div class="text-xs font-mono mt-2 inline-flex items-center gap-1" style="color: var(--brand-700)">
-                  Ver guia
+                  Ver guía
                   <svg lucideArrowRight class="w-3 h-3"></svg>
                 </div>
-              </button>
+              </a>
 
-              <button data-motion-item type="button" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
+              <button data-motion-item type="button" disabled aria-describedby="chat-unavailable" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
                 <div class="w-9 h-9 rounded-md flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
                   <svg lucideMessageCircle class="w-4 h-4 text-brand-700"></svg>
                 </div>
                 <div class="text-sm font-semibold text-foreground">Asistente en linea</div>
-                <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Le orientamos paso a paso.</div>
+                <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Servicio no disponible en este panel.</div>
                 <div class="text-xs font-mono mt-2 inline-flex items-center gap-1" style="color: var(--brand-700)">
-                  Iniciar chat
+                  <span id="chat-unavailable">Chat no disponible</span>
                   <svg lucideArrowRight class="w-3 h-3"></svg>
                 </div>
               </button>
 
-              <a data-motion-item href="tel:080012345" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
+              <button data-motion-item type="button" disabled aria-describedby="phone-unavailable" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
                 <div class="w-9 h-9 rounded-md flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
                   <svg lucidePhone class="w-4 h-4 text-brand-700"></svg>
                 </div>
-                <div class="text-sm font-semibold text-foreground">Linea gratuita</div>
-                <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Lun-Vie · 8am-6pm</div>
-                <div class="text-xs font-mono mt-2 inline-flex items-center gap-1" style="color: var(--brand-700)">0800-12345</div>
-              </a>
+                <div class="text-sm font-semibold text-foreground">Atención por teléfono</div>
+                <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Contacto no configurado</div>
+                <div class="text-xs font-mono mt-2 inline-flex items-center gap-1" style="color: var(--brand-700)"><span id="phone-unavailable">Teléfono no disponible</span></div>
+              </button>
 
-              <a data-motion-item href="mailto:consultas@ttaip.gob.pe" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
+              <button data-motion-item type="button" disabled aria-describedby="email-unavailable" class="rounded-lg p-4 text-left transition-all hover:bg-[color:var(--brand-subtle)] hover:border-[color:var(--brand-200)]" style="background: var(--card); border: 1px solid var(--border)">
                 <div class="w-9 h-9 rounded-md flex items-center justify-center mb-2" style="background: var(--brand-subtle)">
                   <svg lucideMail class="w-4 h-4 text-brand-700"></svg>
                 </div>
                 <div class="text-sm font-semibold text-foreground">Correo electronico</div>
-                <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Respuesta en 24 horas</div>
-                <div class="text-xs font-mono mt-2 inline-flex items-center gap-1" style="color: var(--brand-700)">consultas&#64;ttaip.gob.pe</div>
-              </a>
+                <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Contacto no configurado</div>
+                <div class="text-xs font-mono mt-2 inline-flex items-center gap-1" style="color: var(--brand-700)"><span id="email-unavailable">Correo no disponible</span></div>
+              </button>
             </div>
           </div>
         </section>

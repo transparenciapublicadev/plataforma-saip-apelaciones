@@ -166,6 +166,16 @@ describe('TtaipService', () => {
 
   // --- Notificacion ---
 
+  it('no confirma avance cuando falta notificación eficaz según el servidor', () => {
+    let exito = false;
+    service.notificarSegundaCalificacion(7).subscribe({
+      next: () => { exito = true; }, error: error => expect(error.status).toBe(409),
+    });
+    httpMock.expectOne(`${apiUrl}/7/notificar-segunda-calificacion`)
+      .flush({ detail: 'Falta notificación eficaz de la entidad' }, { status: 409, statusText: 'Conflict' });
+    expect(exito).toBe(false);
+  });
+
   it('should POST notificar segunda calificacion', () => {
     service.notificarSegundaCalificacion(7).subscribe();
     const req = httpMock.expectOne(`${apiUrl}/7/notificar-segunda-calificacion`);

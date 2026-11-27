@@ -1,2 +1,9 @@
-/* Estilos proceso disciplinario */
-
+:host { display: block; }
+.disciplinary-page { overflow-wrap: anywhere; }
+.disciplinary-page :where(aside,section,.form-shell) { min-width: 0; }
+.disciplinary-page :where(button,a):focus-visible { outline: 2px solid var(--brand-600); outline-offset: 3px; }
+.disciplinary-page .bg-brand-gradient a:focus-visible { outline-color: var(--gold-soft); }
+.disciplinary-page button:disabled { cursor: not-allowed; opacity: .7; }
+@media (prefers-reduced-motion: reduce) {
+  .disciplinary-page *, .disciplinary-page *::before, .disciplinary-page *::after { animation: none !important; transition: none !important; }
+}

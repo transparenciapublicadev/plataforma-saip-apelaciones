@@ -63,6 +63,9 @@ public class CedulaNotificacion {
     @OneToMany(mappedBy = "cedulaNotificacion", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private List<Documento> documentos;
 
+    @Column(name = "tipo_acto", length = 20)
+    private String tipoActo;
+
     @PrePersist
     protected void onCreate() {
         fechaEmision = fechaEmision != null ? fechaEmision : LocalDateTime.now();

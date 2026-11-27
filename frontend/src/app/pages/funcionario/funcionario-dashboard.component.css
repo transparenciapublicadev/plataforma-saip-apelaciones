@@ -1,6 +1,27 @@
 :host {
   display: block;
 }
+.entity-dashboard { overflow-wrap: anywhere; }
+.entity-dashboard .queue-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: none;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+.entity-dashboard button:focus-visible, .entity-dashboard a:focus-visible,
+.entity-dashboard select:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 3px; }
+.entity-dashboard [role="listitem"] { flex-wrap: wrap; }
+@media (min-width: 768px) { .entity-dashboard [role="listitem"] { flex-wrap: nowrap; } }
+@media (max-width: 767px) { .entity-dashboard [role="listitem"] > .flex-1 { flex-basis: calc(100% - 60px); } }
+@media (prefers-reduced-motion: reduce) {
+  .entity-dashboard *, .entity-dashboard *::before, .entity-dashboard *::after { animation: none !important; transition: none !important; }
+}
 
 .custom-scrollbar {
   scrollbar-width: thin;

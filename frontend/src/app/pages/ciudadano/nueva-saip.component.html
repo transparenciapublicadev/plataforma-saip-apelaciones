@@ -1,520 +1,397 @@
-<div class="min-h-screen bg-background">
+<div class="saip-form-page min-h-screen bg-background">
   <div class="relative bg-brand-gradient text-white overflow-hidden">
-    <div class="absolute inset-0 bg-paper opacity-[0.06]"></div>
-    <div class="relative max-w-6xl mx-auto px-6 md:px-10 pt-28 pb-14" data-hero>
-      <a routerLink="/ciudadano" class="inline-flex items-center gap-1.5 text-white/70 hover:text-white text-sm mb-6 transition-colors">
-        <svg lucideArrowLeft class="w-4 h-4"></svg>
-        Volver al panel
-      </a>
+    <div class="absolute inset-0 bg-paper opacity-[0.06]">
+</div>
+    <div class="relative max-w-6xl mx-auto px-6 md:px-10 pt-28 pb-14">
+      @if (step() > 1 && !bloqueado()) {
+        <button type="button" class="back-link back-link--dark" (click)="irPaso(step() - 1)">
+<svg aria-hidden="true" lucideArrowLeft class="w-4 h-4">
+</svg>Volver al paso {{ step() - 1 }}: {{ pasos[step() - 2].short }}</button>
+      } @else {
+        <a routerLink="/ciudadano" class="back-link back-link--dark">
+<svg aria-hidden="true" lucideArrowLeft class="w-4 h-4">
+</svg>Volver al panel</a>
+      }
       <div class="eyebrow !text-[color:var(--gold-soft)] mb-3">Formulario · Solicitud de acceso</div>
-      <h1 class="font-display text-balance" style="font-size: clamp(34px, 4vw, 52px); line-height: 1.05; letter-spacing: -0.025em;">
-        Nueva solicitud SAIP
-      </h1>
-      <p class="text-white/75 mt-3 max-w-2xl text-pretty" style="font-size: 16px;">
-        Complete los siguientes apartados para presentar formalmente su solicitud
-        ante la entidad pública correspondiente.
-      </p>
+      <h1 class="font-display text-balance" style="font-size:clamp(34px,4vw,52px);line-height:1.05;letter-spacing:-0.025em">Nueva solicitud SAIP</h1>
+      <p class="text-white/75 mt-3 max-w-2xl text-pretty" style="font-size:16px">Complete los siguientes apartados para presentar formalmente su solicitud ante la entidad pública correspondiente.</p>
     </div>
-    <div class="brand-divider"></div>
+    <div class="brand-divider">
+</div>
   </div>
-
   <div class="max-w-6xl mx-auto px-6 md:px-10 py-12">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      <div
-        class="lg:col-span-8 space-y-6"
-        data-motion-stagger
-        data-motion-y="12"
-        data-motion-duration="0.4"
-        data-motion-delay-step="0.055">
+      <div class="lg:col-span-8 space-y-8" [attr.aria-busy]="loading()">
         @if (error()) {
-          <div data-motion-item class="rounded-lg p-4" style="background: color-mix(in srgb, var(--brand-700) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--brand-700) 24%, transparent);">
-            <p class="text-sm" style="color: var(--brand-700);">{{ error() }}</p>
-          </div>
-        }
-
-        @if (mensaje()) {
-          <div data-motion-item class="rounded-lg p-4" style="background: color-mix(in srgb, var(--success) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);">
-            <p class="text-sm" style="color: var(--success);">{{ mensaje() }}</p>
-          </div>
-        }
-
-        <section data-motion-item class="relative overflow-hidden rounded-xl" style="background: linear-gradient(135deg, var(--brand-subtle), color-mix(in srgb, var(--gold-soft) 28%, var(--card))); border: 1px solid var(--brand-200); box-shadow: 0 1px 0 0 color-mix(in srgb, var(--brand-700) 6%, transparent);">
-          <span aria-hidden class="absolute inset-x-0 top-0 h-px" style="background: linear-gradient(90deg, transparent, var(--gold-dark), transparent);"></span>
-
-          <div class="p-5 md:p-6 flex items-start gap-4">
-            <div class="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-600), var(--brand-800)); box-shadow: 0 1px 0 0 color-mix(in srgb, white 18%, transparent) inset;">
-              <svg lucideShieldAlert class="w-5.5 h-5.5 text-white"></svg>
-            </div>
-
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="eyebrow" style="color: var(--brand-700);">Identidad verificada · sesión activa</span>
-                @if (sesionVisual().tipoPersona === 'JURIDICA') {
-                  <span class="pill" style="background: color-mix(in srgb, #2563eb 12%, transparent); color: #2563eb;">
-                    <svg lucideCheckCircle2 class="w-3 h-3"></svg>
-                    SUNAT
-                  </span>
-                } @else {
-                  <span class="pill" style="background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success);">
-                    <svg lucideCheckCircle2 class="w-3 h-3"></svg>
-                    RENIEC
-                  </span>
+          <div id="saip-errores" tabindex="-1" role="alert" class="rounded-lg p-4" style="background:color-mix(in srgb,var(--destructive) 8%,var(--card));border:1px solid var(--destructive)">
+            <p class="text-sm">{{ error() }}</p>
+            <ul class="list-disc pl-5 text-sm mt-2">@for (item of errores() | keyvalue; track item.key) { <li>{{ item.value }}</li> }</ul>
+            @if (operacionPendiente()) {
+              @if (errorRecuperacion()) { <p class="text-sm mt-2">{{ errorRecuperacion() }}</p> }
+              <div class="flex flex-wrap gap-2 mt-3">
+                <button type="button" class="btn-ghost-brand" [disabled]="loading()" (click)="comprobarRegistro()">Comprobar registro</button>
+                @if (estadoEnvio() === 'sin-recepcion') {
+                  <button type="button" class="btn-brand" [disabled]="loading()" (click)="reintentarAlta()">Volver a enviar</button>
                 }
               </div>
-
-              <h3 class="font-display mt-1.5" style="font-size: 20px; letter-spacing: -0.01em; line-height: 1.15;">
-                @if (sesionVisual().tipoPersona === 'JURIDICA') {
-                  {{ sesionVisual().razonSocial || sesionVisual().nombre }}
-                } @else {
-                  {{ sesionVisual().nombre }}
-                }
-              </h3>
-
-              @if (sesionVisual().tipoPersona === 'JURIDICA' && sesionVisual().representanteNombreCompleto) {
-                <p class="text-xs text-muted-foreground mt-0.5 font-medium">
-                  Rep. Legal: {{ sesionVisual().representanteNombreCompleto }}
-                </p>
-              }
-
-              <div class="flex flex-wrap items-center gap-x-8 gap-y-2 mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-800/80">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    @if (sesionVisual().tipoPersona === 'JURIDICA') { RUC } @else { DNI }
-                  </span>
-                  <span class="font-mono text-xs font-medium text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700/60">
-                    @if (sesionVisual().tipoPersona === 'JURIDICA') {
-                      {{ sesionVisual().ruc || sesionVisual().dni }}
-                    } @else {
-                      {{ sesionVisual().dni }}
-                    }
-                  </span>
-                </div>
-                <div class="flex items-center gap-2 flex-1 min-w-0">
-                  <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                    Correo electrónico
-                  </span>
-                  <span class="font-mono text-xs font-medium text-slate-900 dark:text-slate-200 break-all sm:break-normal">
-                    {{ sesionVisual().email }}
-                  </span>
-                </div>
-              </div>
-
-              <p class="text-xs text-muted-foreground mt-3 italic max-w-2xl">
-                Sus datos personales (Nombres/Razón Social, Documento, Dirección, Correo y Celular) provienen de su cuenta. Si desea actualizarlos para este y futuros trámites, hágalo desde la sección 'Mi Perfil'.
-              </p>
-            </div>
+            }
           </div>
-        </section>
-
-        <form (ngSubmit)="abrirConfirmacionSolicitud()" class="space-y-6">
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header flex items-start justify-between gap-4">
-              <div>
-                <span class="eyebrow">01 · Entidad e información requerida</span>
-                <h2 class="form-section-title">Datos de la solicitud</h2>
+        }
+        @if (loading()) { <p role="status" aria-live="polite" class="text-sm text-muted-foreground">Comprobando el registro de su solicitud…</p> }
+        <nav aria-label="Pasos de la solicitud">
+          <ol class="flex items-start gap-2">
+            @for (paso of pasos; track paso.short; let i = $index) {
+              <li class="flex-1 min-w-0" [attr.aria-current]="step() === i + 1 ? 'step' : null">
+                <button type="button" class="w-full text-left rounded-sm" (click)="irPaso(i + 1)" [disabled]="bloqueado()"
+                  [attr.aria-label]="'Paso ' + (i + 1) + ' de 4: ' + paso.title + (step() === i + 1 ? ' (actual)' : '')">
+                  <span class="flex items-center gap-2">
+<span class="font-mono text-[11px] tracking-widest" [style.color]="step() >= i + 1 ? 'var(--brand-700)' : 'var(--muted-foreground)'">0{{ i + 1 }}</span>
+<span class="flex-1 h-[3px] rounded-full" [style.background]="step() >= i + 1 ? 'var(--brand-600)' : 'var(--border)'">
+</span>
+</span>
+                  <span class="block text-xs mt-1.5" [style.font-weight]="step() === i + 1 ? 600 : 400">{{ paso.short }}</span>
+                </button>
+              </li>
+            }
+          </ol>
+        </nav>
+        <div>
+<span class="eyebrow">Paso {{ step() }} de 4</span>
+<h2 id="saip-paso-titulo" tabindex="-1" class="font-display mt-1" style="font-size:26px;letter-spacing:-0.015em;line-height:1.15">{{ pasos[step() - 1].title }}</h2>
+</div>
+        <fieldset [disabled]="bloqueado()" class="space-y-8 min-w-0">
+<legend class="sr-only">Formulario de solicitud SAIP</legend>
+          @if (step() === 1) {
+            <section class="relative overflow-hidden rounded-xl" style="background:linear-gradient(135deg,var(--brand-subtle),color-mix(in srgb,var(--gold-soft) 28%,var(--card)));border:1px solid var(--brand-200)">
+              <span aria-hidden="true" class="absolute inset-x-0 top-0 h-px" style="background:linear-gradient(90deg,transparent,var(--gold-dark),transparent)">
+</span>
+              <div class="p-5 md:p-6 flex items-start gap-4">
+                <div class="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,var(--brand-600),var(--brand-800))">
+<svg aria-hidden="true" lucideShieldCheck class="w-5.5 h-5.5 text-white">
+</svg>
+</div>
+                <div class="flex-1 min-w-0">
+<span class="eyebrow" style="color:var(--brand-700)">Datos del solicitante</span>
+<h3 class="font-display mt-1.5" style="font-size:20px;letter-spacing:-0.01em;line-height:1.15">{{ sesionVisual().nombre || 'Nombre no disponible' }}</h3>
+                  <dl class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[13px]">
+                    <div class="rounded-md px-3.5 py-2.5" style="background:var(--card);border:1px solid var(--border)">
+<dt class="text-[11px] uppercase tracking-wide text-muted-foreground">{{ docLabel() }}</dt>
+<dd class="font-mono mt-0.5">{{ docNumero() || 'No disponible' }}</dd>
+</div>
+                    <div class="rounded-md px-3.5 py-2.5" style="background:var(--card);border:1px solid var(--border)">
+<dt class="text-[11px] uppercase tracking-wide text-muted-foreground">Correo electrónico</dt>
+<dd class="font-mono mt-0.5">{{ sesionVisual().email || 'No disponible' }}</dd>
+</div>
+                  </dl>
+                  <p class="text-xs text-muted-foreground mt-3 italic">Estos son los datos de su cuenta que se usarán para identificarle en la solicitud.</p>
+                </div>
               </div>
-              <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
-                01
-              </span>
-            </div>
-
-            <div class="p-6 md:p-8 space-y-5">
-              <div class="field">
-                <label for="entidadId" class="field-label">Entidad pública <span class="req">*</span></label>
-                <select id="entidadId" [(ngModel)]="entidadId" name="entidadId" required class="field-input">
-                  <option [ngValue]="null">Seleccione la entidad receptora</option>
-                  @for (entidad of entidades(); track entidad.id) {
-                    <option [value]="entidad.id">{{ entidad.nombre }}</option>
-                  }
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="materia" class="field-label">TEMA O MATERIA DE LA SOLICITUD</label>
-                <select id="materia" [(ngModel)]="materia" name="materia" class="field-input">
-                  <option value="">Seleccione la materia o tema (Opcional)</option>
-                  <option value="Documentos oficiales y resoluciones">Documentos oficiales y resoluciones</option>
-                  <option value="Estadísticas, reportes y data abierta">Estadísticas, reportes y data abierta</option>
-                  <option value="Informes y memorandos técnicos">Informes y memorandos técnicos</option>
-                  <option value="Presupuesto, ejecuciones y gastos públicos">Presupuesto, ejecuciones y gastos públicos</option>
-                  <option value="Contrataciones, adquisiciones y licitaciones">Contrataciones, adquisiciones y licitaciones</option>
-                  <option value="Personal, planillas y escalas remunerativas">Personal, planillas y escalas remunerativas</option>
-                  <option value="Proyectos, programas y obras públicas">Proyectos, programas y obras públicas</option>
-                  <option value="Otros">Otros</option>
-                </select>
-              </div>
-
-              @if (materia === 'Otros') {
+            </section>
+            <section class="form-shell" [class.zone-invalid]="!!errores()['entidad'] || !!errores()['asunto'] || !!errores()['descripcion'] || !!errores()['tema']">
+<div class="form-section-header flex items-start justify-between gap-4">
+<div>
+<span class="eyebrow">01 · Entidad e información requerida</span>
+<h3 class="form-section-title">Datos de la solicitud</h3>
+</div>
+<span aria-hidden="true" class="saip-section-number">01</span>
+</div>
+              <div class="p-6 md:p-8 space-y-5">
                 <div class="field">
-                  <label for="materiaOtros" class="field-label">Especifique el tema o materia <span class="req">*</span></label>
-                  <input id="materiaOtros" type="text" [(ngModel)]="materiaOtros" name="materiaOtros" required placeholder="Escriba la materia o tema específico..." class="field-input" />
+<label for="saip-entidad" class="field-label">Entidad pública <span class="req">*</span>
+</label>
+                  <select id="saip-entidad" class="field-input" name="entidad" [(ngModel)]="entidadId" [disabled]="estadoEntidades() !== 'disponible'" required aria-required="true" aria-describedby="saip-entidad-estado saip-entidad-error" [attr.aria-invalid]="!!errores()['entidad']">
+                    <option [ngValue]="null">Seleccione la entidad receptora</option>@for (entidad of entidades(); track entidad.id) { <option [ngValue]="entidad.id">{{ entidad.nombre }}{{ entidad.acronimo ? ' (' + entidad.acronimo + ')' : '' }}</option> }
+                  </select>
+                  <p id="saip-entidad-estado" role="status" class="field-hint">@if (estadoEntidades() === 'cargando') { Consultando entidades… } @else if (estadoEntidades() === 'vacio') { Por el momento no hay entidades disponibles para seleccionar. } @else if (errorEntidades()) { {{ errorEntidades() }} }</p>
+                  <p id="saip-entidad-error" class="field-error">{{ errores()['entidad'] }}</p>
+                  @if (reintentarEntidades()) { <button type="button" class="btn-ghost-brand" (click)="cargarEntidades()">Volver a consultar entidades</button> }
                 </div>
-              }
-
-              <div class="field">
-                <label for="oficinaDestinataria" class="field-label">OFICINA O UNIDAD ORGÁNICA DESTINATARIA (OPCIONAL)</label>
-                <input id="oficinaDestinataria" type="text" [(ngModel)]="oficinaDestinataria" name="oficinaDestinataria" placeholder="Ej. Oficina de Logística, Dirección de Recursos Humanos..." class="field-input" />
-                <span class="field-hint">Si conoce la oficina específica dentro de la entidad que posee la información, indíquela aquí.</span>
+                <div class="field">
+<label for="saip-tema" class="field-label">Tema o materia <span class="text-muted-foreground font-normal">(opcional)</span>
+</label>
+<input id="saip-tema" class="field-input" name="tema" [(ngModel)]="tema" maxlength="100" aria-describedby="saip-tema-hint saip-tema-error" [attr.aria-invalid]="!!errores()['tema']">
+<p id="saip-tema-hint" class="field-hint">Indique el tema de su solicitud, en hasta 100 caracteres.</p>
+<p id="saip-tema-error" class="field-error">{{ errores()['tema'] }}</p>
+</div>
+                <div class="field">
+<label for="saip-oficina" class="field-label">Oficina o unidad orgánica destinataria <span class="text-muted-foreground font-normal">(opcional)</span>
+</label>
+<input id="saip-oficina" class="field-input" name="oficina" [(ngModel)]="oficinaDestinataria" placeholder="Ej. Oficina General de Administración">
+<span class="field-hint">Si conoce la oficina que tiene la información, indíquela como referencia.</span>
+</div>
+                <div class="field">
+<label for="saip-asunto" class="field-label">Asunto <span class="req">*</span>
+</label>
+<input id="saip-asunto" class="field-input" name="asunto" [(ngModel)]="asunto" maxlength="500" required aria-required="true" aria-describedby="saip-asunto-error" [attr.aria-invalid]="!!errores()['asunto']" placeholder="Ej. Solicitud de información sobre presupuesto">
+<p id="saip-asunto-error" class="field-error">{{ errores()['asunto'] }}</p>
+</div>
+                <div class="rounded-lg p-4" style="background:var(--info-subtle);border:1px solid var(--border)">
+<div class="flex items-start gap-2.5">
+<svg aria-hidden="true" lucideFileText class="w-4 h-4 mt-0.5 flex-shrink-0">
+</svg>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium">¿No sabe cómo redactarla? Use un modelo</p>
+<p class="text-xs text-muted-foreground mt-0.5">Es un ejemplo editable. Reemplace los textos entre [corchetes] con su pedido.</p>
+<div class="flex flex-wrap gap-2 mt-3">
+<button type="button" class="btn-brand !py-1.5 !px-3 text-xs" (click)="usarModelo(plantillaGeneral)">Usar modelo</button>@for (modelo of modelos; track modelo.key) { <button type="button" class="btn-ghost-brand !py-1.5 !px-3 text-xs" (click)="usarModelo(modelo.texto, modelo.asunto)">{{ modelo.label }}</button> }</div>
+</div>
+</div>
+</div>
+                <div class="field">
+<label for="saip-descripcion" class="field-label">Descripción de la información solicitada <span class="req">*</span>
+</label>
+<textarea id="saip-descripcion" class="field-input" name="descripcion" rows="6" style="resize:vertical;min-height:140px" [(ngModel)]="descripcion" required aria-required="true" aria-describedby="saip-descripcion-hint saip-descripcion-error" [attr.aria-invalid]="!!errores()['descripcion']" placeholder="Describa con claridad y detalle la información que solicita…">
+</textarea>
+<p id="saip-descripcion-hint" class="field-hint">Pida documentos concretos e indique periodo, área y tipo de documento. No necesita explicar para qué la quiere.</p>
+<p id="saip-descripcion-error" class="field-error">{{ errores()['descripcion'] }}</p>
+</div>
               </div>
-
-              <div class="field">
-                <label for="asunto" class="field-label">Asunto <span class="req">*</span></label>
-                <input id="asunto" type="text" [(ngModel)]="asunto" name="asunto" required placeholder="Ej. Solicitud de presupuesto institucional 2026" class="field-input" />
+            </section>
+          }
+          @if (step() === 2) {
+            <section class="form-shell" [class.zone-invalid]="!!errores()['formato']">
+<div class="form-section-header flex items-start justify-between gap-4">
+<div>
+<span class="eyebrow">02 · Forma de entrega de la información</span>
+<h3 class="form-section-title">Modalidad de entrega</h3>
+</div>
+<span aria-hidden="true" class="saip-section-number">02</span>
+</div>
+              <div class="p-6 md:p-8">
+<div role="group" id="saip-formato" aria-label="Modalidad de entrega" aria-describedby="saip-formato-error" class="grid grid-cols-1 md:grid-cols-2 gap-3" [class.zone-invalid]="!!errores()['formato']" [attr.aria-invalid]="!!errores()['formato']">@for (item of formatos; track item.key) {
+                <label class="saip-option cursor-pointer rounded-lg p-4 flex items-start gap-3" [style.background]="formatoRespuesta[item.key] ? 'var(--brand-50)' : 'var(--card)'" [style.border]="'1px solid ' + (formatoRespuesta[item.key] ? 'var(--brand-300)' : 'var(--border)')">
+<input type="checkbox" class="sr-only" [(ngModel)]="formatoRespuesta[item.key]" [name]="'formato_' + item.key">
+<span aria-hidden="true" class="saip-checkbox">@if (formatoRespuesta[item.key]) { <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white">
+</svg> }</span>
+<span>
+<span class="block text-sm font-medium">{{ item.label }}</span>
+<span class="block text-xs text-muted-foreground mt-0.5">{{ item.desc }}</span>
+</span>
+</label>
+              }</div>
+<p id="saip-formato-error" class="field-error">{{ errores()['formato'] }}</p>
+</div>
+            </section>
+            <section class="form-shell" [class.zone-invalid]="!!errores()['medio']">
+<div class="form-section-header flex items-start justify-between gap-4">
+<div>
+<span class="eyebrow">03 · Cómo desea ser notificado</span>
+<h3 class="form-section-title">Medio de notificación</h3>
+</div>
+<span aria-hidden="true" class="saip-section-number">03</span>
+</div>
+              <div class="p-6 md:p-8 space-y-4">
+<p class="text-sm text-muted-foreground">Elija cómo prefiere recibir las notificaciones de su trámite.</p>
+                <div role="radiogroup" id="saip-medio" aria-label="Medio de notificación" class="grid grid-cols-1 md:grid-cols-2 gap-3" [class.zone-invalid]="!!errores()['medio'] && !medioNotificacion" [attr.aria-invalid]="!!errores()['medio'] && !medioNotificacion">@for (item of mediosNotificacion; track item.key) { <label class="saip-option text-left rounded-lg p-4 flex items-start gap-3" [style.background]="medioNotificacion === item.key ? 'var(--brand-50)' : 'var(--card)'" style="border:1px solid var(--border)">
+<input type="radio" class="sr-only" name="medio" [value]="item.key" [(ngModel)]="medioNotificacion">
+<span>
+<span class="block text-sm font-medium">{{ item.label }}</span>
+<span class="block text-xs text-muted-foreground mt-0.5">{{ item.desc }}</span>
+</span>
+</label> }</div>
+                @if (medioNotificacion === 'correo') { <label class="rounded-lg p-5 flex items-start gap-2.5 text-sm" style="background:var(--brand-subtle);border:1px solid var(--brand-200)" [class.zone-invalid]="!!errores()['medio']">
+<input type="checkbox" [(ngModel)]="aceptaCorreo" name="aceptaCorreo" aria-describedby="saip-medio-error" [attr.aria-invalid]="!!errores()['medio']">
+<span>Acepto la notificación por correo electrónico al correo registrado (<span class="font-mono">{{ correoMask() }}</span>).</span>
+</label> }
+                @if (medioNotificacion === 'fisica') { <label class="rounded-lg p-5 flex items-start gap-2.5 text-sm" style="background:var(--brand-subtle);border:1px solid var(--brand-200)" [class.zone-invalid]="!!errores()['medio']">
+<input type="checkbox" [(ngModel)]="aceptaFisica" name="aceptaFisica" aria-describedby="saip-medio-error" [attr.aria-invalid]="!!errores()['medio']">
+<span>Me comprometo a realizar el pago correspondiente por las reproducciones solicitadas, según el TUPA aplicable de la entidad.</span>
+</label> }
+                <p id="saip-medio-error" class="field-error">{{ errores()['medio'] }}</p>
               </div>
-
-              <div class="field">
-                <label for="descripcion" class="field-label">Información solicitada <span class="req">*</span></label>
-                <textarea id="descripcion" [(ngModel)]="descripcion" name="descripcion" required rows="5" placeholder="Describa de forma precisa la información pública que requiere..." class="field-input"></textarea>
-              </div>
-            </div>
-          </section>
-
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header flex items-start justify-between gap-4">
-              <div>
-                <span class="eyebrow">02 · Formato y copia opcional</span>
-                <h2 class="form-section-title">Modalidad de entrega</h2>
-              </div>
-              <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
-                02
-              </span>
-            </div>
-
-            <div class="p-6 md:p-8 space-y-5">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="formatoDigital" [style.background]="formatoDigital ? 'var(--brand-50)' : 'var(--card)'" [style.border]="formatoDigital ? '1px solid var(--brand-300)' : '1px solid var(--border)'">
-                  <input type="checkbox" [(ngModel)]="formatoDigital" name="formatoDigital" class="sr-only" />
-                  <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="formatoDigital ? 'var(--brand-600)' : 'var(--card)'" [style.border]="formatoDigital ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
-                    @if (formatoDigital) {
-                      <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
-                    }
-                  </span>
-                  <div>
-                    <div class="text-sm font-medium text-foreground">Digital (correo / enlace)</div>
-                    <div class="text-xs text-muted-foreground mt-0.5">Recepción en formato PDF</div>
-                  </div>
-                </label>
-
-                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="formatoFisico" [style.background]="formatoFisico ? 'var(--brand-50)' : 'var(--card)'" [style.border]="formatoFisico ? '1px solid var(--brand-300)' : '1px solid var(--border)'">
-                  <input type="checkbox" [(ngModel)]="formatoFisico" name="formatoFisico" class="sr-only" />
-                  <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="formatoFisico ? 'var(--brand-600)' : 'var(--card)'" [style.border]="formatoFisico ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
-                    @if (formatoFisico) {
-                      <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
-                    }
-                  </span>
-                  <div>
-                    <div class="text-sm font-medium text-foreground">Físico (copia impresa)</div>
-                    <div class="text-xs text-muted-foreground mt-0.5">Recojo en oficina</div>
-                  </div>
-                </label>
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="copiaSimple" [style.background]="copiaSimple ? 'var(--brand-50)' : 'var(--card)'" [style.border]="copiaSimple ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="copiaSimple ? '0 0 0 3px var(--brand-50)' : 'none'">
-                  <input type="checkbox" [(ngModel)]="copiaSimple" name="copiaSimple" class="sr-only" />
-                  <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="copiaSimple ? 'var(--brand-600)' : 'var(--card)'" [style.border]="copiaSimple ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
-                    @if (copiaSimple) {
-                      <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
-                    }
-                  </span>
-                  <div>
-                    <div class="text-sm font-medium text-foreground">Copia simple</div>
-                    <div class="text-xs text-muted-foreground mt-0.5">Sin certificación formal</div>
-                  </div>
-                </label>
-
-                <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="copiaCertificada" [style.background]="copiaCertificada ? 'var(--brand-50)' : 'var(--card)'" [style.border]="copiaCertificada ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="copiaCertificada ? '0 0 0 3px var(--brand-50)' : 'none'">
-                  <input type="checkbox" [(ngModel)]="copiaCertificada" name="copiaCertificada" class="sr-only" />
-                  <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="copiaCertificada ? 'var(--brand-600)' : 'var(--card)'" [style.border]="copiaCertificada ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
-                    @if (copiaCertificada) {
-                      <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
-                    }
-                  </span>
-                  <div>
-                    <div class="text-sm font-medium text-foreground">Copia certificada</div>
-                    <div class="text-xs text-muted-foreground mt-0.5">Con sello y firma</div>
-                  </div>
-                </label>
-              </div>
-            </div>
-          </section>
-
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header flex items-start justify-between gap-4">
-              <div>
-                <span class="eyebrow">03 · Notificación y datos personales</span>
-                <h2 class="form-section-title">Canal formal elegido</h2>
-              </div>
-              <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
-                03
-              </span>
-            </div>
-
-            <div class="p-6 md:p-8 space-y-5">
-              <div class="field">
-                <label for="canalNotificacion" class="field-label">Canal de notificación <span class="req">*</span></label>
-                <select id="canalNotificacion" [(ngModel)]="canalNotificacion" name="canalNotificacion" required class="field-input">
-                  <option value="CASILLA_ELECTRONICA">Casilla electrónica</option>
-                  <option value="CORREO_ELECTRONICO">Correo electrónico</option>
-                  <option value="PLATAFORMA">Plataforma</option>
-                  <option value="FISICA">Notificación física</option>
-                </select>
-                <span class="field-hint">Este canal será usado como medio principal salvo excepción legal o reproceso justificado.</span>
-              </div>
-
-              <label class="reference-option-card cursor-pointer rounded-lg p-4 transition-all relative flex items-start gap-3" [class.is-selected]="consentimientoDatosPersonales" [style.background]="consentimientoDatosPersonales ? 'var(--brand-50)' : 'var(--card)'" [style.border]="consentimientoDatosPersonales ? '1px solid var(--brand-300)' : '1px solid var(--border)'" [style.box-shadow]="consentimientoDatosPersonales ? '0 0 0 3px var(--brand-50)' : 'none'">
-                <input type="checkbox" [(ngModel)]="consentimientoDatosPersonales" name="consentimientoDatosPersonales" required class="sr-only" />
-                <span class="flex items-center justify-center rounded-md flex-shrink-0 mt-0.5" [style.width.px]="20" [style.height.px]="20" [style.background]="consentimientoDatosPersonales ? 'var(--brand-600)' : 'var(--card)'" [style.border]="consentimientoDatosPersonales ? '1.5px solid var(--brand-600)' : '1.5px solid var(--border-strong)'">
-                  @if (consentimientoDatosPersonales) {
-                    <svg lucideCheckCircle2 class="w-3.5 h-3.5 text-white"></svg>
+            </section>
+          }
+          @if (step() === 3) {
+            <section class="form-shell" [class.zone-invalid]="!!errores()['archivos']">
+<div class="form-section-header flex items-start justify-between gap-4">
+<div>
+<span class="eyebrow">04 · Archivo principal y anexos</span>
+<h3 class="form-section-title">Archivos del trámite</h3>
+</div>
+<span aria-hidden="true" class="saip-section-number">04</span>
+</div>
+              <div class="p-6 md:p-8 space-y-6">
+<p class="text-sm text-muted-foreground">Adjunte un archivo principal o anexos si ayudan a ubicar la información solicitada. Puede usar PDF, JPG, PNG o TXT de hasta 10 MB por archivo.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">@for (zona of zonas; track zona.label; let i = $index) {
+                  @if (i === 1) {
+                    <div class="md:col-span-2">
+                      <div class="rule-ornament"></div>
+                      <p class="mt-4"><span class="eyebrow">Anexos</span> <span class="text-xs text-muted-foreground">(opcionales · hasta dos archivos)</span></p>
+                    </div>
                   }
-                </span>
-                <div>
-                  <div class="text-sm font-medium text-foreground">Acepto el tratamiento de datos personales</div>
-                  <div class="text-xs text-muted-foreground mt-0.5">Autorizo el uso de mis datos para registrar, tramitar, notificar y dar seguimiento a esta SAIP.</div>
-                </div>
-              </label>
-            </div>
-          </section>
-
-          <!-- ── DATOS COMPLEMENTARIOS (OPCIONALES — LEY DE TRANSPARENCIA) ── -->
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header flex items-start justify-between gap-4">
-              <div>
-                <span class="eyebrow">04 · DATOS COMPLEMENTARIOS (OPCIONALES — LEY DE TRANSPARENCIA)</span>
-                <h2 class="form-section-title">Información con fines estrictamente estadísticos y de inclusión social</h2>
+                  <div [ngClass]="{'md:col-span-2': i === 0}">
+<label [for]="'saip-archivo-' + i" class="field-label">{{ zona.label }} <span class="font-normal text-muted-foreground">(opcional)</span>
+</label>
+                    @if (zona.file(); as file) {
+                      <div class="file-upload-zone has-file" role="status" aria-live="polite">
+<div class="flex items-center justify-center gap-2">
+<svg aria-hidden="true" lucideCheckCircle2 class="w-6 h-6 text-emerald-600"></svg><svg aria-hidden="true" lucideFileText class="w-6 h-6">
+</svg>
+<span class="text-sm font-medium">{{ file.name }}</span>
+</div>
+<p class="font-mono text-xs mt-2">{{ formatFileSizeMB(file.size) }} MB · listo para adjuntar</p>
+<div class="flex flex-wrap gap-2 justify-center mt-3">
+<button type="button" class="btn-outline !text-xs" (click)="previsualizarArchivo(file)" [attr.aria-label]="'Previsualizar archivo seleccionado ' + file.name">
+<svg aria-hidden="true" lucideEye class="w-4 h-4">
+</svg>Previsualizar</button>
+<button type="button" class="btn-outline !text-xs" (click)="quitarArchivo(i)" [attr.aria-label]="'Quitar ' + file.name">
+<svg aria-hidden="true" lucideX class="w-4 h-4">
+</svg>Quitar</button>
+</div>
+</div>
+                    } @else {
+                      <div class="file-upload-zone reference-upload-feedback" role="button" [attr.tabindex]="bloqueado() ? -1 : 0" [attr.aria-disabled]="bloqueado()" [attr.aria-label]="'Seleccionar ' + zona.label + ' (opcional)'" [class.zone-invalid]="!!zona.warning()" (click)="!bloqueado() && fileInput.click()" (keydown)="abrirSelector($event, fileInput)" [class.is-dragging]="zona.dragging()" (dragover)="arrastrarArchivo($event, i, true)" (dragleave)="arrastrarArchivo($event, i, false)" (drop)="soltarArchivo($event, i)">
+<svg aria-hidden="true" lucideUpload class="w-8 h-8 mx-auto text-muted-foreground">
+</svg>
+<p class="text-sm mt-2">Arrastre un archivo o <span class="upload-action-link">selecciónelo</span>
+</p>
+<p class="text-xs text-muted-foreground">PDF, JPG, PNG o TXT · hasta 10 MB</p>
+</div>
+                    }
+                    <input #fileInput [id]="'saip-archivo-' + i" type="file" class="sr-only" tabindex="-1" [accept]="accept" (change)="seleccionarArchivo($event, i)" [attr.aria-describedby]="'saip-archivo-error-' + i">
+<p [id]="'saip-archivo-error-' + i" role="status" class="field-error">{{ zona.warning() }}</p>
+                  </div>
+                }</div>
               </div>
-              <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
-                04
-              </span>
-            </div>
-
-            <div class="p-6 md:p-8 space-y-5">
-              <p class="text-xs text-muted-foreground leading-relaxed">
-                Los siguientes datos son de llenado facultativo y no afectan la admisibilidad ni la respuesta de su solicitud.
-              </p>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div class="flex flex-col justify-between">
-                  <label for="sexo" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
-                    Sexo
-                  </label>
-                  <select id="sexo" [(ngModel)]="sexo" name="sexo" class="field-input">
-                    <option value="">Seleccione (Opcional)</option>
-                    <option value="Masculino">Masculino</option>
-                    <option value="Femenino">Femenino</option>
-                    <option value="Otro">Otro</option>
-                    <option value="Prefiero no decir">Prefiero no decir</option>
-                  </select>
-                </div>
-
-                <div class="flex flex-col justify-between">
-                  <label for="edad" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
-                    Edad
-                  </label>
-                  <input id="edad" type="number" [(ngModel)]="edad" name="edad" placeholder="Ej. 35" min="14" max="120" class="field-input" />
-                </div>
-
-                <div class="flex flex-col justify-between">
-                  <label for="discapacidad" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
-                    Discapacidad
-                  </label>
-                  <select id="discapacidad" [(ngModel)]="discapacidad" name="discapacidad" class="field-input">
-                    <option value="">Seleccione (Opcional)</option>
-                    <option value="No presenta">No presenta</option>
-                    <option value="Física o motora">Física o motora</option>
-                    <option value="Visual">Visual</option>
-                    <option value="Auditiva">Auditiva</option>
-                    <option value="Intelectual">Intelectual</option>
-                    <option value="Psicosocial / Otra">Psicosocial / Otra</option>
-                  </select>
-                </div>
-
-                <div class="flex flex-col justify-between">
-                  <label for="lenguaMaterna" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
-                    Lengua materna
-                  </label>
-                  <select id="lenguaMaterna" [(ngModel)]="lenguaMaterna" name="lenguaMaterna" class="field-input">
-                    <option value="">Seleccione (Opcional)</option>
-                    <option value="Castellano">Castellano</option>
-                    <option value="Quechua">Quechua</option>
-                    <option value="Aimara">Aimara</option>
-                    <option value="Asháninka">Asháninka</option>
-                    <option value="Awajún">Awajún</option>
-                    <option value="Otra lengua originaria">Otra lengua originaria</option>
-                  </select>
-                </div>
-
-                <div class="flex flex-col justify-between">
-                  <label for="etnia" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
-                    Autoidentificación étnica
-                  </label>
-                  <select id="etnia" [(ngModel)]="etnia" name="etnia" class="field-input">
-                    <option value="">Seleccione (Opcional)</option>
-                    <option value="Quechua">Quechua</option>
-                    <option value="Mestizo">Mestizo</option>
-                    <option value="Afrodescendiente">Afrodescendiente</option>
-                    <option value="Aimara">Aimara</option>
-                    <option value="Nativo o indígena de la Amazonía">Nativo o indígena de la Amazonía</option>
-                    <option value="Blanco">Blanco</option>
-                    <option value="Otro">Otro</option>
-                  </select>
-                </div>
-
-                <div class="flex flex-col justify-between">
-                  <label for="areaGeografica" class="field-label min-h-[2.25rem] flex items-end mb-1.5">
-                    Área geográfica de procedencia
-                  </label>
-                  <select id="areaGeografica" [(ngModel)]="areaGeografica" name="areaGeografica" class="field-input">
-                    <option value="">Seleccione (Opcional)</option>
-                    <option value="Urbana">Urbana</option>
-                    <option value="Rural">Rural</option>
-                  </select>
-                </div>
+            </section>
+          }
+          @if (step() === 4) {
+            <section class="form-shell" [class.zone-invalid]="!!errores()['consentimiento'] || !!errores()['veracidad']">
+<div class="form-section-header">
+<span class="eyebrow">Antes de enviar</span>
+<h3 class="form-section-title flex items-center gap-2">
+<svg aria-hidden="true" lucideListChecks class="w-5 h-5">
+</svg>Lista de verificación</h3>
+</div>
+              <div class="p-6 md:p-8 space-y-5">
+<p class="text-sm">Revise su pedido, la entidad, la forma de entrega y los archivos antes de presentar la solicitud.</p>
+<ul class="space-y-2.5 text-sm" aria-label="Lista de verificación de la solicitud">@for (item of revisionLocal(); track item.label) { <li class="flex items-start gap-2.5">
+<svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4 mt-0.5 flex-shrink-0" [style.color]="item.revisado ? 'var(--success)' : 'var(--muted-foreground)'">
+</svg>
+<span>{{ item.label }} <span class="sr-only">{{ item.revisado ? 'Completo' : 'Por revisar' }}</span>
+</span>
+</li> }</ul>
+                @if (avisosCalidad().length) { <div role="status" class="rounded-lg p-4" style="background:color-mix(in srgb,var(--gold) 14%,var(--card));border:1px solid var(--border)">
+<p class="text-sm font-medium">Sugerencias de redacción</p>
+<ul class="list-disc pl-5 text-sm">@for (aviso of avisosCalidad(); track aviso) { <li>{{ aviso }}</li> }</ul>
+<button type="button" class="btn-ghost-brand !text-xs" (click)="irPaso(1)">Volver a editar la descripción</button>
+</div> }
+                <div class="rounded-md p-4 text-sm" style="background:var(--card);border:1px solid var(--border)">
+<div class="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Su pedido</div>
+<p class="font-medium">{{ asunto }}</p>
+<p class="whitespace-pre-line mt-1">{{ descripcion }}</p>
+<p class="mt-2 text-xs text-muted-foreground">Entidad: {{ getEntidadSeleccionadaNombre() }} · Entrega: {{ formatosSeleccionadosLabels().join(', ') }}</p>
+<p class="mt-1 text-xs text-muted-foreground">Canal: {{ medioNotificacion === 'fisica' ? 'Física' : 'Correo electrónico' }} · Tema: {{ temaEfectivo() || 'No indicado' }}</p>@if (oficinaDestinataria) { <p class="mt-1 text-xs">Referencia a oficina: {{ oficinaDestinataria }}</p> }@for (zona of zonas; track zona.label) { @if (zona.file(); as file) { <p class="mt-1 text-xs">{{ zona.label }}: {{ file.name }} </p> } }</div>
+                <label class="flex items-start gap-2.5 text-sm rounded-md" [class.zone-invalid]="!!errores()['consentimiento']">
+<input type="checkbox" name="consentimiento" [(ngModel)]="consentimientoDatosPersonales" aria-describedby="saip-consentimiento-error" [attr.aria-invalid]="!!errores()['consentimiento']">
+<span>Acepto expresamente el tratamiento de mis datos personales para este procedimiento SAIP.</span>
+</label>
+<p id="saip-consentimiento-error" class="field-error">{{ errores()['consentimiento'] }}</p>
+                <label class="flex items-start gap-2.5 text-sm rounded-md" [class.zone-invalid]="!!errores()['veracidad']">
+<input type="checkbox" name="veracidad" [(ngModel)]="declaraVeracidad" aria-describedby="saip-veracidad-error" [attr.aria-invalid]="!!errores()['veracidad']">
+<span>Declaro que la información consignada es veraz.</span>
+</label>
+<p id="saip-veracidad-error" class="field-error">{{ errores()['veracidad'] }}</p>
               </div>
+            </section>
+
+            <!-- Disposiciones complementarias (según Ley N° 27806) -->
+            <div class="rounded-lg p-5" style="background: var(--muted); border: 1px solid var(--border)">
+              <div class="eyebrow !text-[10px] mb-2.5" style="color: var(--brand-700)">Disposiciones complementarias · Notas</div>
+              <ol class="list-decimal pl-5 space-y-2 text-xs text-muted-foreground leading-relaxed">
+                <li>
+                  La entrega de los documentos solicitados se hará a la persona o representante de la empresa que
+                  solicitó la información. De no poder concurrir éste, la misma podrá ser entregada a un tercero que
+                  deberá contar con carta poder simple.
+                </li>
+                <li>
+                  Cuando el/la solicitante incumple con cancelar el costo de reproducción, o el pedido cancelado no
+                  se apersona a la entidad a recoger la información solicitada, dentro del plazo de treinta (30) días
+                  calendario contados a partir del día siguiente de la notificación de la liquidación o puesta a su
+                  disposición, su solicitud es archivada.
+                </li>
+                <li>
+                  Tomar en consideración que la solicitud de información no implica la obligación de las entidades de
+                  la Administración Pública de crear o producir información con la que no cuente o no tenga obligación
+                  de contar al momento de efectuarse el pedido; tampoco permite que los solicitantes exijan a las
+                  entidades que efectúen evaluaciones o análisis de la información que posean, en conformidad con lo
+                  señalado en el artículo 13° del T.U.O. de la Ley N° 27806, aprobado mediante el Decreto Supremo
+                  N° 021-2019-JUS.
+                </li>
+              </ol>
             </div>
-          </section>
-
-          <section data-motion-item class="form-shell">
-            <div class="form-section-header flex items-start justify-between gap-4">
-              <div>
-                <span class="eyebrow">05 · Sustento opcional</span>
-                <h2 class="form-section-title">Documentos adjuntos</h2>
-              </div>
-              <span class="font-display" style="font-size: 48px; line-height: 1; letter-spacing: -0.04em; color: color-mix(in srgb, var(--brand-700) 35%, transparent); -webkit-text-stroke: 1px color-mix(in srgb, var(--brand-700) 55%, transparent);">
-                05
-              </span>
-            </div>
-            <div class="p-6 md:p-8 space-y-3">
-              <label class="reference-upload-zone block border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer" style="border-color: var(--brand-200); background: color-mix(in srgb, var(--brand-subtle) 35%, transparent)">
-                <input type="file" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.txt" multiple (change)="seleccionarDocumento($event)" />
-                <svg lucideFileText class="w-8 h-8 mx-auto mb-2 text-brand-700"></svg>
-                <p class="text-sm text-foreground/85">Adjunte los documentos de sustento (opcional)</p>
-                <p class="text-xs text-muted-foreground mt-1">PDF, JPG, PNG o TXT hasta 10 MB</p>
-              </label>
-
-              @for (file of documentosSeleccionados(); track file.name; let i = $index) {
-                <div class="rounded-md p-3 flex items-center gap-3" style="background: rgba(5,150,105,0.08); border: 1px solid rgba(5,150,105,0.25)">
-                  <svg lucideCheckCircle2 class="w-4 h-4 text-emerald-600"></svg>
-                  <span class="text-sm flex-1 font-medium truncate">{{ file.name }}</span>
-                  <span class="font-mono text-[11px] text-muted-foreground">{{ formatFileSize(file.size) }} KB</span>
-                  <button type="button" class="text-muted-foreground hover:text-foreground text-xs font-semibold px-2 py-1" (click)="removerDocumento(i)">
-                    Quitar
-                  </button>
-                </div>
-              }
-            </div>
-          </section>
-
-          <div data-motion-item class="flex flex-col sm:flex-row gap-3">
-            <button type="button" (click)="guardarBorrador()" class="btn-ghost-brand flex-1 justify-center !py-3">
-              <svg lucideFileText class="w-4 h-4"></svg>
-              Guardar borrador
-            </button>
-
-            <button type="submit" [disabled]="loading() || !canSubmit()" class="btn-brand flex-1 !py-3 justify-center disabled:opacity-60 disabled:cursor-not-allowed">
-              @if (loading()) {
-                <span class="inline-flex items-center gap-2">
-                  <span class="w-4 h-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin"></span>
-                  Enviando...
-                </span>
-              } @else {
-                <span class="inline-flex items-center gap-2">
-                  <svg lucideSend class="w-4 h-4"></svg>
-                  Presentar solicitud
-                </span>
-              }
-            </button>
+          }
+          <div class="flex flex-col sm:flex-row gap-3">
+            @if (step() > 1) { <button type="button" class="btn-ghost-brand justify-center !py-3" (click)="irPaso(step() - 1)">
+<svg aria-hidden="true" lucideChevronLeft class="w-4 h-4">
+</svg>Atrás</button> }
+            <button type="button" class="btn-ghost-brand flex-1 justify-center !py-3" (click)="guardarBorrador()" [disabled]="guardandoBorrador() || bloqueado()">
+<svg aria-hidden="true" lucideSave class="w-4 h-4">
+</svg>{{ guardandoBorrador() ? 'Guardando…' : 'Guardar borrador' }}</button>
+            @if (step() < 4) { <button type="button" class="btn-brand flex-1 justify-center !py-3" (click)="irPaso(step() + 1)">Continuar<svg aria-hidden="true" lucideChevronRight class="w-4 h-4">
+</svg>
+</button> }
+            @else { <button type="button" class="btn-brand flex-1 justify-center !py-3" (click)="handleSubmit(false)">
+<svg aria-hidden="true" lucideSend class="w-4 h-4">
+</svg>Presentar solicitud</button> }
           </div>
-        </form>
+        </fieldset>
+        <p role="note" class="text-xs text-muted-foreground">Guardar borrador conserva el texto en su cuenta. Los archivos se eligen otra vez al presentar. Puede retomarlo desde Borradores.</p>
       </div>
-
-      <aside class="lg:col-span-4" data-motion-stagger data-motion-y="10" data-motion-duration="0.36" data-motion-delay-step="0.05">
-        <div class="sticky top-28 space-y-5">
-          <div data-motion-item class="form-shell">
-            <div class="form-section-header">
-              <span class="eyebrow">Guía rápida</span>
-              <h3 class="form-section-title flex items-center gap-2">
-                <svg class="w-5 h-5" style="color: var(--brand-600);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path stroke-width="2" d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 2-3 4" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                ¿Qué puedo solicitar?
-              </h3>
-            </div>
-            <div class="p-6">
-              <div class="mb-5">
-                <div class="eyebrow !text-[10px] mb-3" style="color: var(--success);">Información permitida</div>
-                <ul class="space-y-2.5 text-sm">
-                  <li class="flex items-start gap-2.5 text-foreground/85"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--success);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>Presupuestos y gastos públicos</li>
-                  <li class="flex items-start gap-2.5 text-foreground/85"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--success);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>Contratos y licitaciones</li>
-                  <li class="flex items-start gap-2.5 text-foreground/85"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--success);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>Remuneraciones de funcionarios</li>
-                  <li class="flex items-start gap-2.5 text-foreground/85"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--success);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>Proyectos y programas en ejecución</li>
-                  <li class="flex items-start gap-2.5 text-foreground/85"><svg class="w-4 h-4 mt-0.5 shrink-0" style="color: var(--success);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="10" /></svg>Estadísticas oficiales</li>
-                </ul>
-              </div>
-
-              <div class="rule-ornament my-4"></div>
-
-              <div>
-                <div class="eyebrow !text-[10px] mb-3" style="color: var(--brand-700);">Información reservada</div>
-                <ul class="space-y-2.5 text-sm">
-                  <li class="flex items-start gap-2.5 text-foreground/80"><svg lucideXCircle class="w-4 h-4 mt-0.5 shrink-0 text-brand-600"></svg>Datos personales de terceros</li>
-                  <li class="flex items-start gap-2.5 text-foreground/80"><svg lucideXCircle class="w-4 h-4 mt-0.5 shrink-0 text-brand-600"></svg>Secretos comerciales</li>
-                  <li class="flex items-start gap-2.5 text-foreground/80"><svg lucideXCircle class="w-4 h-4 mt-0.5 shrink-0 text-brand-600"></svg>Información clasificada como secreta</li>
-                  <li class="flex items-start gap-2.5 text-foreground/80"><svg lucideXCircle class="w-4 h-4 mt-0.5 shrink-0 text-brand-600"></svg>Procesos judiciales en curso</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div data-motion-item class="rounded-lg p-5 flex gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200);">
-            <svg lucideInfo class="w-5 h-5 shrink-0 mt-0.5 text-brand-700"></svg>
-            <div>
-              <div class="eyebrow !text-[10px] mb-1.5" style="color: var(--brand-700);">Plazo legal</div>
-              <p class="text-sm text-foreground/85 leading-relaxed">
-                La entidad cuenta con <span class="font-mono font-semibold">10 días hábiles</span> para responder.
-                Si el pedido es amplio, puede ampliar el plazo con informe y cronograma notificados hasta el día 4 de atención
-                (Ley N° 27806).
-              </p>
-            </div>
-          </div>
-        </div>
-      </aside>
+      <aside class="lg:col-span-4">
+<div class="sticky top-28 space-y-5">
+        <section class="form-shell" aria-labelledby="saip-guia-title">
+<div class="form-section-header">
+<span class="eyebrow">Paso {{ step() }} · Ayuda</span>
+<h3 id="saip-guia-title" class="form-section-title flex items-center gap-2">
+<svg aria-hidden="true" lucideLightbulb class="w-5 h-5" style="color:var(--gold-dark)">
+</svg>Cómo llenarlo bien</h3>
+</div>
+<div class="p-6 space-y-4">
+<ul class="space-y-2.5 text-sm">@for (tip of guia().tips; track tip) { <li class="flex items-start gap-2.5">
+<svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4 mt-0.5 flex-shrink-0" style="color:var(--brand-600)">
+</svg>{{ tip }}</li> }</ul>@if (guia().bueno) { <div class="rounded-md p-3 text-sm" style="background:color-mix(in srgb,var(--success) 8%,var(--card));border:1px solid var(--border)">
+<p class="font-semibold" style="color:var(--success)">Ejemplo · Bien escrito</p>
+<p>{{ guia().bueno }}</p>
+</div> }@if (guia().malo) { <div class="rounded-md p-3 text-sm" style="background:color-mix(in srgb,var(--destructive) 6%,var(--card));border:1px solid var(--border)">
+<p class="font-semibold" style="color:var(--destructive)">Ejemplo · Por precisar</p>
+<p>{{ guia().malo }}</p>
+<p class="text-xs text-muted-foreground mt-1">{{ guia().maloPorQue }}</p>
+</div> }</div>
+</section>
+        @if (step() === 1) { <section class="form-shell">
+<div class="form-section-header">
+<span class="eyebrow">Guía rápida</span>
+<h3 class="form-section-title flex items-center gap-2">
+<svg aria-hidden="true" lucideHelpCircle class="w-5 h-5">
+</svg>¿Qué puedo solicitar?</h3>
+</div>
+<div class="p-6 text-sm space-y-3">
+<p>Presupuestos y gastos públicos, contratos y licitaciones, remuneraciones, proyectos y estadísticas oficiales.</p>
+<div class="rule-ornament">
+</div>
+<p class="text-muted-foreground">La entidad evalúa las excepciones de información secreta, reservada o confidencial. Esta guía no califica ni garantiza la entrega de su pedido.</p>
+</div>
+</section> }
+        <div class="rounded-lg p-5 flex gap-3" style="background:var(--brand-subtle);border:1px solid var(--brand-200)">
+<svg aria-hidden="true" lucideInfo class="w-5 h-5 flex-shrink-0 mt-0.5">
+</svg>
+<div>
+<div class="eyebrow !text-[10px] mb-1.5">Plazos legales</div>
+<p class="text-sm text-foreground/85 leading-snug">El plazo ordinario de atención es de 10 días hábiles. Consulte el vencimiento de su solicitud en el expediente. Si vence sin respuesta, puede apelar ante el Tribunal.</p>
+</div>
+</div>
+      </div>
+</aside>
     </div>
   </div>
-
-  <app-reference-confirm-modal
-    [open]="confirmModalAbierto()"
-    [submitting]="loading()"
-    title="Confirme su solicitud"
-    titleLead="Confirme"
-    titleEmphasis="su solicitud"
-    eyebrow="Revisión final · SAIP"
-    description="Antes de enviar, revise que la información esté correcta. Si algo no le convence, puede volver al formulario para editarlo."
-    [summary]="solicitudConfirmSummary()"
-    [warning]="solicitudWarning()"
-    confirmLabel="Confirmar y enviar"
-    (close)="confirmModalAbierto.set(false)"
-    (confirm)="crearSolicitud()">
-  </app-reference-confirm-modal>
-
-  <app-reference-success-modal
-    [open]="successModalAbierto()"
-    variant="saip-creada"
-    tone="success"
-    eyebrow="Solicitud recibida"
-    title="SAIP presentada correctamente"
-    [description]="'Su solicitud fue recibida por ' + getEntidadSeleccionadaNombre() + '. La entidad cuenta con un plazo legal para emitir respuesta.'"
-    [expediente]="expedienteCreado()"
-    [expedienteHint]="'Generado hoy · Notificaciones a ' + sesionVisual().email"
-    [plazoDias]="10"
-    plazoTipo="hábiles"
-    plazoDescripcion="La entidad debe responder dentro de este plazo. Si el pedido es amplio, puede notificar una ampliación con informe y cronograma hasta el día 4 de atención."
-    plazoNorma="Ley N° 27806 — TUO de Acceso a la Información Pública"
-    [metadata]="solicitudSuccessMetadata()"
-    [nextSteps]="solicitudNextSteps()"
-    primaryLabel="Ir a mi panel"
-    secondaryLabel="Ver expediente"
-    (close)="irPanelCiudadano()"
-    (primary)="irPanelCiudadano()"
-    (secondary)="verSolicitudCreada()">
-  </app-reference-success-modal>
+  <app-reference-confirm-modal [open]="confirmModalAbierto()" [manageFocus]="true" presentation="saip-response" [submitting]="loading()" title="Confirme su solicitud" titleLead="Confirme" titleEmphasis="su solicitud" eyebrow="Revisión final · SAIP" description="Antes de enviar, revise que la información esté correcta. Si algo no le convence, puede volver al formulario para editarlo." [summary]="solicitudConfirmSummary()" [warning]="solicitudWarning()" confirmLabel="Confirmar y enviar" cancelLabel="Volver a revisar" (close)="confirmModalAbierto.set(false)" (confirm)="crearSolicitud()">
+</app-reference-confirm-modal>
+  <app-reference-success-modal [open]="successModalAbierto() && !!solicitudCreada() && estadoEnvio() === 'confirmada'" [manageFocus]="true" presentation="saip-response" variant="saip-creada" tone="success" eyebrow="Solicitud presentada" title="Tu SAIP fue registrada" [description]="solicitudSuccessDescription()" [expediente]="expedienteCreado()" [expedienteHint]="solicitudSuccessHint()" [plazoDias]="10" plazoTipo="hábiles" plazoDescripcion="Es el plazo ordinario de atención. Consulte en su expediente la fecha aplicable." plazoNorma="Ley N° 27806 — TUO de Acceso a la Información Pública" [metadata]="solicitudSuccessMetadata()" [nextSteps]="solicitudNextSteps()" primaryLabel="Ir a mi panel" secondaryLabel="Ver expediente" (close)="cerrarResultado()" (primary)="irPanelCiudadano()" (secondary)="verSolicitudCreada()">
+</app-reference-success-modal>
+  <app-reference-confirm-modal [open]="draftModalAbierto()" [manageFocus]="true" presentation="saip-response" eyebrow="Solicitud en preparación" title="Borrador guardado" [description]="borradorAviso()" confirmLabel="Seguir editando" cancelLabel="Cerrar" (close)="draftModalAbierto.set(false)" (confirm)="draftModalAbierto.set(false)"></app-reference-confirm-modal>
+  <app-reference-confirm-modal [open]="!!modeloPendiente()" [manageFocus]="true" presentation="saip-response" title="Reemplazar descripción" description="El modelo sustituirá el texto que ya escribió. Revíselo y adapte sus ejemplos antes de presentar." confirmLabel="Usar modelo" (close)="modeloPendiente.set(null)" (confirm)="confirmarModelo()">
+</app-reference-confirm-modal>
+  <app-document-preview-modal [doc]="previewTarget()" [open]="isPreviewOpen()" [manageFocus]="true" (close)="cerrarPreview()">
+</app-document-preview-modal>
 </div>

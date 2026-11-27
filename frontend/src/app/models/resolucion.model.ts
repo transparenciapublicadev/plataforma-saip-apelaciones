@@ -137,6 +137,7 @@ export interface SuspensionPlazoTtaip {
 }
 
 export interface CumplimientoResolucionTtaip {
+  documental?: boolean;
     id?: number;
     expedienteTtaipId?: number | null;
     numeroExpediente?: string | null;
@@ -237,6 +238,7 @@ export interface RegistrarAcuseAutomaticoNotificacionPayload {
 }
 
 export interface ValidarNotificacionManualPayload {
+    fechaEficacia?: string | null;
     fechaValidacionManual?: string | null;
     responsableValidacion: string;
     observacionValidacion: string;
@@ -244,7 +246,8 @@ export interface ValidarNotificacionManualPayload {
     referenciaEvidencia?: string | null;
 }
 
-export type Resolucion = Required<ResolucionDTO> & {
+export type Resolucion = Required<Omit<ResolucionDTO, 'fechaValidacionActos'>> & {
+    fechaValidacionActos?: string | null;
     numeroResolucion?: string | null;
     sala?: SalaTtaipResumen | null;
     documentos?: DocumentoMetadata[];

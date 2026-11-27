@@ -1,17 +1,18 @@
-<div class="min-h-screen bg-background">
+<div class="entity-dashboard min-h-screen bg-background">
   <div class="relative bg-paper border-b border-border overflow-hidden">
     <div class="absolute bottom-0 left-0 right-0 h-[3px]" style="background: linear-gradient(90deg, transparent, var(--gold) 30%, var(--gold) 70%, transparent); opacity: 0.35"></div>
     <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-8" data-hero data-tour="e-hero">
       <div class="flex items-start gap-5 flex-wrap">
         <div class="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), var(--shadow-sm)">
-          <svg lucideBuilding2 class="w-7 h-7 text-white"></svg>
+          <svg aria-hidden="true" lucideBuilding2 class="w-7 h-7 text-white"></svg>
         </div>
 
         <div class="flex-1 min-w-0">
           <div class="flex items-start justify-between gap-3">
-            <span class="eyebrow">Bandeja del funcionario · {{ nombreEntidad() }}</span>
+            <div><span class="eyebrow">Bandeja del funcionario</span>
+              <p class="font-display mt-1" style="font-size: clamp(17px, 1.6vw, 21px); line-height: 1.2; letter-spacing: -0.01em; color: var(--brand-700)">{{ contextoVigente() ? (nombreEntidad() || 'Entidad sin nombre informado') : 'Contexto institucional pendiente' }}</p></div>
             <button type="button" (click)="startTour()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px] whitespace-nowrap relative inline-flex items-center gap-1.5" title="Ver tutorial guiado">
-              <svg lucideCompass class="w-3.5 h-3.5"></svg>
+              <svg aria-hidden="true" lucideCompass class="w-3.5 h-3.5"></svg>
               <span>Ver tutorial</span>
               @if (isFirstVisit) {
                 <span class="relative flex h-2 w-2 ml-0.5" title="Tutorial disponible">
@@ -24,31 +25,37 @@
           <h1 class="font-display mt-1" style="font-size: clamp(28px, 3vw, 38px); line-height: 1.05; letter-spacing: -0.02em">
             Tu día — <span class="italic" style="color: var(--brand-700)">{{ fechaHoy() }}</span>
           </h1>
-          <p class="text-muted-foreground mt-1.5 text-sm">
-            <span class="font-mono font-semibold text-foreground">{{ totalActivas() }}</span> solicitudes en bandeja ·
-            @if (counts().san > 0) {
-              <span class="font-mono font-semibold" style="color: var(--brand-700)"> {{ counts().san }} en SAN</span> ·
-            }
-            @if (counts().hoy > 0) {
-              <span class="font-mono font-semibold" style="color: var(--brand-600)"> {{ counts().hoy }} para hoy</span>
-            }
+          <p class="text-muted-foreground mt-1.5 text-sm" role="status" aria-live="polite" aria-atomic="true">
+            @if (resumen() && !error() && contextoVigente()) {
+              <span class="font-mono font-semibold text-foreground">{{ totalActivas() }}</span> solicitudes en bandeja
+              @if (counts().san > 0) { · <span class="font-mono font-semibold" style="color: var(--brand-700)">{{ counts().san }} en SAN</span> }
+              @if (counts().hoy > 0) { · <span class="font-mono font-semibold" style="color: var(--brand-600)">{{ counts().hoy }} para hoy</span> }
+            } @else { {{ loading() ? 'Consultando la bandeja de su entidad…' : 'Información institucional no disponible.' }} }
           </p>
         </div>
 
         <div data-tour="e-cumplimiento" class="flex items-center gap-4 rounded-lg p-4" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm)">
-          <div class="relative" style="width: 70px; height: 70px">
+          <div class="relative w-[70px] h-[70px] shrink-0">
             <svg width="70" height="70" viewBox="0 0 70 70">
-              <circle cx="35" cy="35" [attr.r]="donutRadius" fill="none" stroke="var(--muted)" stroke-width="6" />
-              <circle cx="35" cy="35" [attr.r]="donutRadius" fill="none" [attr.stroke]="donutAccent()" stroke-width="6" stroke-linecap="round" [attr.stroke-dasharray]="donutCirc" [attr.stroke-dashoffset]="donutOffset()" transform="rotate(-90 35 35)" style="transition: stroke-dashoffset 600ms"></circle>
+              <circle cx="35" cy="35" r="26" fill="none" stroke="var(--muted)" stroke-width="6" />
+              <circle cx="35" cy="35" r="26" fill="none" [attr.stroke]="donutAccent()" stroke-width="6" stroke-linecap="round" [attr.stroke-dasharray]="donutCircunferencia" [attr.stroke-dashoffset]="donutDashOffset()" transform="rotate(-90 35 35)" style="transition: stroke-dashoffset 600ms" />
             </svg>
-            <div class="absolute inset-0 flex items-center justify-center font-display" [style.color]="donutAccent()" style="font-size: 14px; letter-spacing: -0.02em">{{ cumplimiento() }}%</div>
+            <div class="absolute inset-0 flex items-center justify-center font-display text-sm" [style.color]="donutAccent()" style="letter-spacing: -0.02em">{{ cumplimiento() === null ? '—' : cumplimiento() + '%' }}</div>
           </div>
           <div class="min-w-[140px]">
-            <span class="eyebrow">Cumplimiento del plazo legal</span>
-            <div class="font-display" [style.color]="donutAccent()" style="font-size: 24px; line-height: 1.1; letter-spacing: -0.02em">{{ cumplimiento() }}%</div>
-            <div class="flex items-center gap-1 text-xs mt-0.5" style="color: var(--muted-foreground)">
-              <svg lucideTrendingUp class="w-3 h-3"></svg>
-              Calculado con datos actuales del backend
+            <span class="eyebrow">Respuestas registradas en plazo</span>
+            <div class="font-display" [style.color]="donutAccent()" style="font-size: 24px; line-height: 1.1; letter-spacing: -0.02em">{{ cumplimiento() === null ? '—' : cumplimiento() + '%' }}</div>
+            <div class="space-y-0.5 text-xs mt-0.5 text-muted-foreground" role="status">
+              @if (registroRespuestas(); as registro) {
+                @if (evaluadas()) {
+                  <p>{{ registro.enPlazo }} de {{ evaluadas() }} solicitudes evaluadas</p>
+                  @if (registro.fueraDePlazo > 0) { <p>{{ registro.fueraDePlazo }} fuera de plazo</p> }
+                } @else { <p>0 respuestas registradas en plazo</p> }
+                @if (registro.pendientes > 0) { <p>{{ registro.pendientes }} pendientes</p> }
+                @if (registro.noEvaluadas > 0) { <p>{{ registro.noEvaluadas }} sin evaluación del plazo</p> }
+              } @else {
+                <p>{{ loading() ? 'Consultando plazos…' : 'Indicador no disponible' }}</p>
+              }
             </div>
           </div>
         </div>
@@ -58,99 +65,69 @@
 
   <div class="max-w-7xl mx-auto px-6 md:px-10 py-8">
     @if (loading()) {
-      <div class="text-center py-16"><div class="spinner spinner-lg mx-auto"></div><p class="mt-4 text-sm text-[var(--niebla)]">Cargando solicitudes...</p></div>
-    } @else if (error()) {
-      <div class="alert alert-error p-6 text-center">
-        <p>{{ error() }}</p>
-        <button (click)="cargarSolicitudes()" class="btn-brand mt-4">Reintentar</button>
+      <app-yaiku-cargando mensaje="Cargando contexto y solicitudes de la entidad…" />
+    } @else if (error() || !contextoVigente()) {
+      <div class="alert alert-error p-6 text-center" role="alert">
+        <p>{{ error() || 'El contexto de sesión ha cambiado. Vuelva a consultar.' }}</p><a routerLink="/acceso-funcionario" class="inline-block text-sm underline mt-2">Acceso interno del funcionario</a>
+        <button type="button" (click)="cargarSolicitudes()" class="btn-brand mt-4">Reintentar</button>
       </div>
     } @else {
-      @if (elevacionesPendientes().length > 0) {
-        <section class="form-shell mb-6" data-reveal>
-          <div class="form-section-header flex items-center justify-between gap-4">
-            <div>
-              <span class="eyebrow">Elevación de apelaciones · 2 días hábiles</span>
-              <h2 class="form-section-title mt-1">Recursos pendientes de remisión al TTAIP</h2>
-            </div>
-            <span class="code-chip">{{ elevacionesPendientes().length }}</span>
-          </div>
-          <div class="p-4 space-y-3">
-            @for (elevacion of elevacionesPendientes(); track elevacion.id) {
-              <article class="rounded-lg p-4 grid grid-cols-1 lg:grid-cols-[1fr_260px_auto] gap-3 items-center" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--warning)">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="code-chip">{{ elevacion.expedienteReservado }}</span>
-                    <span class="badge badge-warning">{{ elevacion.estadoElevacion.replaceAll('_', ' ') }}</span>
-                  </div>
-                  <p class="text-xs text-muted-foreground mt-1.5">
-                    Cargo: <span class="font-mono">{{ elevacion.referenciaCargoPresentacion }}</span> · límite:
-                    <span class="font-mono font-semibold">{{ elevacion.fechaLimiteElevacion | date:'dd/MM/yyyy' }}</span>
-                  </p>
-                </div>
-                <input
-                  class="field-input !py-2 !text-sm"
-                  [(ngModel)]="referenciasElevacion[elevacion.apelacionId]"
-                  [name]="'referenciaElevacion-' + elevacion.apelacionId"
-                  placeholder="Referencia del expediente elevado" />
-                <button
-                  type="button"
-                  class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap"
-                  [disabled]="elevacionEnProceso() === elevacion.apelacionId"
-                  (click)="elevarApelacion(elevacion)">
-                  {{ elevacionEnProceso() === elevacion.apelacionId ? 'Elevando...' : 'Elevar al TTAIP' }}
-                </button>
-              </article>
-            }
-          </div>
-        </section>
-      }
-
       @if (counts().san > 0) {
-        <div class="mb-6 relative overflow-hidden rounded-lg p-5 flex items-start gap-4" data-reveal style="background: linear-gradient(135deg, var(--brand-subtle), var(--card) 70%); border: 1px solid var(--brand-200)">
+        <div role="alert" class="mb-6 relative overflow-hidden rounded-lg p-5 flex flex-wrap md:flex-nowrap items-start gap-4" data-reveal style="background: linear-gradient(135deg, var(--brand-subtle), var(--card) 70%); border: 1px solid var(--brand-200)">
           <span class="absolute left-0 top-0 bottom-0 w-1" style="background: linear-gradient(180deg, var(--brand-700), var(--gold))"></span>
           <div class="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0" style="background: var(--brand-700); box-shadow: inset 0 1px 0 rgba(255,255,255,0.20)">
-            <svg lucideShieldAlert class="w-5 h-5 text-white"></svg>
+            <svg aria-hidden="true" lucideShieldAlert class="w-5 h-5 text-white"></svg>
           </div>
-          <div class="flex-1">
+          <div class="flex-1 min-w-0">
             <span class="eyebrow" style="color: var(--brand-700)">Silencio administrativo negativo</span>
-            <h3 class="font-display mt-1" style="font-size: 20px; letter-spacing: -0.015em">
-              {{ counts().san }} solicitud(es) en SAN
-            </h3>
+            <h2 class="font-display mt-1" style="font-size: 20px; letter-spacing: -0.015em">
+              {{ counts().san }} solicitud{{ counts().san !== 1 ? 'es' : '' }} en SAN
+            </h2>
             <p class="text-sm text-muted-foreground mt-0.5">El plazo legal venció. Cada día sin respuesta puede originar sanción para la entidad y derecho de apelación del ciudadano.</p>
           </div>
-          <button (click)="selectBucket('san')" class="btn-brand !px-5 self-center">
+          <button type="button" (click)="selectBucket('san')" class="btn-brand !px-5 self-center w-full md:w-auto">
             Atender ahora
-            <svg lucideArrowRight class="w-4 h-4"></svg>
+            <svg aria-hidden="true" lucideArrowRight class="w-4 h-4"></svg>
           </button>
         </div>
       }
 
       <div class="mb-6" data-tour="e-buckets">
         <div class="flex items-baseline justify-between mb-3">
-          <span class="eyebrow">Bandeja por SLA</span>
-          <span class="text-xs text-muted-foreground hidden md:inline">Click una columna para enfocar</span>
+          <span class="eyebrow">Bandeja por plazo</span>
+          <span class="text-xs text-muted-foreground hidden md:inline">Seleccione una bandeja para ver sus solicitudes</span>
         </div>
 
         <div
-          class="grid grid-cols-2 md:grid-cols-5 gap-2"
+          class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2"
           data-motion-stagger
           data-motion-y="8"
           data-motion-duration="0.32"
           data-motion-delay-step="0.035"
         >
           @for (bucket of buckets; track bucket.key) {
-            <button data-motion-item (click)="selectBucket(bucket.key)" class="relative rounded-lg p-4 text-left transition-all overflow-hidden" [style.background]="selectedBucket() === bucket.key ? bucket.bg : 'var(--card)'" [style.border]="'1.5px solid ' + (selectedBucket() === bucket.key ? bucket.color : 'var(--border)')" [style.boxShadow]="selectedBucket() === bucket.key ? '0 0 0 3px ' + bucket.bg : 'none'">
+            <button
+              data-motion-item
+              (click)="selectBucket(bucket.key)"
+              [disabled]="counts()[bucket.key] === 0"
+              [attr.aria-pressed]="selectedBucket() === bucket.key"
+              [attr.aria-label]="counts()[bucket.key] === 0 ? bucket.label + ': sin solicitudes' : null"
+              class="relative rounded-lg p-4 text-left transition-all overflow-hidden disabled:cursor-not-allowed disabled:opacity-50"
+              [style.background]="selectedBucket() === bucket.key ? bucket.bg : 'var(--card)'"
+              [style.border]="'1.5px solid ' + (selectedBucket() === bucket.key ? bucket.color : 'var(--border)')"
+              [style.boxShadow]="selectedBucket() === bucket.key ? '0 0 0 3px ' + bucket.bg : 'none'"
+            >
               @if (selectedBucket() === bucket.key) {
                 <span class="absolute left-0 top-0 bottom-0 w-1" [style.background]="bucket.color"></span>
               }
 
               <div class="flex items-start justify-between mb-2">
                 @switch (bucket.icon) {
-                  @case ('alert') { <svg lucideAlertTriangle class="w-4 h-4" [style.color]="bucket.color"></svg> }
-                  @case ('flame') { <svg lucideFlame class="w-4 h-4" [style.color]="bucket.color"></svg> }
-                  @case ('calendar') { <svg lucideCalendar class="w-4 h-4" [style.color]="bucket.color"></svg> }
-                  @case ('check') { <svg lucideCheckCircle2 class="w-4 h-4" [style.color]="bucket.color"></svg> }
-                  @default { <svg lucideInbox class="w-4 h-4" [style.color]="bucket.color"></svg> }
+                  @case ('alert') { <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4" [style.color]="bucket.color"></svg> }
+                  @case ('flame') { <svg aria-hidden="true" lucideFlame class="w-4 h-4" [style.color]="bucket.color"></svg> }
+                  @case ('calendar') { <svg aria-hidden="true" lucideCalendar class="w-4 h-4" [style.color]="bucket.color"></svg> }
+                  @case ('check') { <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4" [style.color]="bucket.color"></svg> }
+                  @default { <svg aria-hidden="true" lucideInbox class="w-4 h-4" [style.color]="bucket.color"></svg> }
                 }
                 @if (selectedBucket() === bucket.key) {
                   <span class="w-2 h-2 rounded-full" [style.background]="bucket.color"></span>
@@ -174,117 +151,100 @@
       >
         <div class="lg:col-span-8">
           <div class="form-shell" data-tour="e-cola" data-motion-item>
-            <div class="form-section-header flex items-center gap-3">
+            <div class="form-section-header flex items-center gap-3 flex-wrap">
               <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" [style.background]="bucketActivoMeta().bg" [style.border]="'1px solid ' + bucketActivoMeta().color">
                 @switch (bucketActivoMeta().icon) {
-                  @case ('alert') { <svg lucideAlertTriangle class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
-                  @case ('flame') { <svg lucideFlame class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
-                  @case ('calendar') { <svg lucideCalendar class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
-                  @case ('check') { <svg lucideCheckCircle2 class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
-                  @default { <svg lucideInbox class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
+                  @case ('alert') { <svg aria-hidden="true" lucideAlertTriangle class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
+                  @case ('flame') { <svg aria-hidden="true" lucideFlame class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
+                  @case ('calendar') { <svg aria-hidden="true" lucideCalendar class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
+                  @case ('check') { <svg aria-hidden="true" lucideCheckCircle2 class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
+                  @default { <svg aria-hidden="true" lucideInbox class="w-4.5 h-4.5" [style.color]="bucketActivoMeta().color"></svg> }
                 }
               </div>
               <div class="flex-1 min-w-0">
                 <span class="eyebrow">Bandeja enfocada</span>
-                <div class="font-display" style="font-size: 19px; letter-spacing: -0.015em">
+                <h2 class="font-display" style="font-size: 19px; letter-spacing: -0.015em">
                   {{ bucketActivoMeta().label }}
-                  <span class="font-mono text-muted-foreground" style="font-size: 14px; margin-left: 8px">· {{ filtradas().length }}</span>
-                </div>
+                  <span class="font-mono text-muted-foreground" style="font-size: 14px; margin-left: 8px">· {{ totalRegistros() }}</span>
+                </h2>
               </div>
 
-              <div class="relative max-w-[260px] flex-1 hidden md:block">
-                <svg lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
-                <input class="field-input has-icon-left-sm !pl-9 !py-2 !text-sm" placeholder="Buscar..." [(ngModel)]="busquedaModel" />
+              <div class="relative w-full md:w-[300px] md:flex-shrink-0">
+                <svg aria-hidden="true" lucideSearch class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
+                <label for="entity-search" class="sr-only">Buscar en los registros recibidos</label>
+                <input id="entity-search" type="search" class="field-input !pl-9 !py-2 !text-sm w-full" placeholder="Buscar administrado, asunto o N°…" [(ngModel)]="busquedaModel" (keydown.escape)="limpiarBusqueda()" maxlength="120" />
               </div>
             </div>
 
-            <div class="p-3 md:p-4 space-y-2 max-h-[640px] overflow-y-auto custom-scrollbar">
-              @if (filtradas().length === 0) {
+            <p role="status" aria-live="polite" aria-atomic="true" class="px-4 pt-3 text-xs text-muted-foreground">{{ totalRegistros() }} coincidencias entre {{ counts().todas }} solicitudes.</p>
+            <div class="p-3 md:p-4 space-y-2">
+              @if (queryLoading()) { <app-yaiku-cargando mensaje="Consultando solicitudes…" /> } @else if (totalRegistros() === 0) {
                 <div class="text-center py-12">
                   <div class="w-12 h-12 mx-auto mb-3 rounded-lg flex items-center justify-center" style="background: var(--brand-subtle)">
-                    <svg lucideCheckCircle2 class="w-5 h-5" style="color: var(--success)"></svg>
+                    <svg aria-hidden="true" lucideInbox class="w-5 h-5" style="color: var(--muted-foreground)"></svg>
                   </div>
-                  <p class="text-sm text-foreground/85 font-medium">Sin solicitudes en esta bandeja</p>
-                  <p class="text-xs text-muted-foreground mt-1">Disfrute la calma o explore otra cola arriba.</p>
+                  <p class="text-sm text-foreground/85 font-medium">{{ busqueda().trim() ? 'Sin resultados para su búsqueda' : 'Sin solicitudes en esta bandeja' }}</p>
+                  <p class="text-xs text-muted-foreground mt-1">{{ busqueda().trim() ? 'Pruebe con otro término de búsqueda.' : 'Disfrute la calma o explore otra cola arriba.' }}</p>
                 </div>
               } @else {
-                @for (item of filtradasVisibles(); track item.solicitud.id) {
-                  <div data-table-row class="rounded-lg p-4 flex items-center gap-4 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border)" [style.borderLeft]="'3px solid ' + getDiasColor(item.bucket)">
+                <div role="list" aria-label="Solicitudes de la entidad" class="space-y-2">
+                @if (queryLoading()) { <app-yaiku-cargando mensaje="Consultando solicitudes…" /> }
+            @for (item of filtradasVisibles(); track item.solicitud.id) {
+                  <div role="listitem" data-table-row class="rounded-lg p-4 flex items-center gap-4 transition-colors hover:bg-[color:var(--brand-subtle)]" style="background: var(--card); border: 1px solid var(--border)" [style.borderLeft]="'3px solid ' + getDiasColor(item.bucket)">
                     <div class="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ item.iniciales }}</div>
 
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 flex-wrap">
-                        <span class="code-chip">{{ item.solicitud.expediente }}</span>
-                        <span [class]="getPrioridadClass(item.prioridad)">{{ item.prioridad.toUpperCase() }}</span>
-                        <span [class]="'badge ' + getEstadoBadgeClass(item.solicitud.estado)">{{ getEstadoDisplay(item.solicitud) }}</span>
+                        <a class="code-chip" [routerLink]="['/funcionario/solicitud', item.solicitud.expediente]" [attr.aria-label]="'Ver detalle de ' + item.solicitud.expediente">{{ item.solicitud.expediente }}</a>
+                        @if (item.prioridad) { <span [class]="getPrioridadClass(item.prioridad)">{{ item.prioridad }}</span> }
+                        <app-status-badge [status]="getEstadoDisplay(item.solicitud)"></app-status-badge>
                       </div>
 
-                      <div class="text-sm font-medium text-foreground mt-1.5 truncate" [title]="item.solicitud.asunto">{{ item.solicitud.asunto }}</div>
-                      <div class="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
-                        <svg lucideUser class="w-3 h-3 inline"></svg>
-                        {{ item.solicitud.ciudadanoNombre }} · <span class="font-mono">{{ item.tema }}</span> · presentada {{ item.solicitud.fechaPresentacion | date:'dd/MM/yyyy' }}
+                      <h3 class="text-sm font-medium text-foreground mt-1.5 truncate" [title]="item.solicitud.asunto || ''">{{ item.solicitud.asunto }}</h3>
+                      <div class="text-xs text-muted-foreground mt-0.5 truncate">
+                        <svg aria-hidden="true" lucideUser class="w-3 h-3 inline mr-1"></svg>{{ item.solicitud.ciudadanoNombre }}@if (item.tema) { · <span class="font-mono">{{ item.tema }}</span> }@if (fechaVisible(item.solicitud.fechaPresentacion); as fecha) { · presentada {{ fecha | date:'dd/MM/yyyy' }} }
+                      </div>
+                      <div class="text-xs mt-1 truncate" [style.color]="item.solicitud.areaResponsable ? 'var(--brand-700)' : 'var(--muted-foreground)'">
+                        <svg aria-hidden="true" lucideBuilding2 class="w-3 h-3 inline mr-1"></svg>
+                        <span class="font-medium">Área responsable:</span> {{ getAreaLabel(item.solicitud) }}
                       </div>
                     </div>
 
-                    @if (item.bucket !== 'respondidas') {
-                      <div class="hidden md:flex flex-col items-end gap-1.5 min-w-[110px]">
-                        <div class="text-right">
-                          <div class="font-display" [style.color]="getDiasColor(item.bucket)" style="font-size: 22px; line-height: 1; letter-spacing: -0.02em">
-                            {{ getDiasValor(item) }}
-                          </div>
-                          <div class="text-[10px] tracking-widest uppercase text-muted-foreground mt-1">
-                            {{ item.bucket === 'san' ? 'en SAN' : 'restantes' }}
-                          </div>
-                        </div>
-                      </div>
+                    <p class="md:hidden text-xs text-muted-foreground">{{ getMetaLabel(item) }}: {{ getMetaValue(item) }}</p>
+                    <!-- Columna derecha uniforme (etiqueta + valor) -->
+                    <div class="hidden md:flex flex-col items-end justify-center text-right w-[132px] flex-shrink-0">
+                      <span class="text-[10px] tracking-wide uppercase text-muted-foreground truncate max-w-full">{{ getMetaLabel(item) }}</span>
+                      <span class="font-display mt-0.5 truncate max-w-full" [style.color]="getDiasColor(item.bucket)" style="font-size: 17px; line-height: 1.15; letter-spacing: -0.015em">{{ getMetaValue(item) }}</span>
+                    </div>
+
+                    <!-- Acción -->
+                    @if (!canResponder(item.solicitud)) {
+                      <a [routerLink]="['/funcionario/solicitud', item.solicitud.expediente]" class="queue-action btn-ghost-brand !px-3 !py-2 !text-[12px]">
+                        Ver detalle
+                        <svg aria-hidden="true" lucideChevronRight class="w-3.5 h-3.5"></svg>
+                      </a>
+                    } @else {
+                      <a [routerLink]="['/funcionario/responder', item.solicitud.expediente]" class="queue-action btn-brand !px-3 !py-2 !text-[13px]">
+                        <svg aria-hidden="true" lucideSend class="w-3.5 h-3.5"></svg>
+                        Responder
+                      </a>
                     }
-
-                    <div class="flex items-center gap-1.5">
-                      @if (canResponder(item.solicitud)) {
-                        <a [routerLink]="['/funcionario/responder', item.solicitud.expediente]" class="btn-brand !px-4 !py-2 !text-[13px] whitespace-nowrap">
-                          <svg lucideSend class="w-3.5 h-3.5"></svg>
-                          Responder
-                        </a>
-                      } @else {
-                        <a [routerLink]="['/funcionario/solicitud', item.solicitud.expediente]" class="btn-ghost-brand !px-3 !py-2 !text-[12px] whitespace-nowrap">
-                          Ver
-                          <svg lucideChevronRight class="w-3.5 h-3.5"></svg>
-                        </a>
-                      }
-                    </div>
                   </div>
                 }
+                </div>
               }
 
               <!-- ── INSTITUTIONAL PAGINATION FOOTER ── -->
               @if (totalRegistros() > 0) {
-                <div class="px-4 py-3 border-t border-[var(--border)] bg-[var(--paper)] rounded-b-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                  <div class="text-muted-foreground">
-                    Mostrando <span class="font-semibold text-foreground">{{ inicioRegistro() }}</span> - <span class="font-semibold text-foreground">{{ finRegistro() }}</span> de <span class="font-semibold text-foreground">{{ totalRegistros() }}</span> expedientes
-                  </div>
-
-                  <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-2">
-                      <span class="text-muted-foreground">Filas por página:</span>
-                      <select [ngModel]="itemsPorPagina()" (ngModelChange)="cambiarItemsPorPagina($event)" class="bg-[var(--card)] border border-[var(--border)] rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-[var(--brand-600)]">
-                        <option [ngValue]="10">10</option>
-                        <option [ngValue]="20">20</option>
-                        <option [ngValue]="50">50</option>
-                      </select>
-                    </div>
-
-                    <div class="flex items-center gap-1">
-                      <button (click)="cambiarPagina(1)" [disabled]="paginaActual() === 1" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Primera página">«</button>
-                      <button (click)="cambiarPagina(paginaActual() - 1)" [disabled]="paginaActual() === 1" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Página anterior">‹</button>
-
-                      <span class="px-2 font-medium text-foreground">
-                        Página {{ paginaActual() }} de {{ totalPaginas() }}
-                      </span>
-
-                      <button (click)="cambiarPagina(paginaActual() + 1)" [disabled]="paginaActual() >= totalPaginas()" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Página siguiente">›</button>
-                      <button (click)="cambiarPagina(totalPaginas())" [disabled]="paginaActual() >= totalPaginas()" class="px-2 py-1 rounded border border-[var(--border)] bg-[var(--card)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--brand-subtle)] transition-colors" title="Última página">»</button>
-                    </div>
-                  </div>
+                <div class="pt-2">
+                  <app-pagination
+                    [page]="paginaSegura()"
+                    [totalPages]="totalPaginas()"
+                    [total]="totalRegistros()"
+                    [rangeFrom]="inicioRegistro()"
+                    [rangeTo]="finRegistro()"
+                    (goTo)="cambiarPagina($event)"
+                  ></app-pagination>
                 </div>
               }
             </div>
@@ -295,20 +255,26 @@
           <div class="form-shell" data-tour="e-carga">
             <div class="form-section-header">
               <span class="eyebrow flex items-center gap-2">
-                <svg lucideLayers class="w-3 h-3"></svg>
-                Distribución de carga
+                <svg aria-hidden="true" lucideLayers class="w-3 h-3"></svg>
+                Solicitudes en atención
               </span>
-              <div class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Vencimientos próximos</div>
+              <h2 class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Vencimientos próximos</h2>
             </div>
             <div class="p-4 space-y-1.5">
-              @for (row of distribucionDias(); track row.dia) {
+              @if (distribucionDias() === null) {
+                <p class="text-xs text-muted-foreground">Distribución por día no disponible.</p>
+              } @else {
+                @for (row of distribucionDias(); track row.dia) {
                 <div class="flex items-center gap-2.5" data-table-row>
-                  <span class="font-mono text-[10px] w-10 text-right text-muted-foreground">{{ row.dia === 0 ? 'hoy' : row.dia + 'd' }}</span>
+                  <span class="font-mono text-[10px] w-10 text-right text-muted-foreground">{{ row.dia }}d</span>
                   <div class="flex-1 h-3 rounded-full overflow-hidden" style="background: var(--muted)">
                     <div class="h-full rounded-full transition-all" [style.width.%]="row.width" [style.background]="row.count === 0 ? 'var(--border-strong)' : row.color" [style.opacity]="row.count === 0 ? 0.4 : 1"></div>
                   </div>
                   <span class="font-mono text-[11px] w-5 text-right" [style.color]="row.count > 0 ? row.color : 'var(--muted-foreground)'">{{ row.count }}</span>
                 </div>
+                } @empty {
+                  <p class="text-xs text-muted-foreground">Sin vencimientos próximos en las solicitudes con plazo registrado.</p>
+                }
               }
               <p class="text-[11px] text-muted-foreground pt-3 border-t border-border mt-3">
                 Vencimientos por días hábiles restantes.
@@ -320,10 +286,10 @@
             <div class="form-shell" data-tour="e-batch" data-reveal>
               <div class="form-section-header">
                 <span class="eyebrow flex items-center gap-2">
-                  <svg lucideTarget class="w-3 h-3"></svg>
+                  <svg aria-hidden="true" lucideTarget class="w-3 h-3"></svg>
                   Oportunidad
                 </span>
-                <div class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Temas para batch</div>
+                <h2 class="font-display" style="font-size: 16px; letter-spacing: -0.01em">Temas frecuentes</h2>
               </div>
               <div class="p-4 space-y-2.5">
                 @for (tema of topTemas(); track tema[0]) {
@@ -338,7 +304,7 @@
                   </div>
                 }
                 <p class="text-[11px] text-muted-foreground pt-2 border-t border-border">
-                  Considere preparar respuestas tipo para los temas recurrentes.
+                  Temas que el administrado escribió al presentar la solicitud.
                 </p>
               </div>
             </div>
@@ -348,10 +314,22 @@
             <span class="eyebrow" style="color: var(--info)">Norma aplicable</span>
             <ul class="text-xs text-foreground/80 space-y-1.5 mt-2 leading-relaxed">
               <li><span class="font-mono font-semibold">10 días hábiles</span> para responder · Ley N° 27806.</li>
+              <li>Observar requisitos en <span class="font-mono font-semibold">2 días hábiles</span>. Consulte las condiciones de ampliación en el expediente.</li>
               <li>Vencido el plazo aplica <span class="font-semibold">silencio administrativo negativo</span>.</li>
-              <li>El ciudadano puede apelar dentro del <span class="font-mono font-semibold">plazo legal aplicable</span> ante el Tribunal.</li>
+              <li>El administrado puede apelar una denegatoria en <span class="font-mono font-semibold">15 días hábiles</span>; ante silencio, sin plazo perentorio.</li>
             </ul>
           </div>
+
+          <a [routerLink]="['/funcionario/reportes']" class="w-full form-shell p-4 flex items-center gap-3 transition-colors hover:border-brand-300 group block" data-reveal>
+            <div class="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-subtle)">
+              <svg aria-hidden="true" lucideFileChartColumn class="w-4 h-4" style="color: var(--brand-700)"></svg>
+            </div>
+            <div class="flex-1 text-left">
+              <span class="eyebrow" style="color: var(--brand-700)">ANTAIP</span>
+              <div class="text-sm font-medium">Reportes de la entidad</div>
+            </div>
+            <svg aria-hidden="true" lucideArrowRight class="w-4 h-4 text-muted-foreground"></svg>
+          </a>
         </aside>
       </div>
     }

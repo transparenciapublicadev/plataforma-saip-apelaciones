@@ -25,7 +25,7 @@ Las siguientes reglas ya estan implementadas y validadas en el flujo actual:
 - Postman/Newman captura una cedula real generada durante la ejecucion para reprocesar; no depende de numeros de cedula fijos del seed o environment.
 - El ciudadano puede registrar una apelacion externa sin SAIP local cuando la solicitud original fue tramitada fuera de la plataforma.
 - El TTAIP puede cerrar una apelacion con `ESTESE_A_LO_RESUELTO` o `NULIDAD_DEL_ACTO`, generando resolucion final, cedulas/notificaciones para ciudadano y entidad publica e historial del expediente.
-- SAIP soporta ampliacion de plazo notificada hasta el dia 4 de atencion, con informe formal y cronograma de entregas parciales de maximo 30 dias entre hitos.
+- SAIP soporta ampliacion de plazo comunicada hasta el dia habil 2 de atencion, con informe formal y cronograma de entregas parciales progresivas cuando corresponde.
 - SAIP soporta encauzamiento dentro de 2 dias habiles, con entidad origen, entidad destino, alcance total/parcial, motivo, responsable y trazabilidad.
 - SAIP soporta liquidacion/cupon de pago para entrega fisica o reproduccion fisica, con notificacion hasta el dia 9, plazo de recojo de 30 dias habiles y archivo por no recojo.
 - TTAIP soporta descargos de entidad despues de admision valida, con plazo de 7 dias habiles, suspension de plazo de resolucion y trazabilidad en el expediente.
@@ -126,14 +126,14 @@ Cuando el ciudadano seleccione casilla electronica como medio de notificacion, e
 ### Ampliacion de plazo
 
 - Si el pedido es amplio o requiere gran volumen de informacion, la entidad puede pedir ampliacion.
-- Debe notificarse un informe con cronograma de entregas parciales.
-- Cada entrega parcial no debe exceder 30 dias.
-- La ampliacion debe notificarse como maximo hasta el dia 4 de atencion.
+- Cuando el plazo supera los 30 dias habiles, se incluye un cronograma de entregas parciales progresivas (Mapa Integral, proceso de atencion SAIP; Reglamento de la Ley 27806, art. 23.3).
+- El incumplimiento de una fecha del cronograma constituye denegatoria. El art. 23.3 no fija un intervalo maximo entre entregas. El criterio de producto vigente limita ese intervalo a 30 dias habiles entre una fecha programada y la siguiente: no se cuentan sabados, domingos ni feriados del calendario institucional. La ultima entrega la elige la entidad y puede ser anterior o igual al vencimiento de la ampliacion.
+- La ampliacion se comunica como maximo hasta el dia habil 2 de atencion, contado desde el dia siguiente de la presentacion o de la subsanacion. La fecha de esa comunicacion es la del registro.
 - Si no se notifica dentro de ese limite, se mantiene el plazo ordinario de 10 dias habiles.
 - Implementacion actual: `AmpliacionPlazoSolicitud` registra motivo, informe, fecha de solicitud, fecha de notificacion, plazo original, plazo ampliado, estado, responsable, trazabilidad y `CronogramaEntregaParcialSolicitud`.
 - El backend solo permite registrar ampliacion en estados `RECEPCIONADA` o `EN_REVISION`, sin otra ampliacion activa, y actualiza `Solicitud.fechaLimite` al ultimo hito valido del cronograma.
-- El cronograma valida entregas progresivas: numero de entrega, descripcion, fecha programada, estado, fecha real de entrega y observacion; cada entrega debe ocurrir como maximo 30 dias despues del hito anterior.
-- Postman/Newman cubre el flujo positivo y una validacion negativa esperada para cronogramas que exceden 30 dias, manteniendo Problem Details RFC 9457.
+- El cronograma registra numero de entrega, descripcion, fecha programada, estado, fecha real de entrega y observacion. Las fechas programadas deben ir en orden y cada una a no mas de 30 dias habiles de la anterior. En el formulario la ultima entrega la elige la entidad y puede quedar antes del vencimiento ampliado.
+- La coleccion Postman incluye el flujo positivo y un caso negativo de entrega previa a la comunicacion, con Problem Details RFC 9457.
 
 ### Encauzamiento
 
@@ -149,14 +149,15 @@ Cuando el ciudadano seleccione casilla electronica como medio de notificacion, e
 ### Liquidacion de costos y entrega fisica
 
 - Si la entrega es fisica, la entidad debe notificar el cupon o liquidacion de pago antes del vencimiento legal, operacionalmente hasta el dia 9.
-- El ciudadano tiene 30 dias habiles desde la notificacion del cupon para recoger las copias o coordinar entrega fisica.
-- Si no recoge dentro de 30 dias habiles, se archiva el expediente.
+- El ciudadano tiene 30 dias calendario, contados desde el dia siguiente a la notificacion del cupon, para recoger las copias o acreditar el pago.
+- Mientras el cupon esta vigente, la situacion visible es informacion puesta a disposicion. No se crea un estado de pago: el pago se valida en el mismo acto del recojo.
+- Si no recoge o no acredita el pago dentro de esos 30 dias calendario, se archiva el expediente.
 - La liquidacion aplica solo cuando la SAIP solicita entrega fisica, copia simple o copia certificada.
 - El sistema registra codigo de liquidacion, monto, moneda, concepto, fecha de emision, fecha de notificacion, fecha limite de recojo, medio de notificacion, responsable, observacion y trazabilidad.
-- La fecha limite de recojo se calcula sumando 30 dias habiles desde la fecha de notificacion del cupon.
+- La fecha limite de recojo se calcula sumando 30 dias calendario a la fecha de notificacion del cupon.
 - No se permite mas de una liquidacion activa para la misma SAIP.
 - Estados operativos: `EMITIDA`, `NOTIFICADA`, `PAGADA`, `RECOGIDA`, `ARCHIVADA`, `CANCELADA` y `VENCIDA`.
-- Si el ciudadano paga o recoge la informacion, se registra fecha de pago/recojo; al marcar `RECOGIDA`, la SAIP queda `RESPONDIDA` bajo el modelo actual.
+- Al marcar `RECOGIDA`, la SAIP queda `RESPONDIDA` (entrega total). El recojo tambien procede si la respuesta fisica ya dejo la solicitud en `RESPONDIDA` y el cupon sigue vigente.
 - Si vence el plazo de recojo sin que el ciudadano recoja la informacion, el procesamiento de vencidas marca la liquidacion como `ARCHIVADA` y la SAIP como `CONCLUIDA`.
 - Implementacion actual: `LiquidacionCostoSolicitud` conserva cupon, fechas, responsable, trazabilidad y estado. Postman/Newman valida emision, consulta, rechazo de duplicado activo, pago, recojo y procesamiento de vencidas.
 
@@ -268,31 +269,31 @@ El sistema permite dos canales compatibles para una apelacion vinculada a una SA
 - La entidad tiene 7 dias habiles para presentar descargos y remitir expediente.
 - El plazo de 10 dias habiles para resolver se suspende durante este periodo.
 - Implementacion actual: `DescargoEntidadTtaip` registra expediente, apelacion, entidad, fecha de requerimiento, fecha limite de descargo, fecha de presentacion, estado, resumen, documento o referencia, responsable de entidad, observacion y trazabilidad.
-- El requerimiento solo se permite cuando el expediente esta en `EN_RESOLUCION`, es decir, luego de una admision valida.
+- En el flujo documental, el Tribunal requiere los descargos al validar la notificación de admisión a la entidad. La entidad vinculada puede presentar un oficio identificado por su número y adjuntar varios anexos. Una presentación recibida queda cerrada para edición.
 - No se permite mas de un descargo activo `REQUERIDO` por expediente.
 - Al requerir descargos se crea `SuspensionPlazoTtaip` con motivo `DESCARGOS_ENTIDAD`, estado `ACTIVA`, inicio en la fecha de requerimiento, fin planificado en 7 dias habiles y `diasSuspendidos = 7`.
-- Si la entidad presenta descargos dentro del plazo, el descargo queda `PRESENTADO`, la suspension queda `CERRADA` y los dias suspendidos se recalculan segun los dias habiles efectivamente transcurridos.
-- Si presenta fuera de plazo, queda `PRESENTADO_EXTEMPORANEO`; la suspension se considera cerrada al limite legal de 7 dias habiles.
-- Si vence sin presentacion, el procesamiento operativo marca el descargo como `VENCIDO_SIN_PRESENTACION`, cierra la suspension como `VENCIDA` y el expediente puede continuar.
-- La fecha limite de resolucion final se recalcula desde la base de 10 dias habiles y suma los dias suspendidos registrados.
-- Postman/Newman valida requerimiento positivo, rechazo por duplicado activo, consultas, presentacion de descargo, suspensiones y procesamiento de vencidos.
+- La presentación es opcional. El plazo para resolver conserva los siete días hábiles completos de suspensión aunque la entidad presente el oficio antes del vencimiento. En el flujo documental, los 17 días hábiles de base para resolver se cuentan desde la notificación eficaz de la admisión a la entidad (10 días hábiles más 7 de suspensión por descargos).
+- El formulario documental recibe los descargos dentro del plazo acreditado. Los descargos históricos pueden conservar el estado `PRESENTADO_EXTEMPORANEO`.
+- Si vence sin presentacion, el procesamiento operativo marca el descargo como `VENCIDO_SIN_PRESENTACION` y cierra la suspensión como `VENCIDA`. El Tribunal puede emitir la resolución final con ambas notificaciones eficaces, haya recibido descargos o no.
+- Las suspensiones adicionales de la etapa se suman a la fecha límite que corresponde al expediente.
+- El Tribunal consulta el oficio y sus anexos en el expediente. El panel permite filtrar las apelaciones que tienen descargos presentados.
 
 ### Segunda calificacion
 
 - Aplica solo si hubo inadmisibilidad y el ciudadano subsano.
 - Plazo: 7 dias habiles desde la subsanacion valida.
 - Puede terminar en admision/admisibilidad o improcedencia.
-- La segunda calificacion debe notificarse antes de iniciar el plazo de resolucion final.
+- La notificación eficaz a la entidad inicia el plazo de resolución. Con ambas notificaciones acreditadas, la segunda calificación admitida pasa a resolución final.
 
 ### Resolucion final
 
-- Plazo: 10 dias habiles desde el dia siguiente de la notificacion valida de admisibilidad.
-- El plazo puede suspenderse por descargos, informe oral o informacion complementaria.
+- Plazo base en el flujo documental: 17 días hábiles contados a partir del día siguiente de la notificación eficaz de la admisión a la entidad. Incluye los siete días por descargos.
 - Si se solicita informe oral o informacion complementaria, el plazo se suspende 3 dias adicionales.
 - Implementacion actual: `SuspensionPlazoTtaip` reutiliza el mismo agregado de suspensiones para `DESCARGOS_ENTIDAD`, `INFORME_ORAL` e `INFORMACION_COMPLEMENTARIA`.
 - Para `INFORME_ORAL` e `INFORMACION_COMPLEMENTARIA`, el sistema registra expediente, tipo de solicitud, solicitante `CIUDADANO`, `ENTIDAD_PUBLICA` o `TTAIP`, motivo, fecha de solicitud, fecha de inicio, fecha de fin planificada, `diasSuspendidos = 3`, estado, responsable, observacion y trazabilidad.
-- Solo se permite registrar estas suspensiones cuando el expediente TTAIP esta en `EN_RESOLUCION`; no se permiten duplicados activos del mismo tipo para el mismo expediente.
-- La fecha limite de resolucion final se recalcula desde la base de 10 dias habiles y suma todos los dias suspendidos registrados. Si una suspension adicional se cancela, queda `CANCELADA`, suma `0` dias y se conserva su traza.
+- El administrado y la entidad pueden pedir informe oral o presentar documentación adicional mientras su admisión esté notificada y el expediente siga abierto. El Tribunal responde el informe oral con un archivo. Si lo acepta, ambas partes reciben la programación en el expediente. Si lo deniega, la parte solicitante recibe el sustento.
+- Dos solicitudes de informe oral de partes del mismo expediente comparten la suspensión registrada por ese motivo. La documentación adicional presentada por iniciativa de una parte se incorpora al expediente. El requerimiento de información complementaria del Tribunal conserva su propio trámite y suspensión.
+- La fecha límite documental se recalcula con la base de 17 días hábiles y las suspensiones adicionales registradas para esta etapa. Si una suspension adicional se cancela, queda `CANCELADA`, suma `0` dias y se conserva su traza.
 
 Decisiones finales:
 
@@ -312,16 +313,12 @@ Las decisiones `ESTESE_A_LO_RESUELTO` y `NULIDAD_DEL_ACTO` se registran como res
 
 ### Cumplimiento de resolucion fundada
 
-- Si el TTAIP declara `FUNDADO` o `FUNDADO_EN_PARTE`, la entidad debe cumplir en maximo 7 dias habiles.
-- En el mismo plazo, la entidad debe comunicar el cumplimiento al Tribunal, adjuntando evidencia o referencia documental.
-- No aplica para `INFUNDADO`, `INFUNDADO_EN_PARTE`, `IMPROCEDENTE`, `CONCLUSION_SUSTRACCION_MATERIA` ni `CONCLUSION_DESISTIMIENTO`.
-- Implementacion actual: `CumplimientoResolucionTtaip` registra expediente, apelacion, resolucion, entidad, fecha de requerimiento, fecha limite, fecha de cumplimiento, estado, tipo `TOTAL`/`PARCIAL`/`NO_CUMPLE`, descripcion, evidencia o referencia documental, responsable, observacion y trazabilidad.
-- La fecha limite se calcula sumando 7 dias habiles desde la notificacion valida de la resolucion final a la entidad publica cuando existe. Si no hay una notificacion valida segura, el backend usa la fecha de la resolucion/notificacion disponible como base operativa y conserva esa decision en la documentacion.
-- Una notificacion valida para iniciar el seguimiento puede estar `ENTREGADA` o `VALIDADA`, tener resultado equivalente o haber sido validada manualmente con sustento.
-- Solo TTAIP/administrador puede crear, observar o cerrar el seguimiento; funcionario de entidad/administrador puede registrar la comunicacion de cumplimiento.
-- No se permite mas de un seguimiento activo `PENDIENTE` u `OBSERVADO` para la misma resolucion.
-- Si vence sin cumplimiento, el procesamiento operativo marca el seguimiento como `VENCIDO`, sin borrar expediente ni resolucion.
-- Postman/Newman valida creacion dinamica del seguimiento sobre una resolucion final fundada, rechazo por duplicado activo, registro de evidencia por entidad, observacion/cierre por TTAIP, rechazo sobre resolucion no fundada y procesamiento de vencidos.
+- Al registrar una nueva resolución final, el expediente permanece en `NOTIFICACION_RESOLUCION_FINAL` hasta acreditar la notificación a ambas partes. Para los sentidos distintos de `FUNDADO` y `FUNDADO_EN_PARTE`, la última validación cierra el expediente con el sentido registrado.
+- Para `FUNDADO` y `FUNDADO_EN_PARTE`, la notificación eficaz a la entidad habilita un único seguimiento y el expediente pasa a `EN_CUMPLIMIENTO`, incluso si la notificación al administrado todavía está pendiente. El plazo de siete días hábiles se calcula con el calendario de la entidad obligada a partir de su fecha de notificación eficaz. El seguimiento conserva la identificación de esa notificación.
+- El funcionario de la entidad obligada publica una nueva respuesta y sus anexos en la bandeja del administrado. Después registra y valida el cargo y el acuse, junto con la fecha eficaz acreditada.
+- La entidad remite al Tribunal el oficio numerado, su fundamento y sus anexos. La remisión incorpora los archivos ya registrados de la respuesta, el cargo y el acuse. Los archivos de la remisión se habilitan para el Tribunal al registrar esa actuación.
+- La remisión en plazo registra cumplimiento de la entidad. Si vence el plazo sin remisión, el procesamiento programado registra incumplimiento. El expediente se cierra cuando constan las dos notificaciones eficaces y uno de esos resultados. La apelación conserva el sentido del fallo.
+- Los seguimientos históricos conservan el contrato anterior de comunicación, observación y cierre operativo. La nueva fase documental se aplica a las resoluciones finales registradas con el flujo actualizado.
 
 ## Reglas de notificacion
 

@@ -6,7 +6,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const platformId = inject(PLATFORM_ID);
   const isBrowser = isPlatformBrowser(platformId);
 
-  if (isBrowser && typeof localStorage !== 'undefined') {
+  if (isBrowser && typeof localStorage !== 'undefined' && !req.headers.has('Authorization')) {
     const usuario = localStorage.getItem('usuario');
 
     if (usuario) {

@@ -1,0 +1,44 @@
+/* ComplianceTrackingComponent — Seguimiento de Cumplimiento TTAIP */
+:host { display: block; }
+.compliance-page { overflow-wrap: anywhere; }
+.compliance-page aside, .compliance-page section, .compliance-page .form-shell { min-width: 0; }
+.compliance-page :where(button,a,input,textarea,select):focus-visible { outline: 2px solid var(--brand-600); outline-offset: 3px; }
+.compliance-page textarea { min-height: 92px; }
+@media (max-width: 480px) {
+  .compliance-toast { left: 1rem; right: 1rem; bottom: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .compliance-page *, .compliance-page *::before, .compliance-page *::after { animation: none !important; transition: none !important; }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

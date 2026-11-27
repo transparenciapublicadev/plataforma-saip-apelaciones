@@ -1,6 +1,8 @@
 package pe.gob.saip.backend.service;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -9,6 +11,7 @@ import pe.gob.saip.backend.model.dto.ActualizarEntregaParcialRequest;
 import pe.gob.saip.backend.model.dto.ActualizarLiquidacionCostoRequest;
 import pe.gob.saip.backend.model.dto.ObservarSolicitudRequest;
 import pe.gob.saip.backend.model.dto.PlazoSeguimientoDTO;
+import pe.gob.saip.backend.model.dto.SolicitudDTO;
 import pe.gob.saip.backend.model.dto.RegistrarAmpliacionPlazoRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEncauzamientoSolicitudRequest;
 import pe.gob.saip.backend.model.dto.RegistrarEntregaParcialRequest;
@@ -21,6 +24,7 @@ import pe.gob.saip.backend.model.entity.EncauzamientoSolicitud;
 import pe.gob.saip.backend.model.entity.Entidad;
 import pe.gob.saip.backend.model.entity.LiquidacionCostoSolicitud;
 import pe.gob.saip.backend.model.entity.ObservacionSolicitud;
+import pe.gob.saip.backend.model.entity.Respuesta;
 import pe.gob.saip.backend.model.entity.Solicitud;
 import pe.gob.saip.backend.repository.AmpliacionPlazoSolicitudRepository;
 import pe.gob.saip.backend.repository.CronogramaEntregaParcialSolicitudRepository;
@@ -38,6 +42,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -68,8 +73,16 @@ class SolicitudServiceTest {
     @Mock
     PlazoCalculadorService plazoCalculadorService;
 
+    @Mock AutorizacionRecursosService autorizacion;
+    @Mock EntityManager entityManager;
+    @Mock DocumentoService documentoService;
     @InjectMocks
     SolicitudService solicitudService;
+
+    @BeforeEach void bloqueos() {
+        lenient().when(solicitudRepository.findByIdForUpdate(anyLong()))
+            .thenAnswer(inv -> solicitudRepository.findById(inv.getArgument(0)));
+    }
 
     private Solicitud crearSolicitud(Long id, String expediente, Solicitud.EstadoSolicitud estado) {
         Solicitud s = new Solicitud();
@@ -77,6 +90,7 @@ class SolicitudServiceTest {
         s.setExpediente(expediente);
         s.setAsunto("Solicitud de prueba");
         s.setDescripcion("Descripción de prueba");
+        Ciudadano ciudadano = new Ciudadano(); ciudadano.setIdUsuario(9L); s.setCiudadano(ciudadano);
         s.setEstado(estado);
         s.setFechaPresentacion(LocalDateTime.now());
         s.setFechaLimite(LocalDate.now().plusDays(10));
@@ -239,6 +253,8 @@ class SolicitudServiceTest {
     @Test
     void detectarSilencioAdministrativo_debeMarcarComoVencidas() {
         var solicitud = crearSolicitud(1L, "SAIP-2025-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        solicitud.setFechaLimite(LocalDate.now().minusDays(1));
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
         when(solicitudRepository.findVencidas(any(LocalDate.class), anyList())).thenReturn(List.of(solicitud));
         when(solicitudRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -301,7 +317,7 @@ class SolicitudServiceTest {
         observacion.setTrazabilidad("Observación registrada");
 
         when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
-        when(observacionRepository.findById(20L)).thenReturn(Optional.of(observacion));
+        when(observacionRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(observacion));
         when(observacionRepository.save(observacion)).thenReturn(observacion);
 
         ObservacionSolicitud resultado = solicitudService.subsanarSolicitud(
@@ -312,6 +328,8 @@ class SolicitudServiceTest {
 
         assertThat(resultado.getEstado()).isEqualTo(ObservacionSolicitud.EstadoObservacion.SUBSANADA);
         assertThat(resultado.getFechaSubsanacion()).isNotNull();
+        assertThat(solicitud.getFechaLimite())
+                .isEqualTo(DiasHabilesUtil.sumarDiasHabiles(resultado.getFechaSubsanacion().toLocalDate(), 10));
         assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.EN_REVISION);
         verify(solicitudRepository).save(solicitud);
     }
@@ -325,6 +343,8 @@ class SolicitudServiceTest {
         observacion.setEstado(ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION);
         observacion.setFechaLimiteSubsanacion(LocalDate.now().minusDays(1));
 
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(observacionRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(observacion));
         when(observacionRepository.findByEstadoAndFechaLimiteSubsanacionBefore(
                 eq(ObservacionSolicitud.EstadoObservacion.PENDIENTE_SUBSANACION),
                 any(LocalDate.class)))
@@ -344,8 +364,8 @@ class SolicitudServiceTest {
         LocalDate hoy = LocalDate.now();
         LocalDate fechaLimiteOriginal = DiasHabilesUtil.sumarDiasHabiles(hoy, 10);
         LocalDate entrega1 = hoy.plusDays(15);
-        LocalDate entrega2 = hoy.plusDays(30);
-        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        LocalDate entrega2 = entrega1.plusDays(30);
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
         solicitud.setFechaPresentacion(LocalDateTime.now());
         solicitud.setFechaLimite(fechaLimiteOriginal);
 
@@ -377,12 +397,13 @@ class SolicitudServiceTest {
         assertThat(resultado.getFechaLimiteAmpliada()).isEqualTo(entrega2);
         assertThat(resultado.getCronograma()).hasSize(2);
         assertThat(solicitud.getFechaLimite()).isEqualTo(entrega2);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.EN_REVISION);
         verify(solicitudRepository).save(solicitud);
         verify(ampliacionRepository).save(any(AmpliacionPlazoSolicitud.class));
     }
 
     @Test
-    void registrarAmpliacion_despuesDelDia4_debeLanzarReglaNegocio() {
+    void registrarAmpliacion_despuesDelDiaHabil2_debeLanzarReglaNegocio() {
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
         solicitud.setFechaPresentacion(LocalDateTime.now().minusDays(20));
         solicitud.setFechaLimite(LocalDate.now().plusDays(10));
@@ -402,11 +423,66 @@ class SolicitudServiceTest {
                         )
                 ))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("día 4");
+                .hasMessageContaining("día hábil 2");
     }
 
     @Test
-    void registrarAmpliacion_conEntregaMayorA30Dias_debeLanzarReglaNegocio() {
+    void registrarAmpliacion_conDias_rechazaComunicacionEnUnDiaDistintoDelRegistro() {
+        LocalDate hoy = LocalDate.of(2026, 11, 16);
+        when(plazoCalculadorService.hoy()).thenReturn(hoy);
+        when(plazoCalculadorService.calcularFechaVencimiento(any(), eq(5), eq(3L))).thenReturn(hoy.plusDays(10));
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFechaPresentacion(hoy.minusDays(1).atStartOfDay());
+        solicitud.setFechaLimite(hoy.plusDays(8));
+        solicitud.setEntidad(crearEntidad(3L, "MIN", true));
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(eq(1L), anyList()))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> solicitudService.registrarAmpliacion(
+                1L,
+                new RegistrarAmpliacionPlazoRequest(
+                        "Pedido voluminoso",
+                        "Informe de ampliación",
+                        hoy.minusDays(1),
+                        "Funcionario",
+                        List.of(),
+                        5)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("día de su registro");
+        verify(ampliacionRepository, never()).save(any());
+    }
+
+    @Test
+    void preverAmpliacion_conCienDiasHabiles_calculaLaNuevaFechaSinTopeDeProducto() {
+        LocalDate hoy = LocalDate.of(2026, 11, 17);
+        LocalDate ampliada = LocalDate.of(2027, 4, 20);
+        when(plazoCalculadorService.hoy()).thenReturn(hoy);
+        when(plazoCalculadorService.calcularFechaVencimiento(any(), eq(100), eq(3L))).thenReturn(ampliada);
+        var solicitud = crearSolicitud(1L, "SAIP-2026-10007", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        solicitud.setFechaPresentacion(hoy.atStartOfDay());
+        solicitud.setFechaLimite(hoy.plusDays(14));
+        solicitud.setEntidad(crearEntidad(3L, "MINEDU", true));
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(eq(1L), anyList()))
+                .thenReturn(false);
+
+        var prevision = solicitudService.preverAmpliacion(1L, 100);
+
+        assertThat(prevision.fechaLimiteAmpliada()).isEqualTo(ampliada);
+        assertThat(prevision.disponible()).isTrue();
+        assertThat(prevision.requiereCronograma()).isTrue();
+    }
+
+    @Test
+    void preverAmpliacion_sinDias_rechazaLaConsulta() {
+        assertThatThrownBy(() -> solicitudService.preverAmpliacion(1L, 0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("al menos 1");
+    }
+
+    @Test
+    void registrarAmpliacion_conCronogramaDesordenado_rechazaIndicandoLaEntrega() {
         LocalDate hoy = LocalDate.now();
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
         solicitud.setFechaPresentacion(LocalDateTime.now());
@@ -423,11 +499,80 @@ class SolicitudServiceTest {
                                 "Informe con cronograma",
                                 hoy,
                                 "Funcionario",
-                                List.of(new RegistrarEntregaParcialRequest(1, "Entrega", hoy.plusDays(31), null))
+                                List.of(
+                                        new RegistrarEntregaParcialRequest(1, "Primer bloque", hoy.plusDays(44), null),
+                                        new RegistrarEntregaParcialRequest(2, "Segundo bloque", hoy.plusDays(40), null)
+                                )
                         )
                 ))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("30 días");
+                .hasMessageContaining("entrega 2 no puede programarse antes de la entrega 1");
+    }
+
+    @Test
+    void registrarAmpliacion_conEntregasSeparadasPorMasDe30Dias_rechazaElCronograma() {
+        LocalDate hoy = LocalDate.now();
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+        solicitud.setFechaLimite(DiasHabilesUtil.sumarDiasHabiles(hoy, 10));
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(eq(1L), anyList()))
+                .thenReturn(false);
+
+        LocalDate primera = hoy.plusDays(10);
+        LocalDate segunda = DiasHabilesUtil.sumarDiasHabiles(primera, 31);
+        assertThatThrownBy(() -> solicitudService.registrarAmpliacion(
+                        1L,
+                        new RegistrarAmpliacionPlazoRequest(
+                                "Pedido voluminoso",
+                                "Informe con cronograma",
+                                hoy,
+                                "Funcionario",
+                                List.of(
+                                        new RegistrarEntregaParcialRequest(1, "Primer bloque", primera, null),
+                                        new RegistrarEntregaParcialRequest(2, "Segundo bloque", segunda, null)
+                                )
+                        )
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("30 días hábiles");
+        verify(ampliacionRepository, never()).save(any());
+    }
+
+    @Test
+    void registrarAmpliacion_conDias_aceptaUltimaEntregaDistintaDelVencimientoLegal() {
+        LocalDate hoy = LocalDate.of(2026, 11, 20);
+        LocalDate ordinario = LocalDate.of(2026, 12, 4);
+        LocalDate legal = LocalDate.of(2027, 2, 4);
+        when(plazoCalculadorService.hoy()).thenReturn(hoy);
+        when(plazoCalculadorService.calcularFechaVencimiento(any(), eq(50), eq(3L))).thenReturn(legal);
+        var solicitud = crearSolicitud(1L, "SAIP-2026-10008", Solicitud.EstadoSolicitud.EN_REVISION);
+        solicitud.setFechaPresentacion(hoy.atStartOfDay());
+        solicitud.setFechaLimite(ordinario);
+        solicitud.setEntidad(crearEntidad(3L, "MINEDU", true));
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(ampliacionRepository.existsBySolicitud_IdSolicitudAndEstadoAmpliacionIn(eq(1L), anyList()))
+                .thenReturn(false);
+        when(ampliacionRepository.save(any(AmpliacionPlazoSolicitud.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AmpliacionPlazoSolicitud resultado = solicitudService.registrarAmpliacion(
+                1L,
+                new RegistrarAmpliacionPlazoRequest(
+                        "Pedido voluminoso",
+                        "Informe con cronograma de entregas",
+                        hoy,
+                        "Funcionario",
+                        List.of(
+                                new RegistrarEntregaParcialRequest(1, "Primer bloque", LocalDate.of(2026, 11, 25), null),
+                                new RegistrarEntregaParcialRequest(2, "Último bloque", LocalDate.of(2026, 12, 15), null)
+                        ),
+                        50));
+
+        assertThat(resultado.getFechaLimiteAmpliada()).isEqualTo(legal);
+        assertThat(solicitud.getFechaLimite()).isEqualTo(legal);
+        assertThat(resultado.getCronograma()).hasSize(2);
+        assertThat(resultado.getCronograma().getLast().getFechaProgramada()).isEqualTo(LocalDate.of(2026, 12, 15));
     }
 
     @Test
@@ -455,7 +600,7 @@ class SolicitudServiceTest {
     }
 
     @Test
-    void registrarEncauzamientoTotal_debeCambiarEntidadResponsable() {
+    void registrarEncauzamientoTotal_abreExpedienteNuevoYConservaElOrigen() {
         var origen = crearEntidad(1L, "MINJUS", true);
         var destino = crearEntidad(2L, "MINEDU", true);
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
@@ -466,6 +611,8 @@ class SolicitudServiceTest {
         when(encauzamientoRepository.existsBySolicitud_IdSolicitudAndEstadoEncauzamientoIn(eq(1L), anyList()))
                 .thenReturn(false);
         when(entidadRepository.findById(2L)).thenReturn(Optional.of(destino));
+        when(solicitudRepository.findMaxExpedienteNumber(anyString())).thenReturn(41);
+        when(solicitudRepository.save(any(Solicitud.class))).thenAnswer(inv -> inv.getArgument(0));
         when(encauzamientoRepository.save(any(EncauzamientoSolicitud.class))).thenAnswer(inv -> {
             EncauzamientoSolicitud encauzamiento = inv.getArgument(0);
             encauzamiento.setIdEncauzamiento(60L);
@@ -485,11 +632,77 @@ class SolicitudServiceTest {
 
         assertThat(resultado.getAlcance()).isEqualTo(EncauzamientoSolicitud.AlcanceEncauzamiento.TOTAL);
         assertThat(resultado.getEstadoEncauzamiento()).isEqualTo(EncauzamientoSolicitud.EstadoEncauzamiento.DERIVADO);
-        assertThat(resultado.getFechaLimiteEncauzamiento()).isEqualTo(DiasHabilesUtil.sumarDiasHabiles(LocalDate.now(), 2));
-        assertThat(solicitud.getEntidad()).isEqualTo(destino);
-        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.EN_REVISION);
-        verify(solicitudRepository).save(solicitud);
+        assertThat(resultado.getFechaLimiteEncauzamiento()).isEqualTo(DiasHabilesUtil.sumarDiasHabiles(LocalDate.now(), 4));
+        assertThat(solicitud.getEntidad()).isEqualTo(origen);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.RECEPCIONADA);
+        assertThat(resultado.getSolicitudDerivada()).isNotNull();
+        assertThat(resultado.getSolicitudDerivada().getEntidad()).isEqualTo(destino);
+        assertThat(resultado.getSolicitudDerivada().getEstado()).isEqualTo(Solicitud.EstadoSolicitud.RECEPCIONADA);
+        assertThat(resultado.getSolicitudDerivada().getExpediente()).isEqualTo("SAIP-" + LocalDate.now().getYear() + "-00042");
+        assertThat(resultado.getSolicitudDerivada().getAsunto()).isEqualTo(solicitud.getAsunto());
+        assertThat(resultado.getSolicitudDerivada().getFechaLimite())
+                .isEqualTo(DiasHabilesUtil.sumarDiasHabiles(LocalDate.now(), 10));
+        assertThat(resultado.getTrazabilidad()).contains("Expediente de destino: SAIP-" + LocalDate.now().getYear() + "-00042");
         verify(encauzamientoRepository).save(any(EncauzamientoSolicitud.class));
+        verify(documentoService).copiarDocumentosDelAdministrado(eq(solicitud), eq(resultado.getSolicitudDerivada()));
+    }
+
+    @Test
+    void registrarEncauzamientoTotal_conDenegatoria_conservaDenegadaYAbreExpedienteNuevo() {
+        var origen = crearEntidad(1L, "MINEDU", true);
+        var destino = crearEntidad(2L, "MINSA", true);
+        var solicitud = crearSolicitud(1L, "SAIP-2026-10008", Solicitud.EstadoSolicitud.DENEGADA);
+        solicitud.setEntidad(origen);
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+        Respuesta respuesta = new Respuesta();
+        respuesta.setTipoRespuesta(Respuesta.TipoRespuesta.DENEGACION_TOTAL);
+        solicitud.setRespuesta(respuesta);
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(encauzamientoRepository.existsBySolicitud_IdSolicitudAndEstadoEncauzamientoIn(eq(1L), anyList()))
+                .thenReturn(false);
+        when(entidadRepository.findById(2L)).thenReturn(Optional.of(destino));
+        when(solicitudRepository.findMaxExpedienteNumber(anyString())).thenReturn(10008);
+        when(solicitudRepository.save(any(Solicitud.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(encauzamientoRepository.save(any(EncauzamientoSolicitud.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        EncauzamientoSolicitud resultado = solicitudService.registrarEncauzamiento(
+                1L,
+                new RegistrarEncauzamientoSolicitudRequest(
+                        2L,
+                        "La información solicitada corresponde a MINSA",
+                        "TOTAL",
+                        "Funcionario",
+                        null
+                )
+        );
+
+        assertThat(solicitud.getEntidad()).isEqualTo(origen);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.DENEGADA);
+        assertThat(resultado.getSolicitudDerivada().getEntidad()).isEqualTo(destino);
+        assertThat(resultado.getSolicitudDerivada().getEstado()).isEqualTo(Solicitud.EstadoSolicitud.RECEPCIONADA);
+        assertThat(resultado.getSolicitudDerivada().getRespuesta()).isNull();
+    }
+
+    @Test
+    void registrarEncauzamiento_denegadaSinRespuesta_debeLanzarReglaNegocio() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.DENEGADA);
+        solicitud.setEntidad(crearEntidad(1L, "MINEDU", true));
+        solicitud.setFechaPresentacion(LocalDateTime.now());
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> solicitudService.registrarEncauzamiento(
+                        1L,
+                        new RegistrarEncauzamientoSolicitudRequest(
+                                2L,
+                                "La información solicitada corresponde a otra entidad",
+                                "TOTAL",
+                                "Funcionario",
+                                null
+                        )
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("estado válido");
     }
 
     @Test
@@ -520,6 +733,7 @@ class SolicitudServiceTest {
         assertThat(resultado.getAlcance()).isEqualTo(EncauzamientoSolicitud.AlcanceEncauzamiento.PARCIAL);
         assertThat(solicitud.getEntidad()).isEqualTo(origen);
         verify(solicitudRepository, never()).save(solicitud);
+        verify(documentoService, never()).copiarDocumentosDelAdministrado(any(), any());
         verify(encauzamientoRepository).save(any(EncauzamientoSolicitud.class));
     }
 
@@ -547,7 +761,7 @@ class SolicitudServiceTest {
                         )
                 ))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("2 días hábiles");
+                .hasMessageContaining("4 días hábiles");
     }
 
     @Test
@@ -577,7 +791,7 @@ class SolicitudServiceTest {
     }
 
     @Test
-    void emitirLiquidacion_debeCalcularLimiteRecojo30DiasHabiles() {
+    void emitirLiquidacion_debeCalcularLimiteRecojo30DiasCalendario() {
         LocalDate hoy = LocalDate.now();
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
         solicitud.setFormatoFisico(true);
@@ -609,7 +823,7 @@ class SolicitudServiceTest {
 
         assertThat(resultado.getCodigoLiquidacion()).startsWith("CUPON-" + hoy.getYear() + "-00001-");
         assertThat(resultado.getEstadoLiquidacion()).isEqualTo(LiquidacionCostoSolicitud.EstadoLiquidacion.NOTIFICADA);
-        assertThat(resultado.getFechaLimiteRecojo()).isEqualTo(DiasHabilesUtil.sumarDiasHabiles(hoy, 30));
+        assertThat(resultado.getFechaLimiteRecojo()).isEqualTo(hoy.plusDays(30));
         assertThat(resultado.getMedioNotificacion()).isEqualTo(Solicitud.CanalNotificacion.CASILLA_ELECTRONICA);
         verify(liquidacionRepository).save(any(LiquidacionCostoSolicitud.class));
     }
@@ -679,6 +893,7 @@ class SolicitudServiceTest {
         liquidacion.setMonto(BigDecimal.ONE);
         liquidacion.setTrazabilidad("Liquidación notificada");
 
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
         when(liquidacionRepository.findById(70L)).thenReturn(Optional.of(liquidacion));
         when(liquidacionRepository.save(liquidacion)).thenReturn(liquidacion);
 
@@ -695,6 +910,34 @@ class SolicitudServiceTest {
     }
 
     @Test
+    void actualizarLiquidacion_recojoCuandoLaInformacionYaEstaPuestaADisposicion() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RESPONDIDA);
+        Respuesta respuesta = new Respuesta();
+        respuesta.setIdRespuesta(4L);
+        solicitud.setRespuesta(respuesta);
+        var liquidacion = new LiquidacionCostoSolicitud();
+        liquidacion.setIdLiquidacion(70L);
+        liquidacion.setSolicitud(solicitud);
+        liquidacion.setEstadoLiquidacion(LiquidacionCostoSolicitud.EstadoLiquidacion.NOTIFICADA);
+        liquidacion.setMonto(new BigDecimal("36.80"));
+        liquidacion.setTrazabilidad("Cupón notificado");
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(liquidacionRepository.findById(70L)).thenReturn(Optional.of(liquidacion));
+        when(liquidacionRepository.save(liquidacion)).thenReturn(liquidacion);
+
+        LiquidacionCostoSolicitud resultado = solicitudService.actualizarLiquidacion(
+                1L,
+                70L,
+                new ActualizarLiquidacionCostoRequest("RECOGIDA", null, LocalDate.now(), "Funcionario", "Recojo con cargo, voucher y DNI")
+        );
+
+        assertThat(resultado.getEstadoLiquidacion()).isEqualTo(LiquidacionCostoSolicitud.EstadoLiquidacion.RECOGIDA);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.RESPONDIDA);
+        verify(solicitudRepository).save(solicitud);
+    }
+
+    @Test
     void procesarLiquidacionesVencidas_debeArchivarPorNoRecojo() {
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
         var liquidacion = new LiquidacionCostoSolicitud();
@@ -704,6 +947,8 @@ class SolicitudServiceTest {
         liquidacion.setFechaLimiteRecojo(LocalDate.now().minusDays(1));
         liquidacion.setTrazabilidad("Liquidación notificada");
 
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(liquidacionRepository.findById(liquidacion.getId())).thenReturn(Optional.of(liquidacion));
         when(liquidacionRepository.findByEstadoLiquidacionInAndFechaLimiteRecojoBefore(anyList(), any(LocalDate.class)))
                 .thenReturn(List.of(liquidacion));
         when(liquidacionRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
@@ -717,7 +962,33 @@ class SolicitudServiceTest {
     }
 
     @Test
-    void actualizarEntregaParcial_entregadaDebeMarcarFechaReal() {
+    void procesarLiquidacionesVencidas_archivaAunqueLaRespuestaFisicaYaExista() {
+        var solicitud = crearSolicitud(1L, "SAIP-2026-00008", Solicitud.EstadoSolicitud.RESPONDIDA);
+        Respuesta respuesta = new Respuesta();
+        respuesta.setIdRespuesta(8L);
+        solicitud.setRespuesta(respuesta);
+        var liquidacion = new LiquidacionCostoSolicitud();
+        liquidacion.setIdLiquidacion(80L);
+        liquidacion.setSolicitud(solicitud);
+        liquidacion.setEstadoLiquidacion(LiquidacionCostoSolicitud.EstadoLiquidacion.NOTIFICADA);
+        liquidacion.setFechaLimiteRecojo(LocalDate.now().minusDays(1));
+        liquidacion.setTrazabilidad("Cupón notificado");
+
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
+        when(liquidacionRepository.findById(liquidacion.getId())).thenReturn(Optional.of(liquidacion));
+        when(liquidacionRepository.findByEstadoLiquidacionInAndFechaLimiteRecojoBefore(anyList(), any(LocalDate.class)))
+                .thenReturn(List.of(liquidacion));
+        when(liquidacionRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<LiquidacionCostoSolicitud> resultado = solicitudService.procesarLiquidacionesVencidas();
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.getFirst().getEstadoLiquidacion()).isEqualTo(LiquidacionCostoSolicitud.EstadoLiquidacion.ARCHIVADA);
+        assertThat(solicitud.getEstado()).isEqualTo(Solicitud.EstadoSolicitud.CONCLUIDA);
+    }
+
+    @Test
+    void actualizarEntregaParcial_noPermiteMarcarLaEntregaSinArchivos() {
         var solicitud = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.EN_REVISION);
         var ampliacion = new AmpliacionPlazoSolicitud();
         ampliacion.setIdAmpliacion(50L);
@@ -730,23 +1001,17 @@ class SolicitudServiceTest {
         entrega.setFechaProgramada(LocalDate.now().plusDays(5));
         entrega.setEstado(CronogramaEntregaParcialSolicitud.EstadoEntregaParcial.PROGRAMADA);
 
-        when(solicitudRepository.existsById(1L)).thenReturn(true);
+        when(solicitudRepository.findById(1L)).thenReturn(Optional.of(solicitud));
         when(ampliacionRepository.findById(50L)).thenReturn(Optional.of(ampliacion));
         when(cronogramaRepository.findById(80L)).thenReturn(Optional.of(entrega));
-        when(cronogramaRepository.save(entrega)).thenReturn(entrega);
-        when(cronogramaRepository.findByAmpliacion_IdAmpliacionOrderByNumeroEntregaAsc(50L)).thenReturn(List.of(entrega));
-
-        CronogramaEntregaParcialSolicitud resultado = solicitudService.actualizarEntregaParcial(
+        assertThatThrownBy(() -> solicitudService.actualizarEntregaParcial(
                 1L,
                 50L,
                 80L,
                 new ActualizarEntregaParcialRequest("ENTREGADA", LocalDate.now(), "Entregado por casilla")
-        );
-
-        assertThat(resultado.getEstado()).isEqualTo(CronogramaEntregaParcialSolicitud.EstadoEntregaParcial.ENTREGADA);
-        assertThat(resultado.getFechaEntregaReal()).isEqualTo(LocalDate.now());
-        verify(cronogramaRepository).save(entrega);
-        verify(ampliacionRepository).save(ampliacion);
+        )).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("documento");
+        assertThat(entrega.getEstado()).isEqualTo(CronogramaEntregaParcialSolicitud.EstadoEntregaParcial.PROGRAMADA);
+        verify(cronogramaRepository, never()).save(entrega);
     }
 
     @Test
@@ -786,7 +1051,7 @@ class SolicitudServiceTest {
     }
 
     @Test
-    void obtenerSeguimientoPlazo_debeCalcularPlazosYRetornarDTO() {
+    void obtenerSeguimientoPlazo_usaElLimiteRegistradoYCuentaDiasHabiles() {
         Long solicitudId = 1L;
         Solicitud solicitud = crearSolicitud(solicitudId, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
         LocalDateTime fechaPresentacion = LocalDateTime.of(2026, 7, 1, 10, 0); // Miércoles 1 de julio
@@ -795,11 +1060,9 @@ class SolicitudServiceTest {
         when(solicitudRepository.findById(eq(solicitudId))).thenReturn(Optional.of(solicitud));
         
         LocalDate fechaRegistro = fechaPresentacion.toLocalDate();
-        LocalDate fechaVencimiento = LocalDate.of(2026, 7, 15);
-        when(plazoCalculadorService.calcularFechaVencimiento(eq(fechaRegistro), eq(10)))
-                .thenReturn(fechaVencimiento);
-        when(plazoCalculadorService.verificarExcesoDePlazo(eq(fechaRegistro), eq(10)))
-                .thenReturn(false);
+        LocalDate fechaVencimiento = LocalDate.of(2026, 7, 21);
+        solicitud.setFechaLimite(fechaVencimiento);
+        when(plazoCalculadorService.hoy()).thenReturn(LocalDate.of(2026, 7, 17));
 
         PlazoSeguimientoDTO resultado = solicitudService.obtenerSeguimientoPlazo(solicitudId);
 
@@ -807,6 +1070,57 @@ class SolicitudServiceTest {
         assertThat(resultado.fechaRegistro()).isEqualTo(fechaRegistro);
         assertThat(resultado.fechaVencimiento()).isEqualTo(fechaVencimiento);
         assertThat(resultado.enSilencioAdministrativo()).isFalse();
-        assertThat(resultado.diasRestantes()).isGreaterThanOrEqualTo(0);
+        assertThat(resultado.diasRestantes()).isEqualTo(3);
+    }
+
+    @Test
+    void listarTodasAccesibles_debeFiltrarYMapearDTO() {
+        Solicitud s = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        when(solicitudRepository.findAll()).thenReturn(List.of(s));
+        when(autorizacion.filtrarSolicitudesAccesibles(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<SolicitudDTO> resultado = solicitudService.listarTodasAccesibles();
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).id()).isEqualTo(1L);
+        assertThat(resultado.get(0).expediente()).isEqualTo("SAIP-2026-00001");
+        verify(autorizacion).filtrarSolicitudesAccesibles(anyList());
+    }
+
+    @Test
+    void listarPorCiudadano_debeVerificarAutorizacionYMapearDTO() {
+        Solicitud s = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        when(solicitudRepository.findByCiudadanoWithRespuesta(9L)).thenReturn(List.of(s));
+
+        List<SolicitudDTO> resultado = solicitudService.listarPorCiudadano(9L);
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).id()).isEqualTo(1L);
+        verify(autorizacion).verificarCiudadanoActualOPrivilegiado(9L);
+    }
+
+    @Test
+    void listarPorEntidad_debeVerificarAutorizacionYMapearDTO() {
+        Solicitud s = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        when(solicitudRepository.findByEntidad_IdEntidadOrderByFechaPresentacionDesc(5L)).thenReturn(List.of(s));
+
+        List<SolicitudDTO> resultado = solicitudService.listarPorEntidad(5L);
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).id()).isEqualTo(1L);
+        verify(autorizacion).verificarEntidadInstitucional(5L);
+    }
+
+    @Test
+    void listarPorEstado_debeFiltrarYMapearDTO() {
+        Solicitud s = crearSolicitud(1L, "SAIP-2026-00001", Solicitud.EstadoSolicitud.RECEPCIONADA);
+        when(solicitudRepository.findByEstado(Solicitud.EstadoSolicitud.RECEPCIONADA)).thenReturn(List.of(s));
+        when(autorizacion.filtrarSolicitudesAccesibles(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<SolicitudDTO> resultado = solicitudService.listarPorEstado(Solicitud.EstadoSolicitud.RECEPCIONADA);
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).id()).isEqualTo(1L);
+        verify(autorizacion).filtrarSolicitudesAccesibles(anyList());
     }
 }

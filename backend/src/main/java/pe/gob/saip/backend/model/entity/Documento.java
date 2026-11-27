@@ -102,6 +102,46 @@ public class Documento {
     @JoinColumn(name = "id_cedula")
     private CedulaNotificacion cedulaNotificacion;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_entrega_parcial")
+    private CronogramaEntregaParcialSolicitud entregaParcial;
+
+    @Column(name = "borrador_ttaip", nullable = false)
+    private boolean borradorTtaip;
+
+    @Column(name = "solo_institucional_ttaip", nullable = false)
+    private boolean soloInstitucionalTtaip;
+
+    /** Expediente en el que el administrado presentó el archivo, cuando llegó por encauzamiento. */
+    @Column(name = "expediente_origen", length = 40)
+    private String expedienteOrigen;
+
+    /** Entidad ante la que el administrado presentó el archivo, cuando llegó por encauzamiento. */
+    @Column(name = "entidad_origen", length = 200)
+    private String entidadOrigen;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_presentacion_admision")
+    private PresentacionAdmisionTtaip presentacionAdmision;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "clase_adjunto_admision", length = 10)
+    private PresentacionAdmisionTtaip.Adjunto claseAdjuntoAdmision;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_cumplimiento")
+    private CumplimientoResolucionTtaip cumplimiento;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "clase_adjunto_cumplimiento", length = 24)
+    private CumplimientoResolucionTtaip.Adjunto claseAdjuntoCumplimiento;
+
     @PrePersist
     protected void onCreate() {
         fechaCreacion = fechaCreacion != null ? fechaCreacion : LocalDateTime.now();
@@ -121,6 +161,10 @@ public class Documento {
         RECURSO_APELACION,
         RESOLUCION_TTAIP,
         CEDULA_NOTIFICACION,
+        CARGO_NOTIFICACION_TTAIP,
+        ACUSE_NOTIFICACION_TTAIP,
+        CARTA_NOTIFICACION_TTAIP,
+        OFICIO_CARTA_TTAIP,
         EXPEDIENTE_ADMINISTRATIVO,
         INFORME,
         DOCUMENTO_ADJUNTO,

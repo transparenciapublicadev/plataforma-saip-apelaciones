@@ -37,7 +37,7 @@ No habilitar envío push real, casilla electrónica real ni fallback automático
 - Mobile lint: ejecutar `cd mobile; .\gradlew.bat lint`.
 - Frontend tests: ejecutar `cd frontend; npm test`.
 - Frontend build: ejecutar `cd frontend; npm run build`.
-- Docs build: ejecutar `cd docs; npm run build`.
+- Docs build: ejecutar `cd docs; pnpm install --frozen-lockfile; pnpm run build`.
 - Newman diagnostic: iniciar backend local con `APP_NOTIFICATIONS_MODE=MOCK` y ejecutar `cd postman; npm run test:api:diagnostic`.
 - OpenAPI sync: si cambió backend, ejecutar `.\scripts\sync-openapi.ps1` y revisar `frontend/openapi.json`, `frontend/src/app/api/schema.ts` y `mobile/openapi.json`.
 - Diff hygiene: ejecutar `git diff --check` y revisar `git status --short --branch`.

@@ -2,11 +2,14 @@ package pe.gob.saip.backend.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.Resolucion;
 import pe.gob.saip.backend.repository.ResolucionRepository;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class ResolucionService {
@@ -35,6 +38,18 @@ public class ResolucionService {
     @Transactional(readOnly = true)
     public List<Resolucion> obtenerResolucionesPorTipo(Resolucion.TipoResolucion tipo) {
         return resolucionRepository.findByTipoResolucion(tipo);
+    }
+
+    @Transactional(readOnly = true)
+    public Set<Long> idsDeApelacionesConResolucionFinal() {
+        Set<Long> ids = new LinkedHashSet<>();
+        for (Resolucion resolucion : resolucionRepository.findByTipoResolucion(Resolucion.TipoResolucion.RESOLUCION_FINAL)) {
+            Apelacion apelacion = resolucion.getApelacion();
+            if (apelacion != null && apelacion.getId() != null) {
+                ids.add(apelacion.getId());
+            }
+        }
+        return ids;
     }
 
     @Transactional

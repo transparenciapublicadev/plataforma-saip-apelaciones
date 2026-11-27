@@ -46,6 +46,13 @@ Get-Content $envFilePath | ForEach-Object {
             $value = $Matches[1]
         }
         
+        # Una clave vacia no debe pisar el fallback de application.properties.
+        if ($key -eq "JWT_SECRET" -and [string]::IsNullOrWhiteSpace($value)) {
+            [System.Environment]::SetEnvironmentVariable($key, $null, [System.EnvironmentVariableTarget]::Process)
+            Write-Host "  [OK] JWT_SECRET vacio: staging local usa la clave de desarrollo." -ForegroundColor Green
+            return
+        }
+
         # Establecer variable a nivel de proceso
         [System.Environment]::SetEnvironmentVariable($key, $value, [System.EnvironmentVariableTarget]::Process)
         
@@ -57,9 +64,33 @@ Get-Content $envFilePath | ForEach-Object {
 
 Write-Host "Se cargaron $loadedCount variables de entorno de proceso con exito." -ForegroundColor Cyan
 
-# 3. Moverse al directorio del backend e iniciar la aplicacion
-Write-Host "Iniciando aplicacion con Maven Wrapper en: $backendRootDir..." -ForegroundColor Cyan
-Set-Location $backendRootDir
-
-# Ejecutar Spring Boot
-.\mvnw.cmd spring-boot:run
+# 3. Compilar fuera de target/classes, que también puede escribir el editor.
+# Arrancar el JAR empaquetado evita recargas mientras se recompila el proyecto.
+$tempRoot = (Get-Item -LiteralPath ([System.IO.Path]::GetTempPath())).FullName.TrimEnd('\')
+$buildDir = New-Item -Path (Join-Path $tempRoot ("yaiku-staging-" + [guid]::NewGuid().ToString("N"))) -ItemType Directory -ErrorAction Stop
+$exitCode = 1
+Push-Location $backendRootDir
+try {
+    Write-Host "Compilando el backend de staging..." -ForegroundColor Cyan
+    & .\mvnw.cmd "-Dsaip.build.directory=$($buildDir.FullName)" "-Dmaven.test.skip=true" package
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -eq 0) {
+        $jars = @(Get-ChildItem -LiteralPath $buildDir.FullName -File -Filter "*.jar")
+        if ($jars.Count -ne 1) {
+            throw "Se esperaba un único JAR ejecutable de staging."
+        }
+        $java = if ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME "bin\java.exe" } else { "java.exe" }
+        Write-Host "Iniciando el backend de staging..." -ForegroundColor Cyan
+        & $java -jar $jars[0].FullName
+        $exitCode = $LASTEXITCODE
+    }
+} finally {
+    Pop-Location
+    $buildDir.Refresh()
+    if ($buildDir.Exists -and $buildDir.Parent.FullName.TrimEnd('\') -eq $tempRoot -and
+        $buildDir.Name -like "yaiku-staging-*" -and
+        -not ($buildDir.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {
+        Remove-Item -LiteralPath $buildDir.FullName -Recurse
+    }
+}
+exit $exitCode

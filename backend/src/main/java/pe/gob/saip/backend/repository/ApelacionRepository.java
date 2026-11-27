@@ -15,6 +15,10 @@ import java.util.Optional;
 @Repository
 public interface ApelacionRepository extends JpaRepository<Apelacion, Long> {
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Apelacion a where a.idApelacion = :id")
+    Optional<Apelacion> findByIdForUpdate(@Param("id") Long id);
+
     Optional<Apelacion> findByExpediente(String expediente);
 
     @Query("SELECT a FROM Apelacion a LEFT JOIN FETCH a.solicitud s LEFT JOIN FETCH s.entidad LEFT JOIN FETCH a.entidadApelada LEFT JOIN FETCH a.ciudadano WHERE a.expediente = :expediente")

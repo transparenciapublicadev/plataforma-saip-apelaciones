@@ -52,8 +52,8 @@ class DispositivoNotificacionPushServiceTest {
         ciudadano.setIdUsuario(10L);
         ciudadano.setEmail("ciudadano@example.test");
         ciudadano.setTipoUsuario(Usuario.TipoUsuario.CIUDADANO);
-        autenticar("ciudadano@example.test", "ROLE_CIUDADANO");
-        when(usuarioRepository.findByEmail("ciudadano@example.test")).thenReturn(Optional.of(ciudadano));
+        autenticar("saip:user:v1:10", "ROLE_CIUDADANO");
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(ciudadano));
     }
 
     @AfterEach
@@ -75,7 +75,7 @@ class DispositivoNotificacionPushServiceTest {
             return dispositivo;
         });
 
-        var dto = service.registrar(request(DispositivoNotificacionPush.AppFlavor.CIUDADANO), "ciudadano@example.test");
+        var dto = service.registrar(request(DispositivoNotificacionPush.AppFlavor.CIUDADANO));
 
         assertThat(dto.id()).isEqualTo(99L);
         assertThat(dto.tokenFingerprint()).hasSize(12);
@@ -84,7 +84,7 @@ class DispositivoNotificacionPushServiceTest {
 
     @Test
     void registrarTokenRechazaFlavorQueNoCorrespondeAlRolAutenticado() {
-        assertThatThrownBy(() -> service.registrar(request(DispositivoNotificacionPush.AppFlavor.TTAIP), "ciudadano@example.test"))
+        assertThatThrownBy(() -> service.registrar(request(DispositivoNotificacionPush.AppFlavor.TTAIP)))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessageContaining("flavor mobile");
     }

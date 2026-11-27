@@ -1,0 +1,21 @@
+/* PrecisionForm preserves the reference hero, two-column cards and shared dialogs. */
+:host { display: block; }
+.precision-page { overflow-wrap: anywhere; }
+.precision-page :is(button, a, textarea, [role="button"]):focus-visible {
+  outline: 2px solid var(--brand-700);
+  outline-offset: 3px;
+}
+.precision-page .grid > *, .precision-doc-row > :first-child { min-width: 0; }
+.precision-doc-row .truncate { white-space: normal; overflow-wrap: anywhere; }
+.precision-receipt dd { overflow-wrap: anywhere; }
+.precision-page [aria-disabled="true"] { cursor: default; }
+@media (max-width: 639px) {
+  .precision-doc-row { flex-wrap: wrap; }
+  .precision-doc-row > :first-child { flex: 1 1 100%; }
+  .precision-doc-row > :last-child { margin-left: auto; }
+  .precision-page .form-shell > .p-6 { padding: 1.25rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .precision-page .transition-all { transition: none; }
+  .precision-page .animate-spin { animation: none; }
+}

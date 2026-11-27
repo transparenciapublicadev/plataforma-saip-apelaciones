@@ -1,2 +1,19 @@
+@import "../../shared/response-flow.css";
 /* Estilos funcionario solicitud detalle */
+
+.entity-detail { overflow-wrap: anywhere; }
+.entity-detail .response-document-row > div:first-child { display: flex; min-width: 0; }
+.entity-detail .response-document-row > div:first-child > div:first-child { flex-shrink: 0; }
+.entity-detail .response-document-row > div:first-child > div:last-child { min-width: 0; }
+.entity-detail .response-document-row > div:first-child > div:last-child > .flex { flex-wrap: wrap; }
+.entity-detail button:focus-visible, .entity-detail a:focus-visible { outline: 2px solid var(--brand-700); outline-offset: 3px; }
+.entity-availability-title { font-size: 18px; line-height: 1.2; letter-spacing: -0.01em; margin: 0; }
+@media (max-width: 639px) {
+  .entity-detail .response-document-row { align-items: flex-start; }
+  .entity-detail .response-document-row > div:first-child { flex-basis: 100%; }
+  .entity-detail .response-document-row[style*="margin-left"] { margin-left: 0 !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .entity-detail *, .entity-detail *::before, .entity-detail *::after { animation: none !important; transition: none !important; }
+}
 

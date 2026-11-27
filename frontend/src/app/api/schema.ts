@@ -4,6 +4,127 @@
  */
 
 export interface paths {
+    "/api/ttaip/expedientes/{expedienteId}/cumplimiento-documental": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["consultar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/cumplimiento-documental/entrega": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["entregar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/cumplimiento-documental/remision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["remitir"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/cumplimiento-documental/validacion-entrega": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["validarEntrega"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apelaciones/{apelacionId}/subsanacion/{requerimientoId}/recepcion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recibir subsanación y todos sus adjuntos
+         * @description Operación idempotente por requerimiento concreto de primera calificación. Reutilizar clave y contenido ante resultado incierto. Los adjuntos seleccionados deben enviarse como bytes; no acepta IDs de documentos existentes. Límite total de adjuntos según almacenamiento (10 MiB por defecto). El modelo vigente no expresa exigencias documentales estructuradas.
+         */
+        post: operations["registrarSubsanacionTtaip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apelaciones/{apelacionId}/subsanacion/{requerimientoId}/recepcion/{claveOperacion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Comprobar recepción antes de repetir una operación incierta
+         * @description Solo 404 confirma ausencia para esta clave y requerimiento; un fallo de servidor o almacenamiento no equivale a ausencia.
+         */
+        get: operations["obtenerRecepcionSubsanacionTtaip"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apelaciones/{apelacionId}/subsanacion/requerimiento": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar requerimiento y condiciones vigentes de subsanación */
+        get: operations["obtenerRequerimientoSubsanacionTtaip"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/solicitudes/{id}": {
         parameters: {
             query?: never;
@@ -13,7 +134,10 @@ export interface paths {
         };
         /** Obtener solicitud por ID */
         get: operations["obtenerPorId"];
-        /** Actualizar solicitud SAIP */
+        /**
+         * Actualizar solicitud SAIP
+         * @description Edita asunto, descripción, tipo, consentimiento, canal y prioridad. Ignora estado, fechas y actuaciones; estas requieren su comando específico.
+         */
         put: operations["actualizar"];
         post?: never;
         /** Eliminar solicitud SAIP */
@@ -91,7 +215,10 @@ export interface paths {
         };
         /** Obtener apelación por ID */
         get: operations["obtenerPorId_4"];
-        /** Actualizar apelación */
+        /**
+         * Actualizar apelación
+         * @description Actualiza datos sin ejecutar transiciones. Un estado distinto del persistido requiere su comando específico y produce 409.
+         */
         put: operations["actualizar_4"];
         post?: never;
         /** Eliminar apelación */
@@ -129,8 +256,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Notificar segunda calificación al ciudadano
-         * @description Registra la notificación de la resolución de segunda calificación. Inicia el plazo de resolución final.
+         * Confirmar notificación eficaz de segunda calificación
+         * @description Avanza a EN_RESOLUCION solo con segunda admisión y recepción de subsanación registradas, y notificaciones eficaces acreditadas para recurrente y entidad de esa resolución. No envía ni fabrica evidencia. Repetir en EN_RESOLUCION no duplica actuaciones. La fecha base del plazo de resolución queda pendiente de definición de dominio.
          */
         post: operations["notificarSegundaCalificacion"];
         delete?: never;
@@ -692,7 +819,7 @@ export interface paths {
         put?: never;
         /**
          * Admitir apelación
-         * @description Primera calificación: admite la apelación y solicita descargos a la entidad
+         * @description Primera o segunda admisión según el estado y las actuaciones persistidas. La resolución final requiere ambas notificaciones eficaces acreditadas.
          */
         post: operations["admitirApelacion"];
         delete?: never;
@@ -754,7 +881,7 @@ export interface paths {
         put?: never;
         /**
          * Subsanar observación SAIP
-         * @description Registra la subsanación ciudadana dentro del plazo de 2 días hábiles y devuelve la solicitud a revisión.
+         * @description Registra comentario textual del ciudadano sobre una observación pendiente del expediente, dentro de plazo y sin respuesta. Los campos documentales no vacíos se rechazan (400); para archivos use la recepción multipart idempotente de precisiones.
          */
         post: operations["subsanarSolicitud"];
         delete?: never;
@@ -792,7 +919,7 @@ export interface paths {
         put?: never;
         /**
          * Emitir liquidación o cupón SAIP
-         * @description Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días hábiles para recojo.
+         * @description Registra y notifica el cupón de pago para entrega física hasta el día 9 de atención y calcula 30 días calendario para el recojo, contados desde el día siguiente a la notificación.
          */
         post: operations["emitirLiquidacion"];
         delete?: never;
@@ -834,7 +961,7 @@ export interface paths {
         put?: never;
         /**
          * Registrar ampliación de plazo SAIP
-         * @description Registra y notifica una ampliación dentro del día 4 de atención, con informe y cronograma de entregas parciales.
+         * @description Registra el nuevo vencimiento y las entregas programadas dentro del plazo aplicable.
          */
         post: operations["registrarAmpliacion"];
         delete?: never;
@@ -854,7 +981,7 @@ export interface paths {
         put?: never;
         /**
          * Procesar observaciones SAIP vencidas
-         * @description Marca observaciones pendientes vencidas como no subsanadas y cierra la solicitud como CONCLUIDA.
+         * @description Revalida observaciones pendientes vencidas bajo bloqueo. Solo cierra como CONCLUIDA solicitudes PENDIENTE_INFORMACION sin respuesta; no sobrescribe recepciones o estados posteriores.
          */
         post: operations["procesarObservacionesVencidas"];
         delete?: never;
@@ -874,7 +1001,7 @@ export interface paths {
         put?: never;
         /**
          * Procesar liquidaciones vencidas por no recojo
-         * @description Archiva/cierra solicitudes con liquidación notificada cuyo plazo de recojo de 30 días hábiles venció.
+         * @description Archiva solicitudes con liquidación notificada cuyo plazo de recojo de 30 días calendario venció, también si la información ya estaba puesta a disposición.
          */
         post: operations["procesarLiquidacionesVencidas"];
         delete?: never;
@@ -893,7 +1020,10 @@ export interface paths {
         /** Listar todas las respuestas */
         get: operations["listar_2"];
         put?: never;
-        /** Crear respuesta a solicitud SAIP */
+        /**
+         * Crear respuesta a solicitud SAIP
+         * @description Registra entrega total, parcial o denegatoria desde RECEPCIONADA, EN_REVISION o VENCIDA, sin respuesta ni observación pendiente. Una respuesta tardía conserva el límite registrado. Registrar no acredita entrega, firma ni notificación eficaz.
+         */
         post: operations["crear_2"];
         delete?: never;
         options?: never;
@@ -912,7 +1042,7 @@ export interface paths {
         put?: never;
         /**
          * Denegar solicitud
-         * @description Crea respuesta con denegación total y causal
+         * @description Registra DENEGACION_TOTAL con los datos aportados. Requiere solicitud RECEPCIONADA, EN_REVISION o VENCIDA sin respuesta ni observación pendiente. No acredita notificación eficaz.
          */
         post: operations["denegarSolicitud"];
         delete?: never;
@@ -932,7 +1062,7 @@ export interface paths {
         put?: never;
         /**
          * Aceptar solicitud
-         * @description Crea respuesta con entrega total de información
+         * @description Registra exclusivamente ENTREGA_TOTAL. Para ENTREGA_PARCIAL use POST /api/respuestas. Requiere solicitud RECEPCIONADA, EN_REVISION o VENCIDA sin respuesta ni observación pendiente.
          */
         post: operations["aceptarSolicitud"];
         delete?: never;
@@ -1353,7 +1483,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Cambiar estado de solicitud */
+        /**
+         * Cambiar estado de solicitud
+         * @description Solo permite RECEPCIONADA a EN_REVISION sin respuesta ni observación pendiente, o consultar el mismo estado sin nueva actuación. Los demás cambios requieren su comando específico (409).
+         */
         patch: operations["cambiarEstado_1"];
         trace?: never;
     };
@@ -1366,7 +1499,11 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
+        /**
+         * Registrar los archivos y la fecha real de una entrega programada SAIP
+         * @description Requiere al menos un archivo. Ante incertidumbre consulte el cronograma antes de repetir.
+         */
+        post: operations["registrarDocumentosEntregaParcial"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1438,7 +1575,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Cambiar estado de apelación */
+        /**
+         * Cambiar estado de apelación
+         * @description Ruta conservada por compatibilidad: solo admite repetir el estado actual. Para avanzar o cerrar se requiere el comando específico; cualquier cambio genérico produce 409.
+         */
         patch: operations["cambiarEstado_5"];
         trace?: never;
     };
@@ -1777,6 +1917,40 @@ export interface paths {
         };
         /** Consultar cronograma de entregas parciales de una SAIP */
         get: operations["listarCronogramaAmpliacion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/{id}/ampliaciones/prevision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consultar disponibilidad y límite de una ampliación SAIP */
+        get: operations["preverAmpliacion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/publica/expediente": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Consulta pública enmascarada por número de expediente SAIP o TTAIP */
+        get: operations["consultarEstadoPublico"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2860,10 +3034,519 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/solicitudes/{solicitudId}/observaciones/{observacionId}/precision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recibir precisión SAIP y archivo de forma idempotente
+         * @description Requiere ciudadano titular. Reutilice claveOperacion y el mismo contenido ante un resultado incierto. Archivo obligatorio, hasta 10 MiB según configuración; PDF, PNG, JPEG o TXT permitidos.
+         */
+        post: operations["registrarPrecisionSaip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/{solicitudId}/observaciones/{observacionId}/precision/{claveOperacion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Comprobar recepción de precisión antes de reintentar un envío incierto
+         * @description Requiere ciudadano titular. 404 indica que no existe recepción para esa operación; 500 no debe interpretarse como ausencia de recepción.
+         */
+        get: operations["obtenerRecepcionPrecisionSaip"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Invalidar el JWT de la sesión actual
+         * @description Deriva usuario y jti del Bearer verificado. No invalida otros logins ni incrementa authVersion. Devuelve 204 tras persistir la revocación; un Bearer ya revocado, inválido o expirado devuelve 401. Peticiones concurrentes pueden devolver 204 o 401; las revocaciones no se duplican.
+         */
+        post: operations["cerrarSesionActual"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/respuestas/solicitud/{solicitudId}/recepciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Registrar respuesta SAIP y todos sus archivos seleccionados
+         * @description Archivos opcionales. Persiste respuesta, estado, manifiesto y todos los archivos en una operación idempotente. Ante incertidumbre consulte la misma clave; un reintento debe conservar actor, solicitud, campos y bytes, incluido el orden de archivos. Reutiliza los comandos existentes y la compensación del almacenamiento; no hay atomicidad distribuida. No acredita entrega, notificación eficaz, firma ni emisión oficial.
+         */
+        post: operations["registrarRespuestaSaipConDocumentos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/respuestas/solicitud/{solicitudId}/recepciones/{claveOperacion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recuperar recepción antes de repetir una respuesta incierta
+         * @description Solo el actor original que conserve autorización sobre la solicitud. Una consulta sin recepción no descarta un envío aún en curso; si reintenta use la misma clave y contenido. Un error de consulta no prueba ausencia. Nunca vuelve a registrar respuesta o archivos.
+         */
+        get: operations["obtenerRecepcionRespuestaSaip"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/requerimientos/{requerimientoId}/subsanacion/recepcion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar recepción del requerimiento desde el expediente institucional
+         * @description Solo TTAIP o administrador según la autorización institucional vigente. AUSENTE indica un requerimiento válido sin recepción. Un error de relaciones o almacenamiento nunca significa ausencia. No modifica actuaciones ni acredita notificación, firma o emisión.
+         */
+        get: operations["consultarRecepcionSubsanacionTtaipInstitucional"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/recepciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recibir nueva SAIP con todos sus archivos opcionales
+         * @description Identidad derivada del ciudadano autenticado. Misma clave y huella versionada recuperan la misma recepción sin duplicar solicitud ni archivos. Se requiere consentimiento, declaración de veracidad y al menos una modalidad digital/física. Cada archivo exige su tipo en el mismo orden. Rigen los límites multipart y de almacenamiento. No acredita entrega, notificación eficaz, firma o emisión.
+         */
+        post: operations["registrarAltaSaip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/solicitudes/recepciones/{claveOperacion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recuperar recepción de alta sin recrear la solicitud
+         * @description Solo el ciudadano original. 404 no descarta un envío en curso: un reintento explícito debe conservar clave y contenido. Un fallo no acredita ausencia. La solicitud anidada refleja el recurso autorizado actual; recepción y manifiesto conservan sus IDs.
+         */
+        get: operations["obtenerRecepcionAltaSaip"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apelaciones/recepciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recibir apelación y manifiesto documental coordinados
+         * @description Parte datos JSON con identidad exclusivamente del ciudadano autenticado. DIRECTA_TTAIP y EXTERNA abren expediente; ANTE_ENTIDAD conserva pendiente de elevación. Cada entrada sin origenId consume el siguiente archivo; un antecedente exige su SHA-256 y relación autorizada a la SAIP/respuesta. Archivos nuevos según requisitos de modalidad. Misma clave y huella recuperan la recepción sin repetir efectos. No acredita admisión, entrega, notificación eficaz, firma ni emisión.
+         */
+        post: operations["registrarAltaApelacion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apelaciones/recepciones/{claveOperacion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recuperar recepción sin recrear apelación o documentos
+         * @description Solo el ciudadano original. Un 404 no descarta un envío en curso. Conserve clave y contenido para un reintento explícito. La apelación anidada refleja el recurso actual; recepción, modalidad, IDs y hash aceptado son persistentes.
+         */
+        get: operations["obtenerRecepcionAltaApelacion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/documentos-oficiales/{etapa}/{clave}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["preparar"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion/{notificacionId}/destino": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["destino"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion/{notificacionId}/archivos/{tipo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["subir"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/informacion-complementaria": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["informacion"];
+        put?: never;
+        post: operations["solicitar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/informacion-complementaria/{solicitudId}/respuesta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["responder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion/{notificacionId}/revision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["revisar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion/{notificacionId}/publicacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["publicar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/documentos-oficiales/{etapa}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["documentos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/actos-notificacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["actos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/presentaciones-admision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["presentaciones"];
+        put?: never;
+        post: operations["presentar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ttaip/expedientes/{expedienteId}/presentaciones-admision/{id}/respuesta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["responderInformeOral"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/panel/apelaciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Consultar página y agregados TTAIP del actor actual
+         * @description Titular o entidad desde la identidad actual; TTAIP/administración conservan su alcance autorizado. Plazos de primera calificación y subsanación cuando consta el inicio correspondiente.
+         */
+        get: operations["apelaciones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Adjunto: {
+            /** @enum {string} */
+            clase?: "RESPUESTA" | "ANEXO_RESPUESTA" | "CARGO" | "ACUSE" | "OFICIO" | "ANEXO_OFICIO";
+            documento?: components["schemas"]["DocumentoMetadataDTO"];
+        };
+        ConsultaCumplimientoTtaip: {
+            cumplimiento?: components["schemas"]["FaseCumplimientoTtaip"];
+        };
+        EntregaCumplimientoTtaip: {
+            /** Format: uuid */
+            operacion: string;
+            /** Format: binary */
+            respuesta: string;
+            anexos?: string[];
+        };
+        FaseCumplimientoTtaip: {
+            /** Format: int64 */
+            id?: number;
+            numeroExpediente?: string;
+            numeroResolucion?: string;
+            entidad?: string;
+            /** @enum {string} */
+            estado?: "PENDIENTE" | "CUMPLIDO" | "CUMPLIDO_PARCIAL" | "VENCIDO" | "OBSERVADO" | "CERRADO";
+            /** Format: date */
+            fechaNotificacionEntidad?: string;
+            /** Format: date */
+            fechaLimite?: string;
+            /** Format: date-time */
+            fechaEntrega?: string;
+            /** Format: date */
+            fechaEficaciaEntrega?: string;
+            /** Format: date */
+            fechaRemision?: string;
+            numeroOficio?: string;
+            fundamento?: string;
+            /** Format: uuid */
+            operacionEntrega?: string;
+            /** Format: uuid */
+            operacionValidacion?: string;
+            /** Format: uuid */
+            operacionRemision?: string;
+            puedeEntregar?: boolean;
+            puedeValidar?: boolean;
+            puedeRemitir?: boolean;
+            expedienteResuelto?: boolean;
+            documentos?: components["schemas"]["Adjunto"][];
+        };
+        RemisionCumplimientoTtaip: {
+            /** Format: uuid */
+            operacion: string;
+            numeroOficio: string;
+            fundamento: string;
+            /** Format: binary */
+            oficio: string;
+            anexos?: string[];
+        };
+        ValidacionEntregaCumplimientoTtaip: {
+            /** Format: uuid */
+            operacion: string;
+            /** Format: date */
+            fechaEficacia: string;
+            /** Format: binary */
+            cargo: string;
+            /** Format: binary */
+            acuse: string;
+        };
+        RegistrarSubsanacionTtaipRequest: {
+            /** Format: uuid */
+            claveOperacion: string;
+            fundamentosAdicionales: string;
+            /** @description Adjuntos seleccionados. Todos deben almacenarse para confirmar; no hay exigencias documentales estructuradas en el modelo vigente. */
+            archivos?: string[];
+        };
+        RequerimientoSubsanacionTtaipDTO: {
+            /** Format: int64 */
+            apelacionId: number;
+            /** Format: int64 */
+            requerimientoId: number;
+            numeroResolucion?: string;
+            observaciones?: string;
+            /**
+             * Format: date
+             * @description Fecha eficaz acreditada, nula si el plazo no ha iniciado
+             */
+            fechaBasePlazo?: string | null;
+            /** Format: date */
+            fechaLimite?: string | null;
+            /** Format: int32 */
+            diasSubsanacion: number;
+            /** Format: int32 */
+            diasHabilesRestantes?: number | null;
+            admitePresentacion: boolean;
+            /** @description false: no se infieren anexos obligatorios a partir de observaciones en texto libre */
+            exigenciasDocumentalesEstructuradas: boolean;
+            plazo?: components["schemas"]["PlazoSubsanacionTtaipDTO"];
+        };
+        SubsanacionTtaipRecepcionDTO: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            apelacionId: number;
+            /** Format: int64 */
+            requerimientoId: number;
+            expediente: string;
+            /** Format: uuid */
+            claveOperacion: string;
+            /** Format: date-time */
+            fechaRecepcion: string;
+            fundamentosAdicionales: string;
+            /** @enum {string} */
+            estado: "RECIBIDA";
+            documentos: components["schemas"]["DocumentoMetadataDTO"][];
+        };
         /** @description Ampliación de plazo SAIP con informe y cronograma de entregas parciales */
         AmpliacionPlazoSolicitudDTO: {
             /** Format: int64 */
@@ -2881,6 +3564,7 @@ export interface components {
             responsable?: string;
             trazabilidad?: string;
             cronograma?: components["schemas"]["CronogramaEntregaParcialDTO"][];
+            plazoOrdinarioVencido?: boolean;
         };
         /** @description Resumen de apelación asociada a una solicitud */
         ApelacionInfoDTO: {
@@ -2892,14 +3576,19 @@ export interface components {
              * @example EN_CALIFICACION_1
              * @enum {string}
              */
-            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
+            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "NOTIFICACION_RESOLUCION_FINAL" | "EN_CUMPLIMIENTO" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
             resultado?: string;
             fechaApelacion?: string;
+            /**
+             * @deprecated
+             * @description Fecha histórica del requerimiento; no acredita notificación eficaz ni debe usarse para calcular plazos
+             */
             fechaSubsanacion?: string;
             /** Format: int32 */
             diasSubsanacion?: number;
             elevacion?: components["schemas"]["ElevacionApelacionTtaipDTO"];
             resuelta?: boolean;
+            plazoSubsanacion?: components["schemas"]["PlazoSubsanacionTtaipDTO"];
         };
         /** @description Entrega parcial programada dentro de una ampliación de plazo SAIP */
         CronogramaEntregaParcialDTO: {
@@ -2914,6 +3603,11 @@ export interface components {
             estado?: string;
             fechaEntregaReal?: string;
             observacion?: string;
+            incumplida?: boolean;
+            documentos?: components["schemas"]["DocumentoMetadataDTO"][];
+            /** @enum {string} */
+            decision?: "ENTREGA_TOTAL" | "ENTREGA_PARCIAL" | "DENEGACION_TOTAL";
+            fundamentoDecision?: string;
         };
         /** @description Documento adjunto a solicitud, respuesta, apelación o resolución */
         DocumentoDTO: {
@@ -2951,6 +3645,8 @@ export interface components {
             resolucionId?: number;
             /** Format: int64 */
             cedulaNotificacionId?: number;
+            expedienteOrigen?: string;
+            entidadOrigen?: string;
         };
         /** @description Elevación formal de una apelación presentada ante una entidad pública */
         ElevacionApelacionTtaipDTO: {
@@ -3221,9 +3917,13 @@ export interface components {
              * @example EN_CALIFICACION_1
              * @enum {string}
              */
-            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
+            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "NOTIFICACION_RESOLUCION_FINAL" | "EN_CUMPLIMIENTO" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
             resultado?: string;
             fechaApelacion?: string;
+            /**
+             * @deprecated
+             * @description Fecha histórica del requerimiento; no acredita notificación eficaz ni debe usarse para calcular plazos
+             */
             fechaSubsanacion?: string;
             /** Format: int32 */
             diasSubsanacion?: number;
@@ -3290,6 +3990,7 @@ export interface components {
             /** @description Metadatos documentales seguros asociados directamente a la apelación */
             documentosMetadata?: components["schemas"]["DocumentoMetadataDTO"][];
             resuelta?: boolean;
+            plazoSubsanacion?: components["schemas"]["PlazoSubsanacionTtaipDTO"];
         };
         /** @description Cédula de notificación emitida para una resolución TTAIP */
         CedulaNotificacionDTO: {
@@ -3308,6 +4009,7 @@ export interface components {
         };
         /** @description Seguimiento de cumplimiento de una resolución final fundada o fundada en parte */
         CumplimientoResolucionTtaipDTO: {
+            documental?: boolean;
             /** Format: int64 */
             id?: number;
             /** Format: int64 */
@@ -3516,6 +4218,8 @@ export interface components {
             /** @description Metadatos documentales seguros asociados directamente a la resolución */
             documentos?: components["schemas"]["DocumentoMetadataDTO"][];
             cedulas?: components["schemas"]["CedulaNotificacionDTO"][];
+            /** @description Fecha en que se acreditaron los actos documentales de notificación de la resolución */
+            fechaValidacionActos?: string;
         };
         /** @description Sala del Tribunal de Transparencia asignada a un expediente */
         SalaTtaipDTO: {
@@ -3665,6 +4369,11 @@ export interface components {
             evidenciaUrl?: string;
             /** @description Referencia documental alternativa de evidencia */
             referenciaEvidencia?: string;
+            /**
+             * Format: date-time
+             * @description Fecha eficaz acreditada por el sustento, distinta de la fecha de validación. Opcional: sin ella no se inicia el plazo de subsanación TTAIP.
+             */
+            fechaEficacia?: string | null;
         };
         /** @description Solicitud de envío mediante el motor común de notificaciones */
         EnviarNotificacionRequest: {
@@ -3750,10 +4459,10 @@ export interface components {
             acuseAutomatico: string;
             /**
              * Format: date-time
-             * @description Fecha y hora del acuse. Si se omite, se usa la fecha actual.
+             * @description Fecha y hora acreditada del acuse. Si se omite, se registra la fecha operativa actual, pero no se inicia el plazo de subsanación TTAIP.
              * @example 2026-05-25T10:15:00
              */
-            fechaAcuse?: string;
+            fechaAcuse?: string | null;
             /** @description Resultado funcional de la notificación */
             resultadoNotificacion?: string;
             /** @description URL interna o referencia descargable de evidencia */
@@ -3878,7 +4587,7 @@ export interface components {
              */
             responsable?: string;
         };
-        /** @description Subsanación ciudadana de una observación SAIP */
+        /** @description Subsanación textual de una observación SAIP. Para archivos use la recepción multipart de precisiones. */
         SubsanarSolicitudRequest: {
             /**
              * @description Comentario o fundamento de subsanación
@@ -3886,13 +4595,13 @@ export interface components {
              */
             comentarioSubsanacion?: string;
             /**
-             * @description Nombre del documento de subsanación, si aplica
-             * @example subsanacion-saip.pdf
+             * @deprecated
+             * @description Obsoleto: un valor no vacío se rechaza (400). Transfiera bytes mediante la recepción multipart de precisiones.
              */
             documentoSubsanacionNombre?: string;
             /**
-             * @description Ruta o referencia del documento de subsanación, si aplica
-             * @example /uploads/saip/subsanacion-saip.pdf
+             * @deprecated
+             * @description Obsoleto: una ruta no acredita almacenamiento y se rechaza (400). Use la recepción multipart de precisiones.
              */
             documentoSubsanacionRuta?: string;
             /**
@@ -3986,7 +4695,12 @@ export interface components {
              * @example Funcionario de Transparencia
              */
             responsable?: string;
-            cronograma: components["schemas"]["RegistrarEntregaParcialRequest"][];
+            cronograma?: components["schemas"]["RegistrarEntregaParcialRequest"][];
+            /**
+             * Format: int32
+             * @description Días hábiles adicionales sobre el vencimiento vigente, sin tope de producto. Si se omite, se conserva el cronograma del contrato anterior.
+             */
+            diasHabilesAdicionales?: number;
         };
         /** @description Entrega parcial del cronograma de ampliación SAIP */
         RegistrarEntregaParcialRequest: {
@@ -4253,19 +4967,19 @@ export interface components {
             diasRestantes?: number;
             enSilencioAdministrativo?: boolean;
         };
-        /** @description Vista pública y enmascarada del estado de una solicitud SAIP */
+        /** @description Vista pública y enmascarada del estado de una solicitud SAIP o una apelación TTAIP */
         ConsultaPublicaSolicitudDTO: {
-            expediente?: string;
+            /** @description Número SAIP. Nulo si la apelación se presentó sin una solicitud en la plataforma */
+            expediente?: string | null;
             ciudadano?: string;
-            entidad?: string;
-            fechaPresentacion?: string;
-            fechaLimite?: string;
+            entidad?: string | null;
+            fechaPresentacion?: string | null;
+            fechaLimite?: string | null;
             /** Format: int32 */
-            diasTranscurridos?: number;
+            diasTranscurridos?: number | null;
             /** Format: int32 */
-            diasRestantes?: number;
+            diasRestantes?: number | null;
             estado?: string;
-            asunto?: string;
             respuestaFecha?: string;
             respuestaTipo?: string;
             apelacionExpediente?: string;
@@ -4418,7 +5132,7 @@ export interface components {
              * @example EN_CALIFICACION_1
              * @enum {string}
              */
-            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
+            estado?: "PENDIENTE_ELEVACION" | "EN_CALIFICACION_1" | "EN_SUBSANACION" | "EN_CALIFICACION_2" | "NOTIFICACION_SEGUNDA_CALIFICACION" | "EN_RESOLUCION" | "NOTIFICACION_RESOLUCION_FINAL" | "EN_CUMPLIMIENTO" | "RESUELTO" | "TENER_POR_NO_PRESENTADO" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "RESUELTO_FUNDADO" | "RESUELTO_FUNDADO_EN_PARTE" | "RESUELTO_INFUNDADO" | "RESUELTO_INFUNDADO_EN_PARTE" | "RESUELTO_IMPROCEDENTE" | "RESUELTO_ESTESE_A_LO_RESUELTO" | "RESUELTO_NULIDAD_ACTO";
             resultado?: string;
             fechaApelacion?: string;
             /** Format: int64 */
@@ -4451,6 +5165,478 @@ export interface components {
             totalPaginas?: number;
             ultima?: boolean;
         };
+        /** @description Recepción confirmada de una precisión SAIP con documento almacenado */
+        PrecisionSaipRecepcionDTO: {
+            /** Format: int64 */
+            solicitudId: number;
+            /** Format: int64 */
+            observacionId: number;
+            /** Format: uuid */
+            claveOperacion: string;
+            /** Format: date-time */
+            fechaRecepcion: string;
+            comentario: string;
+            /** @enum {string} */
+            estado: "SUBSANADA";
+            documento: components["schemas"]["DocumentoMetadataDTO"];
+        };
+        RegistrarPrecisionSaipRequest: {
+            comentario: string;
+            /** Format: uuid */
+            claveOperacion: string;
+            /** Format: binary */
+            archivo: string;
+        };
+        ProblemDetail: {
+            /** Format: uri */
+            type?: string;
+            title?: string;
+            /** Format: int32 */
+            status?: number;
+            detail?: string;
+            /** Format: uri */
+            instance?: string;
+            properties?: {
+                [key: string]: unknown;
+            };
+        };
+        PlazoSubsanacionTtaipDTO: {
+            /** Format: int64 */
+            requerimientoId: number;
+            /** @enum {string} */
+            estado: "PENDIENTE_INICIO" | "EN_CURSO" | "VENCIDO";
+            /** Format: int64 */
+            notificacionId?: number | null;
+            /** Format: date-time */
+            fechaEficacia?: string | null;
+            /** Format: date */
+            fechaLimite?: string | null;
+            /** Format: int32 */
+            diasHabiles: number;
+            /** Format: int32 */
+            diasHabilesRestantes?: number | null;
+            fuente?: string | null;
+        };
+        RegistrarRespuestaSaipRequest: {
+            /** Format: uuid */
+            claveOperacion: string;
+            /** @enum {string} */
+            tipoRespuesta: "ENTREGA_TOTAL" | "ENTREGA_PARCIAL" | "DENEGACION_TOTAL";
+            contenido: string;
+            causalDenegatoria?: string;
+            fundamentoLegal?: string;
+            formatoEntrega?: string;
+            /** Format: int32 */
+            plazoEntrega?: number;
+            /**
+             * Format: int64
+             * @description Se deriva del funcionario autenticado; un administrador puede indicar el funcionario según la autorización existente.
+             */
+            funcionarioId?: number;
+            archivos?: string[];
+        };
+        /** @description Recepción persistida de respuesta y todos sus archivos seleccionados. No acredita entrega, notificación eficaz, firma ni emisión oficial. */
+        RespuestaSaipRecepcionDTO: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            solicitudId: number;
+            claveOperacion: string;
+            /** Format: date-time */
+            fechaRecepcion: string;
+            respuesta: components["schemas"]["RespuestaDTO"];
+            documentos: components["schemas"]["DocumentoMetadataDTO"][];
+        };
+        ConsultaRecepcionSubsanacionTtaipDTO: {
+            /** Format: int64 */
+            expedienteTtaipId: number;
+            /** Format: int64 */
+            apelacionId: number;
+            /** Format: int64 */
+            requerimientoId: number;
+            expediente: string;
+            /** @enum {string} */
+            estado: "AUSENTE" | "RECIBIDA";
+            /** Format: int64 */
+            recepcionId: number | null;
+            /** Format: date-time */
+            fechaRecepcion: string | null;
+            fundamentosAdicionales: string | null;
+            documentos: components["schemas"]["DocumentoMetadataDTO"][];
+        };
+        RegistrarAltaSaipRequest: {
+            /** Format: uuid */
+            claveOperacion: string;
+            /** Format: int64 */
+            entidadId: number;
+            asunto: string;
+            descripcion: string;
+            tipoInformacion?: string;
+            formatoDigital: boolean;
+            formatoFisico: boolean;
+            copiaSimple: boolean;
+            copiaCertificada: boolean;
+            /** @description Debe ser true: aceptación expresa de tratamiento de datos */
+            consentimientoDatosPersonales: boolean;
+            /** @description Debe ser true: declaración expresa del formulario; no es firma digital */
+            declaraVeracidad: boolean;
+            /** @enum {string} */
+            canalNotificacion: "CORREO_ELECTRONICO" | "CASILLA_ELECTRONICA" | "PLATAFORMA" | "FISICA";
+            tiposDocumento?: ("SOLICITUD_ORIGINAL" | "DOCUMENTO_ADJUNTO")[];
+            archivos?: string[];
+        };
+        /** @description Recepción persistida de nueva SAIP y todos sus archivos seleccionados. No acredita entrega, eficacia de notificación, firma ni emisión. */
+        AltaSaipRecepcionDTO: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            claveOperacion: string;
+            /** Format: date-time */
+            fechaRecepcion: string;
+            declaraVeracidad: boolean;
+            solicitud: components["schemas"]["SolicitudDTO"];
+            documentos: components["schemas"]["DocumentoMetadataDTO"][];
+        };
+        AltaApelacionDocumentoDTO: {
+            documento: components["schemas"]["DocumentoMetadataDTO"];
+            /** Format: int64 */
+            origenId: number | null;
+            /** @description SHA-256 de los bytes aceptados al registrar */
+            hashAceptado: string;
+        };
+        /** @description Recepción persistida y manifiesto exacto. La apelación refleja el recurso actual, no una fotografía de todos sus campos mutables. No acredita notificación eficaz, admisión, entrega, firma ni emisión. */
+        AltaApelacionRecepcionDTO: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            claveOperacion: string;
+            modalidad: string;
+            /** Format: date-time */
+            fechaRecepcion: string;
+            apelacion: components["schemas"]["ApelacionDTO"];
+            documentos: components["schemas"]["AltaApelacionDocumentoDTO"][];
+        };
+        DocumentoAltaApelacionRequest: {
+            /** @enum {string} */
+            tipoDocumento: "SOLICITUD_ORIGINAL" | "RESPUESTA_ENTIDAD" | "RECURSO_APELACION" | "DOCUMENTO_ADJUNTO";
+            /**
+             * Format: int64
+             * @description Antecedente de la SAIP/respuesta de origen. Ausente consume el siguiente archivo multipart
+             */
+            origenId?: number;
+            /** @description SHA-256 de la versión del antecedente seleccionada, obligatorio con origenId */
+            hashOrigen?: string;
+        };
+        /** @description DIRECTA_TTAIP: solicitudId y copia de SAIP, más respuesta cuando exista. ANTE_ENTIDAD añade fecha no futura y referencia de cargo; fundamentos hasta 5000. EXTERNA: sin solicitudId, entidad de catálogo o declarada, número/fecha/resumen/referencia de SAIP y fundamentos hasta 5000; expresa requiere fecha y resumen o referencia de respuesta, tácita requiere evidencia declarada de silencio. Documentos externos opcionales. No se recibe identidad, estado ni fechas de alta. */
+        RegistrarAltaApelacionRequest: {
+            /** Format: uuid */
+            claveOperacion: string;
+            /** @enum {string} */
+            modalidad: "DIRECTA_TTAIP" | "ANTE_ENTIDAD" | "EXTERNA";
+            /** Format: int64 */
+            solicitudId?: number;
+            fundamentos: string;
+            /** Format: int64 */
+            entidadId?: number;
+            entidadExternaNombre?: string;
+            entidadExternaRuc?: string;
+            /** Format: email */
+            entidadExternaEmail?: string;
+            numeroSolicitudExterna?: string;
+            /** Format: date */
+            fechaPresentacionSolicitudExterna?: string;
+            /** Format: date */
+            fechaRespuestaEntidad?: string;
+            /** @enum {string} */
+            tipoDenegatoria?: "EXPRESA" | "TACITA";
+            resumenSolicitudOriginal?: string;
+            resumenRespuestaEntidad?: string;
+            referenciaDocumentoSolicitud?: string;
+            referenciaCargoRecepcion?: string;
+            referenciaRespuestaEntidad?: string;
+            evidenciaSilencioAdministrativo?: string;
+            observacion?: string;
+            /** Format: date */
+            fechaPresentacionAnteEntidad?: string;
+            referenciaCargoPresentacion?: string;
+            documentos: components["schemas"]["DocumentoAltaApelacionRequest"][];
+        };
+        PrevisionAmpliacionDTO: {
+            /** Format: date */
+            hoy?: string;
+            /** Format: date */
+            fechaMaximaComunicacion?: string;
+            /** Format: date */
+            fechaLimiteAmpliada?: string;
+            disponible?: boolean;
+            requiereCronograma?: boolean;
+        };
+        /** @description Fecha real y archivos de una entrega programada de la SAIP */
+        RegistrarDocumentosEntregaParcialRequest: {
+            /** Format: date */
+            fechaEntregaReal: string;
+            /** @enum {string} */
+            decision: "ENTREGA_TOTAL" | "ENTREGA_PARCIAL" | "DENEGACION_TOTAL";
+            fundamentoDecision?: string;
+            archivos: string[];
+        };
+        Acto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            resolucionId?: number;
+            numeroResolucion?: string;
+            etapa?: string;
+            decision?: string;
+            destinatario?: string;
+            nombre?: string;
+            numero?: string;
+            tipo?: string;
+            medio?: string;
+            direccion?: string;
+            estado?: string;
+            /** Format: date-time */
+            fechaEficacia?: string;
+            publicada?: boolean;
+            historica?: boolean;
+            requiereExpediente?: boolean;
+            firmado?: components["schemas"]["DocumentoMetadataDTO"];
+            cargo?: components["schemas"]["DocumentoMetadataDTO"];
+            acuse?: components["schemas"]["DocumentoMetadataDTO"];
+            anexos?: components["schemas"]["DocumentoMetadataDTO"][];
+        };
+        Consulta: {
+            etapa?: string;
+            entidad?: string;
+            puedeSolicitar?: boolean;
+            /** Format: date */
+            fechaLimiteCalificacion?: string;
+            /** Format: int32 */
+            diasSuspendidos?: number;
+            solicitudes?: components["schemas"]["Solicitud"][];
+        };
+        Destino: {
+            /** @enum {string} */
+            medio?: "CORREO_ELECTRONICO" | "CASILLA_ELECTRONICA" | "PLATAFORMA" | "FISICA";
+            direccion?: string;
+            /** @enum {string} */
+            tipo?: "CEDULA" | "CARTA";
+        };
+        Preparado: {
+            clave?: string;
+            decision?: string;
+            numero?: string;
+            sala?: string;
+            archivo?: components["schemas"]["DocumentoMetadataDTO"];
+        };
+        Revision: {
+            valida: boolean;
+            /** Format: date-time */
+            fechaEficacia?: string;
+            observacion: string;
+        };
+        Solicitud: {
+            /** Format: int64 */
+            id?: number;
+            etapa?: string;
+            solicitud?: string;
+            /** Format: date */
+            fechaSolicitud?: string;
+            /** Format: date */
+            fechaLimite?: string;
+            estado?: string;
+            respuesta?: string;
+            /** Format: date-time */
+            fechaRespuesta?: string;
+            adjuntos?: components["schemas"]["DocumentoMetadataDTO"][];
+            adjuntosRespuesta?: components["schemas"]["DocumentoMetadataDTO"][];
+        };
+        ConsultaPresentacionesAdmisionTtaip: {
+            puedePresentarSolicitudes?: boolean;
+            puedeResponderInformeOral?: boolean;
+            /** Format: date */
+            fechaLimiteResolucion?: string;
+            descargo?: components["schemas"]["DescargoEnAdmisionTtaip"];
+            presentaciones?: components["schemas"]["PresentacionAdmisionTtaip"][];
+        };
+        DescargoEnAdmisionTtaip: {
+            /** Format: int64 */
+            id?: number;
+            estado?: string;
+            /** Format: date */
+            fechaLimite?: string;
+            /** Format: date */
+            fechaPresentacion?: string;
+            resumen?: string;
+            referencia?: string;
+            puedePresentar?: boolean;
+        };
+        PresentacionAdmisionTtaip: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: uuid */
+            operacion?: string;
+            /** @enum {string} */
+            tipo?: "DESCARGOS" | "INFORME_ORAL" | "DOCUMENTACION_ADICIONAL";
+            /** @enum {string} */
+            origen?: "CIUDADANO" | "ENTIDAD_PUBLICA";
+            texto?: string;
+            numeroOficio?: string;
+            /** Format: date-time */
+            fechaPresentacion?: string;
+            aceptada?: boolean;
+            /** Format: date-time */
+            fechaRespuesta?: string;
+            /** Format: uuid */
+            operacionRespuesta?: string;
+            documentos?: components["schemas"]["DocumentoMetadataDTO"][];
+            respuesta?: components["schemas"]["DocumentoMetadataDTO"];
+        };
+        EscritoAdmisionTtaip: {
+            /** Format: uuid */
+            operacion: string;
+            /** @enum {string} */
+            tipo: "DESCARGOS" | "INFORME_ORAL" | "DOCUMENTACION_ADICIONAL";
+            /** Format: int64 */
+            descargoId?: number;
+            texto?: string;
+            numeroOficio?: string;
+            /** Format: binary */
+            archivo?: string;
+            anexos?: string[];
+        };
+        RespuestaInformeOralTtaip: {
+            /** Format: uuid */
+            operacion: string;
+            aceptada: boolean;
+            /** Format: binary */
+            archivo: string;
+        };
+        PanelPaginaDTOPanelApelacionDTO: {
+            contenido?: components["schemas"]["PanelApelacionDTO"][];
+            /** Format: int32 */
+            pagina?: number;
+            /** Format: int32 */
+            tamano?: number;
+            /** Format: int64 */
+            totalElementos?: number;
+            /** Format: int32 */
+            totalPaginas?: number;
+            ultima?: boolean;
+            resumen?: components["schemas"]["PanelResumenDTO"];
+            entidades?: components["schemas"]["PanelOpcionDTO"][];
+            salas?: components["schemas"]["PanelOpcionDTO"][];
+            opcionesLimitadas?: boolean;
+            alcance?: string;
+            fuentePlazo?: string;
+        };
+        PanelApelacionDTO: {
+            /** Format: int64 */
+            id?: number;
+            expediente?: string;
+            fundamentos?: string;
+            estado?: string;
+            resultado?: string;
+            fechaApelacion?: string;
+            /** Format: int64 */
+            solicitudId?: number;
+            solicitudExpediente?: string;
+            solicitudAsunto?: string;
+            /** Format: int64 */
+            ciudadanoId?: number;
+            ciudadanoNombre?: string;
+            /** Format: int64 */
+            entidadId?: number;
+            entidadNombre?: string;
+            entidadExternaNombre?: string;
+            resumenSolicitudOriginal?: string;
+            tipoOrigen?: string;
+            numeroSolicitudExterna?: string;
+            calificacionPrimera?: string;
+            calificacionSegunda?: string;
+            resuelta?: boolean;
+            etapa?: string;
+            expedienteTtaip?: components["schemas"]["PanelExpedienteDTO"];
+            resolucion?: components["schemas"]["PanelResolucionDTO"];
+            resolucionPrimeraCalificacion?: components["schemas"]["PanelResolucionDTO"];
+            resolucionSegundaCalificacion?: components["schemas"]["PanelResolucionDTO"];
+            plazoSubsanacion?: components["schemas"]["PlazoSubsanacionTtaipDTO"];
+            /** @description Plazo de primera calificación si consta el ingreso al Tribunal y todavía no se registró la calificación */
+            plazoPrimeraCalificacion?: components["schemas"]["PanelPlazoPrimeraCalificacionDTO"];
+            actosNotificacionPendientes?: boolean;
+            informacionComplementariaPendiente?: boolean;
+            descargosPendientes?: boolean;
+            /** @description Plazo de resolución desde la notificación eficaz de la admisión a la entidad */
+            plazoResolucion?: components["schemas"]["PanelPlazoResolucionDTO"];
+        };
+        PanelExpedienteDTO: {
+            /** Format: int64 */
+            id?: number;
+            sala?: components["schemas"]["PanelOpcionDTO"];
+        };
+        PanelOpcionDTO: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
+        };
+        PanelResolucionDTO: {
+            /** Format: int64 */
+            id?: number;
+            tipoResolucion?: string;
+            decision?: string;
+            fechaResolucion?: string;
+        };
+        PanelPlazoPrimeraCalificacionDTO: {
+            /** Format: int32 */
+            diasRestantes?: number;
+            vencido?: boolean;
+            /** Format: int32 */
+            diasSuspendidos?: number;
+            /** Format: date */
+            fechaLimite?: string;
+        };
+        PanelResumenDTO: {
+            /** Format: int64 */
+            total?: number;
+            porEstado?: {
+                [key: string]: number;
+            };
+            porEtapa?: {
+                [key: string]: number;
+            };
+            porResultado?: {
+                [key: string]: number;
+            };
+            porTipoInformacion?: {
+                [key: string]: number;
+            };
+            porEntidad?: {
+                [key: string]: number;
+            };
+            porDiasRestantes?: {
+                [key: string]: number;
+            };
+            registroRespuestas?: components["schemas"]["RegistroRespuestas"];
+        };
+        RegistroRespuestas: {
+            /** Format: int64 */
+            enPlazo?: number;
+            /** Format: int64 */
+            fueraDePlazo?: number;
+            /** Format: int64 */
+            pendientes?: number;
+            /** Format: int64 */
+            noEvaluadas?: number;
+        };
+        PanelPlazoResolucionDTO: {
+            /** Format: int32 */
+            diasRestantes?: number;
+            vencido?: boolean;
+            /** Format: int32 */
+            diasAdicionales?: number;
+            /** Format: date */
+            fechaLimite?: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -4460,6 +5646,368 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    consultar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultaCumplimientoTtaip"];
+                };
+            };
+        };
+    };
+    entregar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["EntregaCumplimientoTtaip"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FaseCumplimientoTtaip"];
+                };
+            };
+        };
+    };
+    remitir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RemisionCumplimientoTtaip"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FaseCumplimientoTtaip"];
+                };
+            };
+        };
+    };
+    validarEntrega: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ValidacionEntregaCumplimientoTtaip"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FaseCumplimientoTtaip"];
+                };
+            };
+        };
+    };
+    registrarSubsanacionTtaip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                apelacionId: number;
+                requerimientoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RegistrarSubsanacionTtaipRequest"];
+            };
+        };
+        responses: {
+            /** @description Recepción persistida y archivos disponibles, o reintento idéntico */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubsanacionTtaipRecepcionDTO"];
+                };
+            };
+            /** @description Solicitud o adjuntos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Sesión no válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Requiere ciudadano titular o administrador */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso, requerimiento o recepción no encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflicto de estado, contenido o persistencia */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Plazo o condiciones de presentación no cumplidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Fallo de almacenamiento o servidor: consultar recepción antes de repetir */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    obtenerRecepcionSubsanacionTtaip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                apelacionId: number;
+                requerimientoId: number;
+                claveOperacion: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recepción persistida y archivos disponibles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubsanacionTtaipRecepcionDTO"];
+                };
+            };
+            /** @description Solicitud o adjuntos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Sesión no válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Requiere ciudadano titular o administrador */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso, requerimiento o recepción no encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflicto de estado, contenido o persistencia */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Plazo o condiciones de presentación no cumplidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Fallo de almacenamiento o servidor: consultar recepción antes de repetir */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    obtenerRequerimientoSubsanacionTtaip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                apelacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Requerimiento y condiciones actuales */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequerimientoSubsanacionTtaipDTO"];
+                };
+            };
+            /** @description Solicitud o adjuntos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Sesión no válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Requiere ciudadano titular o administrador */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso, requerimiento o recepción no encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Conflicto de estado, contenido o persistencia */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Plazo o condiciones de presentación no cumplidos */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Fallo de almacenamiento o servidor: consultar recepción antes de repetir */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     obtenerPorId: {
         parameters: {
             query?: never;
@@ -4798,13 +6346,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Datos persistidos */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description La transición requiere una actuación específica */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -4890,13 +6447,22 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description Estado persistido, o repetición del avance ya confirmado */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado, actuación o notificación eficaz requerida ausente */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -4917,13 +6483,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -4944,13 +6519,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -4971,13 +6555,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -4998,13 +6591,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -5025,13 +6627,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -5052,13 +6663,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -5079,13 +6699,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -5106,13 +6735,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -5133,13 +6771,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -5160,13 +6807,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -5187,13 +6843,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -5562,13 +7227,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -5589,13 +7263,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -5616,13 +7299,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -5643,13 +7335,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -5670,13 +7371,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación registrada y estado persistido */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description Estado o actuación requerida incompatible con el comando */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -5793,13 +7503,40 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación o datos persistidos */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ObservacionSolicitudDTO"];
+                };
+            };
+            /** @description Metadatos documentales sin bytes o comentario ausente */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Actuación incompatible con el estado actual */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Observación no pendiente o plazo vencido */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -6054,13 +7791,31 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Actuación o datos persistidos */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["RespuestaDTO"];
+                };
+            };
+            /** @description Tipo de respuesta desconocido o incompatible con el comando */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Respuesta existente o transición incompatible con las actuaciones del expediente */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -6078,13 +7833,31 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Actuación o datos persistidos */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["RespuestaDTO"];
+                };
+            };
+            /** @description Tipo de respuesta desconocido o incompatible con el comando */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Respuesta existente o transición incompatible con las actuaciones del expediente */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -6102,13 +7875,31 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Actuación o datos persistidos */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["RespuestaDTO"];
+                };
+            };
+            /** @description Tipo de respuesta desconocido o incompatible con el comando */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Respuesta existente o transición incompatible con las actuaciones del expediente */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -6760,13 +8551,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación o datos persistidos */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["LiquidacionCostoSolicitudDTO"];
+                };
+            };
+            /** @description Actuación incompatible con el estado de la solicitud o con una observación pendiente. El recojo sigue disponible cuando la información ya está puesta a disposición. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -6789,13 +8589,59 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Actuación o datos persistidos */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["SolicitudDTO"];
+                };
+            };
+            /** @description La transición exige una actuación o es incompatible con el expediente */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Valor de estado ausente o no reconocido */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    registrarDocumentosEntregaParcial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                ampliacionId: number;
+                entregaId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RegistrarDocumentosEntregaParcialRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CronogramaEntregaParcialDTO"];
                 };
             };
         };
@@ -6936,13 +8782,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Estado actual sin nueva actuación */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ApelacionDTO"];
+                };
+            };
+            /** @description La transición requiere una actuación específica */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
                 };
             };
         };
@@ -7388,6 +9243,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CronogramaEntregaParcialDTO"][];
+                };
+            };
+        };
+    };
+    preverAmpliacion: {
+        parameters: {
+            query?: {
+                diasHabilesAdicionales?: number;
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrevisionAmpliacionDTO"];
+                };
+            };
+        };
+    };
+    consultarEstadoPublico: {
+        parameters: {
+            query: {
+                /** @description Número completo, por ejemplo SAIP-2026-00001 o 00001-2026-JUS/TTAIP */
+                expediente: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultaPublicaSolicitudDTO"];
                 };
             };
         };
@@ -8743,6 +10645,1122 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    registrarPrecisionSaip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                solicitudId: number;
+                observacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RegistrarPrecisionSaipRequest"];
+            };
+        };
+        responses: {
+            /** @description Recepción persistida con archivo disponible, o reintento idéntico */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrecisionSaipRecepcionDTO"];
+                };
+            };
+            /** @description Parámetros o archivo inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description JWT ausente, inválido o expirado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Requiere rol CIUDADANO y titularidad de la solicitud */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Solicitud, observación o recepción no encontrada en el recurso indicado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Precisión ya recibida con distinta clave o contenido, o conflicto de persistencia */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description La observación no admite subsanación según su estado o plazo vigente */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Fallo interno o archivo no disponible; comprobar recepción antes de reintentar */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    obtenerRecepcionPrecisionSaip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                solicitudId: number;
+                observacionId: number;
+                claveOperacion: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recepción persistida con archivo disponible */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrecisionSaipRecepcionDTO"];
+                };
+            };
+            /** @description Parámetros o archivo inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description JWT ausente, inválido o expirado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Requiere rol CIUDADANO y titularidad de la solicitud */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Solicitud, observación o recepción no encontrada en el recurso indicado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Fallo interno o archivo no disponible; comprobar recepción antes de reintentar */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    cerrarSesionActual: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revocación de esta sesión confirmada */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bearer ausente, inválido, expirado o ya revocado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    registrarRespuestaSaipConDocumentos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                solicitudId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RegistrarRespuestaSaipRequest"];
+            };
+        };
+        responses: {
+            /** @description Recepción completa persistida o recuperación de un reintento idéntico */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaSaipRecepcionDTO"];
+                };
+            };
+            /** @description Datos o archivos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description JWT ausente o inválido */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Actor, entidad o recurso no autorizado */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Solicitud u operación no encontrada; no descarta un envío aún en curso */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Huella, clave, respuesta o transición incompatible */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Fallo interno o de almacenamiento; consultar recepción antes de reintentar */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    obtenerRecepcionRespuestaSaip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                solicitudId: number;
+                claveOperacion: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recepción persistida y manifiesto de documentos disponibles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaSaipRecepcionDTO"];
+                };
+            };
+            /** @description Datos o archivos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description JWT ausente o inválido */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Actor, entidad o recurso no autorizado */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Solicitud u operación no encontrada; no descarta un envío aún en curso */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Huella, clave, respuesta o transición incompatible */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Fallo interno o de almacenamiento; consultar recepción antes de reintentar */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    consultarRecepcionSubsanacionTtaipInstitucional: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                requerimientoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recepción persistida o ausencia confirmada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultaRecepcionSubsanacionTtaipDTO"];
+                };
+            };
+            /** @description Identificadores inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Sesión no válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Requiere TTAIP o administrador */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Expediente o requerimiento inexistente o ajeno al agregado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Actuación o relaciones incompatibles */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Error de consulta o almacenamiento; no acredita ausencia */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    registrarAltaSaip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RegistrarAltaSaipRequest"];
+            };
+        };
+        responses: {
+            /** @description Recepción persistida o repetición compatible */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AltaSaipRecepcionDTO"];
+                };
+            };
+            /** @description Campos, archivos o atributos no permitidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Sesión no válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Requiere ciudadano y actor original de la operación */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Entidad o recepción no encontrada; no descarta una operación todavía en curso */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Contenido incompatible, entidad inactiva o conflicto de persistencia */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Resultado no confirmado o fallo de almacenamiento: consulte antes de repetir */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    obtenerRecepcionAltaSaip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claveOperacion: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recepción y manifiesto disponibles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AltaSaipRecepcionDTO"];
+                };
+            };
+            /** @description Campos, archivos o atributos no permitidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Sesión no válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Requiere ciudadano y actor original de la operación */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Entidad o recepción no encontrada; no descarta una operación todavía en curso */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Contenido incompatible, entidad inactiva o conflicto de persistencia */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Resultado no confirmado o fallo de almacenamiento: consulte antes de repetir */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    registrarAltaApelacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    datos: components["schemas"]["RegistrarAltaApelacionRequest"];
+                    archivos?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Recepción persistida o repetición compatible */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AltaApelacionRecepcionDTO"];
+                };
+            };
+            /** @description Datos, modalidad o archivos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Sesión no válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Actor o recurso ajeno */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso o recepción no encontrado; no descarta un envío en curso */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Contenido, versión, asociación o estado incompatible */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Rechazo de una precondición de negocio de la modalidad existente */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Resultado no confirmado; consulte antes de reintentar */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    obtenerRecepcionAltaApelacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                claveOperacion: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recepción y manifiesto disponibles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AltaApelacionRecepcionDTO"];
+                };
+            };
+            /** @description Datos, modalidad o archivos inválidos */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Sesión no válida */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Actor o recurso ajeno */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Recurso o recepción no encontrado; no descarta un envío en curso */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Contenido, versión, asociación o estado incompatible */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Resultado no confirmado; consulte antes de reintentar */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    preparar: {
+        parameters: {
+            query: {
+                decision: "ADMISIBLE" | "INADMISIBLE" | "IMPROCEDENTE" | "ADMITIDO" | "TENER_POR_NO_PRESENTADO" | "FUNDADO" | "FUNDADO_EN_PARTE" | "INFUNDADO" | "INFUNDADO_EN_PARTE" | "CONCLUSION_SUSTRACCION_MATERIA" | "CONCLUSION_DESISTIMIENTO" | "ESTESE_A_LO_RESUELTO" | "NULIDAD_DEL_ACTO";
+                sala?: string;
+                numero?: string;
+            };
+            header?: never;
+            path: {
+                expedienteId: number;
+                etapa: "PRIMERA_CALIFICACION" | "SEGUNDA_CALIFICACION" | "RESOLUCION_FINAL";
+                clave: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    archivo?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preparado"];
+                };
+            };
+        };
+    };
+    destino: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                notificacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Destino"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Acto"];
+                };
+            };
+        };
+    };
+    subir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                notificacionId: number;
+                tipo: "FIRMADO" | "CARGO" | "ACUSE";
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    archivo: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Acto"];
+                };
+            };
+        };
+    };
+    informacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Consulta"];
+                };
+            };
+        };
+    };
+    solicitar: {
+        parameters: {
+            query: {
+                texto: string;
+            };
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    archivos?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Consulta"];
+                };
+            };
+        };
+    };
+    responder: {
+        parameters: {
+            query: {
+                texto: string;
+            };
+            header?: never;
+            path: {
+                expedienteId: number;
+                solicitudId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    archivos?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Consulta"];
+                };
+            };
+        };
+    };
+    revisar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                notificacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Revision"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Acto"];
+                };
+            };
+        };
+    };
+    publicar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                notificacionId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Acto"];
+                };
+            };
+        };
+    };
+    documentos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                etapa: "PRIMERA_CALIFICACION" | "SEGUNDA_CALIFICACION" | "RESOLUCION_FINAL";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preparado"][];
+                };
+            };
+        };
+    };
+    actos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Acto"][];
+                };
+            };
+        };
+    };
+    presentaciones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultaPresentacionesAdmisionTtaip"];
+                };
+            };
+        };
+    };
+    presentar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["EscritoAdmisionTtaip"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresentacionAdmisionTtaip"];
+                };
+            };
+        };
+    };
+    responderInformeOral: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                expedienteId: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["RespuestaInformeOralTtaip"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresentacionAdmisionTtaip"];
+                };
+            };
+        };
+    };
+    apelaciones: {
+        parameters: {
+            query?: {
+                pagina?: number;
+                tamano?: number;
+                busqueda?: string;
+                estado?: string;
+                etapa?: string;
+                orden?: string;
+                entidadId?: number;
+                sala?: string;
+                descargosPresentados?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PanelPaginaDTOPanelApelacionDTO"];
+                };
             };
         };
     };

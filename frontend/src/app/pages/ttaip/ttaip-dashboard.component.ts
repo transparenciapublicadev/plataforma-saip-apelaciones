@@ -1,675 +1,388 @@
-import { Component, ChangeDetectionStrategy, OnInit, computed, inject, signal } from '@angular/core';
+import { LucideEye } from '@lucide/angular';
+import { HttpClient } from '@angular/common/http';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
-import { forkJoin } from 'rxjs';
-import { TtaipService } from '../../services/ttaip.service';
+import { DatePipe, DecimalPipe } from '@angular/common';
+import { Subscription } from 'rxjs';
+import { PanelQueryService } from '../../services/panel-query.service';
+import { PanelApelacion as Apelacion, PanelPage, PanelSummary, validPanelPage } from '../../models/panel-query.model';
 import { AuthService } from '../../services/auth.service';
-import { Apelacion } from '../../models/apelacion.model';
 import { GuidedTourService } from '../../core/guided-tour/guided-tour.service';
 import { TourStep } from '../../core/guided-tour/guided-tour.model';
-
-type StageKey = 'calificacion1' | 'subsanacion' | 'calificacion2' | 'resolucion' | 'resueltos';
-type Priority = 'alta' | 'media' | 'baja';
-type Tone = 'critical' | 'warn' | 'ok' | 'done';
-
-interface StageMeta {
-  key: StageKey;
-  num: string;
-  label: string;
-  shortLabel: string;
-  plazoDias: number;
-  plazoLabel: string;
-  norma: string;
-  color: string;
-  bg: string;
-  icon: 'scale' | 'hourglass' | 'layers' | 'gavel' | 'check';
-  actionLabel: string | null;
-  isResolved?: boolean;
-  esperaExterna?: boolean;
-}
-
-interface QueueItem {
-  apelacion: Apelacion;
-  stageKey: StageKey;
-  ciudadano: string;
-  iniciales: string;
-  entidad: string;
-  materia: string;
-  descripcion: string;
-  diasHabilesEnEtapa: number;
-  prioridad: Priority;
-  resultado: string | null;
-}
-
-interface PlazoStatus {
-  restantes: number;
-  pct: number;
-  tone: Tone;
-}
-
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { PaginationComponent } from '../../shared/pagination.component';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
 import {
-  LucideGavel, LucideCompass, LucideShieldAlert, LucideSparkles,
-  LucideChevronRight, LucideScale, LucideHourglass, LucideLayers,
-  LucideCheckCircle2, LucideSearch, LucideInbox, LucideEye,
-  LucideArrowRight, LucideActivity, LucideBuilding2, LucideClock,
-  LucideFileText, LucideAlertTriangle, LucideTrendingUp
+  StageKey, StageMeta, stages, positiveId, stageOf, readAppeals, recordedDate,
+  computePlazoStatus, PlazoStatusResult, actionFor, finalDecision, clockText,
+  decisionLista, decisionLabels, plazoPendiente, stagesConPlazos,
+  habilesEntreFechas, finalStates
+} from './ttaip-dashboard.model';
+import { CalendarioConfig, hoyLima, normalizarCalendario } from '../../models/calendario.model';
+import { environment } from '../../../environments/environment';
+import {
+  LucideGavel, LucideCompass, LucideLayers, LucideScale, LucideHourglass, LucideCheckCircle2,
+  LucideSearch, LucideInbox, LucideArrowRight, LucideBuilding2, LucideActivity, LucideClock,
+  LucideFileText, LucidePauseCircle, LucideShieldAlert, LucideAlertTriangle, LucideTrendingUp,
+  LucideChevronRight
 } from '@lucide/angular';
 
 @Component({
   selector: 'app-ttaip-dashboard',
-  imports: [
-    RouterLink, FormsModule, DatePipe,
-    LucideGavel, LucideCompass, LucideShieldAlert, LucideSparkles,
-    LucideChevronRight, LucideScale, LucideHourglass, LucideLayers,
-    LucideCheckCircle2, LucideSearch, LucideInbox, LucideEye,
-    LucideArrowRight, LucideActivity, LucideBuilding2, LucideClock,
-    LucideFileText, LucideAlertTriangle, LucideTrendingUp
+  imports: [LucideEye, YaikuCargandoComponent,
+    RouterLink, FormsModule, DatePipe, DecimalPipe, StatusBadgeComponent, PaginationComponent,
+    LucideGavel, LucideCompass, LucideLayers, LucideScale, LucideHourglass, LucideCheckCircle2,
+    LucideSearch, LucideInbox, LucideArrowRight, LucideBuilding2, LucideActivity, LucideClock,
+    LucideFileText, LucidePauseCircle, LucideShieldAlert, LucideAlertTriangle, LucideTrendingUp,
+    LucideChevronRight
   ],
   templateUrl: './ttaip-dashboard.component.html',
   styleUrl: './ttaip-dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TtaipDashboardComponent implements OnInit {
-  private readonly ttaipService = inject(TtaipService);
+export class TtaipDashboardComponent implements OnInit, OnDestroy {
+  private readonly panelService = inject(PanelQueryService);
+  private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly tourService = inject(GuidedTourService);
 
-  readonly tourSteps: TourStep[] = [
-    { selector: '[data-tour="t-hero"]', title: 'Mesa del Tribunal', body: 'Fecha, total de expedientes en el pipeline y cuántos están en riesgo crítico de incumplir el plazo del Reglamento.' },
-    { selector: '[data-tour="t-tasa"]', title: 'Tasa de fundadas', body: 'Indicador institucional: qué proporción de las resoluciones emitidas dieron la razón al administrado.' },
-    { selector: '[data-tour="t-pipeline"]', title: 'Pipeline del proceso', body: 'El flujo completo de una apelación, etapa por etapa según el Reglamento del Tribunal. Toca una etapa para enfocar su cola.' },
-    { selector: '[data-tour="t-cola"]', title: 'Cola de la etapa', body: 'Los expedientes de la etapa seleccionada, ordenados por plazo restante. Desde aquí calificas, resuelves o consultas cada caso.', align: 'start', onEnter: () => this.selectStage('calificacion1') },
-    { selector: '[data-tour="t-estadistica"]', title: 'Resoluciones del periodo', body: 'Distribución de los fallos emitidos: fundados, infundados e improcedentes.' },
-    { selector: '[data-tour="t-concentracion"]', title: 'Entidades más apeladas', body: 'Dónde se concentran las apelaciones, para identificar patrones de denegación recurrente.' },
-    { selector: '[data-tour="t-disciplinario"]', title: 'Procesos disciplinarios', body: 'Acceso al procedimiento sancionador contra funcionarios que incumplen la ley de transparencia.' },
-  ];
-
+  private query = new Subscription();
+  private calendarQuery = new Subscription();
+  private generation = 0;
+  private calendarGeneration = 0;
+  private destroyed = false;
+  private initialized = false;
+  private revision = -1;
+  private loadedSession = '';
   private focusStageFromState: StageKey | null = null;
 
-  constructor() {
-    const navigation = this.router.getCurrentNavigation();
-    const state = navigation?.extras.state as { focusStage?: StageKey } | undefined;
-    if (state?.focusStage) {
-      this.focusStageFromState = state.focusStage;
-    }
+  readonly stageCatalog = signal<StageMeta[]>(stagesConPlazos(null));
+  readonly filtrosEtapa = computed(() => this.stageCatalog().filter(stage => stage.key !== 'elevacion' && stage.key !== 'notificaciones'));
+  private readonly calendario = signal<CalendarioConfig | null>(null);
+  readonly apelaciones = signal<Apelacion[]>([]);
+  readonly loading = signal(true);
+  readonly error = signal('');
+  readonly reintentable = signal(false);
+  readonly stageKey = signal<StageKey>('todos');
+  readonly descargosPresentados = signal(false);
+  readonly pagina = signal<PanelPage<Apelacion> | null>(null);
+  readonly resumen = signal<PanelSummary | null>(null);
+  readonly queryLoading = signal(false);
+
+  private searchTimer?: ReturnType<typeof setTimeout>;
+  readonly search = signal('');
+  private readonly pageSize = 4;
+  readonly paginaActual = signal(1);
+
+  alternarFiltroDescargos(): void {
+    this.descargosPresentados.update(valor => !valor);
+    this.paginaActual.set(1);
+    this.cargarDashboard();
   }
 
-  readonly stages: StageMeta[] = [
-    {
-      key: 'calificacion1',
-      num: '01',
-      label: 'Primera calificación',
-      shortLabel: '1ra Calif.',
-      plazoDias: 7,
-      plazoLabel: '7 días háb.',
-      norma: 'Reglamento TTAIP',
-      color: 'var(--info)',
-      bg: 'rgba(29,78,216,0.08)',
-      icon: 'scale',
-      actionLabel: 'Calificar'
-    },
-    {
-      key: 'subsanacion',
-      num: '02',
-      label: 'Subsanación',
-      shortLabel: 'Subsanación',
-      plazoDias: 2,
-      plazoLabel: '2 días háb.',
-      norma: 'Espera del ciudadano',
-      color: 'var(--gold-dark)',
-      bg: 'rgba(176,136,66,0.10)',
-      icon: 'hourglass',
-      actionLabel: null,
-      esperaExterna: true
-    },
-    {
-      key: 'calificacion2',
-      num: '03',
-      label: 'Segunda calificación',
-      shortLabel: '2da Calif.',
-      plazoDias: 3,
-      plazoLabel: 'Post-subsan.',
-      norma: 'Reglamento TTAIP',
-      color: 'var(--brand-600)',
-      bg: 'var(--brand-subtle)',
-      icon: 'layers',
-      actionLabel: 'Resolver 2da'
-    },
-    {
-      key: 'resolucion',
-      num: '04',
-      label: 'Resolución final',
-      shortLabel: 'Res. Final',
-      plazoDias: 10,
-      plazoLabel: '10 días háb.',
-      norma: 'Reglamento TTAIP',
-      color: 'var(--brand-700)',
-      bg: 'var(--brand-subtle)',
-      icon: 'gavel',
-      actionLabel: 'Emitir resolución'
-    },
-    {
-      key: 'resueltos',
-      num: '05',
-      label: 'Resueltos',
-      shortLabel: 'Resueltos',
-      plazoDias: 0,
-      plazoLabel: 'Cerrados',
-      norma: 'Archivo',
-      color: 'var(--success)',
-      bg: 'rgba(5,150,105,0.10)',
-      icon: 'check',
-      actionLabel: 'Ver',
-      isResolved: true
-    }
+  readonly hoyISO = signal(hoyLima());
+  readonly fechaHoy = new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  readonly tourSteps: TourStep[] = [
+    { selector: '[data-tour="t-hero"]', title: 'Mesa del Secretario Técnico', body: 'Fecha, total de expedientes en el pipeline y expedientes con riesgo crítico conforme al Reglamento.' },
+    { selector: '[data-tour="t-tasa"]', title: 'Tasa de fundadas', body: 'Proporción de resoluciones emitidas que dieron la razón al ciudadano.' },
+    { selector: '[data-tour="t-pipeline"]', title: 'Etapas del proceso', body: 'El flujo completo de una apelación, etapa por etapa. Seleccione una etapa para filtrar su cola.' },
+    { selector: '[data-tour="t-cola"]', title: 'Cola de expedientes', body: 'Expedientes de la etapa seleccionada con contador de días hábiles, días suspendidos y accesos directos de calificación y resolución.', align: 'start' },
+    { selector: '[data-tour="t-estadistica"]', title: 'Estadística institucional', body: 'Distribución de los fallos emitidos: fundados, infundados e improcedentes.' },
+    { selector: '[data-tour="t-concentracion"]', title: 'Entidades más apeladas', body: 'Concentración de apelaciones para identificar patrones de denegación.' },
   ];
 
-  readonly donutRadius = 26;
-  readonly donutCirc = 2 * Math.PI * this.donutRadius;
+  constructor() {
+    const focus = (this.router.getCurrentNavigation()?.extras.state as { focusStage?: StageKey } | undefined)?.focusStage;
+    if (focus && this.filtrosEtapa().some(stage => stage.key === focus)) this.focusStageFromState = focus;
+    effect(() => {
+      const rev = this.authService.cambiosSesion?.() ?? 0;
+      if (this.initialized && rev !== this.revision) untracked(() => this.cargarDashboard());
+    });
+  }
 
-  readonly apelaciones = signal<Apelacion[]>([]);
-  readonly loading = signal<boolean>(true);
-  readonly error = signal<string>('');
+  private sessionKey(): string {
+    const s = this.authService.obtenerSesion();
+    return JSON.stringify([s?.token, s?.usuarioId, s?.tipoUsuario, s?.miembroId]);
+  }
 
-  readonly stageKey = signal<StageKey>('calificacion1');
-  readonly search = signal<string>('');
-  readonly salaFiltro = signal<'TODAS' | 'PRIMERA' | 'SEGUNDA'>('TODAS');
-  readonly paginaActual = signal<number>(1);
-  readonly itemsPorPagina = signal<number>(10);
-  readonly nombreMiembro = signal<string>('Miembro TTAIP');
+  contextoVigente(): boolean { return !this.destroyed && this.loadedSession === this.sessionKey(); }
 
-  readonly fechaHoy = computed(() =>
-    new Date().toLocaleDateString('es-PE', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long'
-    })
-  );
-
-  readonly queueItems = computed(() =>
-    this.apelaciones()
-      .filter((apelacion) => !this.esPendienteElevacion(apelacion))
-      .map((apelacion) => this.toQueueItem(apelacion))
-  );
-
-  readonly counts = computed<Record<StageKey, number>>(() => {
-    const base: Record<StageKey, number> = {
-      calificacion1: 0,
-      subsanacion: 0,
-      calificacion2: 0,
-      resolucion: 0,
-      resueltos: 0
+  readonly queueItems = computed(() => this.apelaciones().map(apelacion => {
+    const catalog = this.stageCatalog();
+    const stageKey = apelacion.etapa === 'notificaciones' || apelacion.etapa === 'resolucion' ? apelacion.etapa : stageOf(apelacion.estado);
+    const stage = catalog.find(s => s.key === stageKey) ?? catalog[0];
+    const status = computePlazoStatus(apelacion, stage, this.hoyISO(), this.calendario());
+    return {
+      apelacion,
+      stageKey,
+      stage,
+      status,
+      ciudadano: apelacion.ciudadanoNombre || 'Administrado no informado',
+      entidad: apelacion.entidadNombre || apelacion.entidadExternaNombre || 'Entidad no informada',
+      descripcion: apelacion.solicitudAsunto || apelacion.resumenSolicitudOriginal || apelacion.fundamentos || 'Sin descripción informada',
+      iniciales: apelacion.ciudadanoNombre?.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() || '—',
+      resultado: finalDecision(apelacion),
+      decision: decisionLista(apelacion),
+      action: actionFor(apelacion)
     };
+  }));
 
-    for (const item of this.queueItems()) {
-      base[item.stageKey] += 1;
-    }
+  readonly counts = computed<Record<StageKey, number>>(() => ({
+    todos: this.resumen()?.total ?? 0,
+    elevacion: this.resumen()?.porEtapa['elevacion'] ?? 0,
+    calificacion1: this.resumen()?.porEtapa['calificacion1'] ?? 0,
+    subsanacion: this.resumen()?.porEtapa['subsanacion'] ?? 0,
+    calificacion2: this.resumen()?.porEtapa['calificacion2'] ?? 0,
+    resolucion: this.resumen()?.porEtapa['resolucion'] ?? 0,
+    notificaciones: this.resumen()?.porEtapa['notificaciones'] ?? 0,
+    cumplimiento: this.resumen()?.porEtapa['cumplimiento'] ?? 0,
+    resueltos: this.resumen()?.porEtapa['resueltos'] ?? 0,
+    otras: this.resumen()?.porEtapa['otras'] ?? 0
+  }));
 
-    return base;
+  readonly activeStage = computed<StageMeta>(() => this.stageCatalog().find(s => s.key === this.stageKey())
+    ?? { ...stages[0], key: 'otras' as const, label: 'Otros estados', shortLabel: 'Otros' });
+  readonly filtered = computed(() => this.queueItems());
+  readonly filteredVisibles = computed(() => this.filtered());
+  readonly totalRegistros = computed(() => this.pagina()?.totalElementos ?? 0);
+  readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.totalRegistros() / this.pageSize)));
+  readonly paginaSegura = computed(() => Math.min(this.paginaActual(), this.totalPaginas()));
+  readonly inicioRegistro = computed(() => this.totalRegistros() ? (this.paginaSegura() - 1) * this.pageSize + 1 : 0);
+  readonly finRegistro = computed(() => Math.min(this.paginaSegura() * this.pageSize, this.totalRegistros()));
+  readonly totalExpedientes = computed(() => this.resumen()?.total ?? 0);
+  readonly totalResueltas = computed(() => this.counts().resueltos);
+  readonly totalFinales = computed(() => Object.values(this.resumen()?.porResultado ?? {}).reduce((sum, n) => sum + n, 0));
+
+  readonly resoluciones = computed(() => this.apelaciones().filter(a =>
+    !a.actosNotificacionPendientes && (a.resuelta === true || stageOf(a.estado) === 'resueltos' || finalStates.has(a.estado))
+  ));
+
+  readonly tiempoPromedio = computed(() => {
+    const tiempos = this.resoluciones().flatMap(r => {
+      const ini = recordedDate(r.fechaApelacion ?? (r as any).fechaIngreso)?.slice(0, 10);
+      const fin = recordedDate(r.resolucion?.fechaResolucion ?? (r as any).fechaResolucion ?? (r.expedienteTtaip as any)?.fechaResolucionFinal)?.slice(0, 10);
+      return ini && fin && fin >= ini ? [habilesEntreFechas(ini, fin)] : [];
+    });
+    if (!tiempos.length) return '—';
+    const promedio = tiempos.reduce((sum, n) => sum + n, 0) / tiempos.length;
+    return `${promedio.toFixed(1)}d`;
   });
 
-  readonly activeStage = computed(() => this.stages.find((stage) => stage.key === this.stageKey()) ?? this.stages[0]);
-
-  readonly filtered = computed(() => {
-    const active = this.activeStage();
-    const query = this.search().trim().toLowerCase();
-    const sala = this.salaFiltro();
-
-    let base = this.queueItems().filter((item) => item.stageKey === active.key);
-    
-    if (sala !== 'TODAS') {
-      base = base.filter((item) => {
-        const itemSala = (item.apelacion.expedienteTtaip?.sala?.nombre || '').toUpperCase();
-        return sala === 'PRIMERA' ? (itemSala.includes('1') || itemSala.includes('PRIMERA') || !itemSala) : (itemSala.includes('2') || itemSala.includes('SEGUNDA'));
-      });
-    }
-
-    const searched = query
-      ? base.filter((item) => this.matchesQuery(item, query))
-      : base;
-
-    if (active.isResolved || active.esperaExterna) {
-      return searched;
-    }
-
-    return [...searched].sort((a, b) => this.plazoStatus(a, active).restantes - this.plazoStatus(b, active).restantes);
+  readonly resolucionesMes = computed(() => {
+    const mesActual = this.hoyISO().slice(0, 7);
+    return this.resoluciones().filter(r => {
+      const fin = recordedDate(r.resolucion?.fechaResolucion ?? (r as any).fechaResolucion ?? (r.expedienteTtaip as any)?.fechaResolucionFinal)?.slice(0, 10);
+      return fin != null && fin.startsWith(mesActual);
+    }).length;
   });
+  readonly fundadasCount = computed(() => this.resumen()?.porResultado?.['FUNDADO'] ?? 0);
 
-  readonly totalRegistros = computed(() => this.filtered().length);
-  readonly totalPaginas = computed(() => Math.ceil(this.totalRegistros() / this.itemsPorPagina()) || 1);
-  readonly inicioRegistro = computed(() => this.totalRegistros() === 0 ? 0 : (this.paginaActual() - 1) * this.itemsPorPagina() + 1);
-  readonly finRegistro = computed(() => Math.min(this.paginaActual() * this.itemsPorPagina(), this.totalRegistros()));
-  readonly filteredVisibles = computed(() => {
-    const start = (this.paginaActual() - 1) * this.itemsPorPagina();
-    return this.filtered().slice(start, start + this.itemsPorPagina());
-  });
+  readonly tasaFundadas = computed(() => this.totalFinales() ? Math.round(this.fundadasCount() / this.totalFinales() * 100) : null);
 
-  cambiarSala(sala: 'TODAS' | 'PRIMERA' | 'SEGUNDA'): void {
-    this.salaFiltro.set(sala);
+  readonly riesgo = computed(() => this.queueItems().filter(item => {
+    if (item.stage.isResolved || item.stage.esperaExterna) return false;
+    return item.status.informado && item.status.restantes <= 1;
+  }));
+
+  readonly resultados = computed(() => Object.entries(this.resumen()?.porResultado ?? {})
+    .map(([decision, count]) => ({
+      decision,
+      count,
+      percentage: this.totalFinales() ? (count / this.totalFinales()) * 100 : 0
+    })));
+
+  readonly topEntidades = computed(() => Object.entries(this.resumen()?.porEntidad ?? {}).map(([key, count]) => ({
+    id: Number(key), count, nombre: this.pagina()?.entidades.find(e => e.id === Number(key))?.nombre || 'Entidad registrada'
+  })).sort((a, b) => b.count - a.count).slice(0, 5));
+
+  readonly informacionIncompleta = computed(() => this.queueItems().some(item => item.stageKey === 'otras'
+    || !recordedDate(item.apelacion.fechaApelacion) || !item.apelacion.ciudadanoNombre
+    || (item.stageKey === 'subsanacion' && /incompleto|no informado/.test(clockText(item.apelacion)))));
+
+  get searchModel(): string { return this.search(); }
+  set searchModel(value: string) {
+    this.search.set(value.slice(0, 120));
     this.paginaActual.set(1);
+    clearTimeout(this.searchTimer);
+    this.query.unsubscribe();
+    this.generation++;
+    this.apelaciones.set([]);
+    this.queryLoading.set(true);
+    this.searchTimer = setTimeout(() => this.cargarDashboard(), 250);
   }
 
   selectStage(stage: StageKey): void {
+    if ((this.counts()[stage] ?? 0) === 0 || this.stageKey() === stage) return;
     this.stageKey.set(stage);
     this.paginaActual.set(1);
-  }
-
-  cambiarPagina(pagina: number): void {
-    if (pagina >= 1 && pagina <= this.totalPaginas()) {
-      this.paginaActual.set(pagina);
-    }
-  }
-
-  cambiarItemsPorPagina(items: number): void {
-    this.itemsPorPagina.set(items);
-    this.paginaActual.set(1);
-  }
-
-  readonly riesgo = computed(() => {
-    const critical: QueueItem[] = [];
-    for (const item of this.queueItems()) {
-      const stage = this.stageFromKey(item.stageKey);
-      if (stage.isResolved || stage.esperaExterna) continue;
-      if (this.plazoStatus(item, stage).restantes <= 1) {
-        critical.push(item);
-      }
-    }
-    return critical;
-  });
-
-  readonly totalExpedientes = computed(() => this.queueItems().length);
-  readonly resueltas = computed(() => this.queueItems().filter((item) => item.stageKey === 'resueltos'));
-
-  readonly fundadasCount = computed(() => this.resueltas().filter((item) => this.normalizeDecision(item.resultado).startsWith('FUNDADO')).length);
-  readonly infundadasCount = computed(() => this.resueltas().filter((item) => this.normalizeDecision(item.resultado).startsWith('INFUNDADO')).length);
-  readonly improcedentesCount = computed(() => this.resueltas().filter((item) => this.normalizeDecision(item.resultado).includes('IMPROCEDENTE')).length);
-
-  readonly tasaFundadas = computed(() => {
-    const total = this.resueltas().length;
-    if (total <= 0) return 0;
-    return Math.round((this.fundadasCount() / total) * 100);
-  });
-
-  readonly donutOffset = computed(() => {
-    const value = Math.max(0, Math.min(100, this.tasaFundadas()));
-    return this.donutCirc - (value / 100) * this.donutCirc;
-  });
-
-  readonly topEntidades = computed(() => {
-    const map = new Map<string, number>();
-    for (const item of this.queueItems()) {
-      map.set(item.entidad, (map.get(item.entidad) || 0) + 1);
-    }
-
-    return Array.from(map.entries())
-      .map(([nombre, count]) => ({ nombre, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  });
-
-  readonly promedioDias = computed(() => {
-    const pendientes = this.queueItems().filter((item) => item.stageKey !== 'resueltos');
-    if (pendientes.length <= 0) return 0;
-
-    const total = pendientes.reduce((acc, item) => acc + item.diasHabilesEnEtapa, 0);
-    return Math.round((total / pendientes.length) * 10) / 10;
-  });
-
-  get searchModel(): string {
-    return this.search();
-  }
-
-  set searchModel(value: string) {
-    this.search.set(value);
-  }
-
-  ngOnInit(): void {
-    const sesion = this.authService.obtenerSesion();
-    if (sesion?.nombre) {
-      this.nombreMiembro.set(sesion.nombre);
-    }
-
     this.cargarDashboard();
-    this.tourService.checkAutoStart('saip_tour_ttaip', this.tourSteps);
   }
 
-  get isFirstVisit(): boolean {
-    return this.tourService.isFirstVisit('saip_tour_ttaip');
+  cambiarPagina(page: number): void {
+    if (Number.isSafeInteger(page) && page >= 1 && page <= this.totalPaginas() && page !== this.paginaActual()) {
+      this.paginaActual.set(page);
+      this.cargarDashboard();
+    }
   }
 
-  startTour(): void {
-    this.tourService.startTour('saip_tour_ttaip', this.tourSteps);
+  ngOnInit(): void { this.initialized = true; this.cargarDashboard(); }
+
+  ngOnDestroy(): void {
+    this.tourService.endTourFor('saip_tour_ttaip');
+    this.destroyed = true;
+    this.generation++;
+    this.calendarGeneration++;
+    this.query.unsubscribe();
+    this.calendarQuery.unsubscribe();
+    clearTimeout(this.searchTimer);
   }
 
-  cargarDashboard(): void {
-    this.loading.set(true);
-    this.error.set('');
-
-    forkJoin({
-      calificacion1: this.ttaipService.getEnAnalisis(),
-      subsanacion: this.ttaipService.getSubsanacion(),
-      calificacion2: this.ttaipService.getSegundaCalificacion(),
-      resolucion: this.ttaipService.getEnResolucion(),
-      resueltas: this.ttaipService.getResueltas()
-    }).subscribe({
-      next: (data) => {
-        const merged = this.mergeUnique([
-          data.calificacion1,
-          data.subsanacion,
-          data.calificacion2,
-          data.resolucion,
-          data.resueltas
-        ]);
-
-        this.apelaciones.set(merged);
-
-        if (this.focusStageFromState) {
-          this.stageKey.set(this.focusStageFromState);
-          this.focusStageFromState = null;
-        } else {
-          const firstWithData = this.stages.find((stage) => this.countByStage(merged, stage.key) > 0) ?? this.stages[0];
-          this.stageKey.set(firstWithData.key);
-        }
-        this.loading.set(false);
+  private cargarPlazos(): void {
+    this.calendarQuery.unsubscribe();
+    this.calendario.set(null);
+    this.stageCatalog.set(stagesConPlazos(null));
+    const gen = ++this.calendarGeneration;
+    this.calendarQuery = this.http.get<unknown>(`${environment.apiUrl}/calendario`).subscribe({
+      next: body => {
+        if (this.destroyed || gen !== this.calendarGeneration) return;
+        const cfg = body && typeof body === 'object' ? normalizarCalendario(body as Partial<CalendarioConfig>) : null;
+        this.calendario.set(cfg);
+        this.stageCatalog.set(stagesConPlazos(cfg ? cfg.plazos as Record<string, unknown> : null));
       },
-      error: (err) => {
-        const mensaje = err.error?.mensaje || err.message || 'Error al cargar datos del tribunal';
-        this.error.set(mensaje);
-        this.loading.set(false);
+      error: () => {
+        if (!this.destroyed && gen === this.calendarGeneration) {
+          this.calendario.set(null);
+          this.stageCatalog.set(stagesConPlazos(null));
+        }
       }
     });
   }
 
-  formatCount(value: number): string {
-    return value.toString().padStart(2, '0');
-  }
+  cargarDashboard(): void {
+    clearTimeout(this.searchTimer);
+    this.tourService.endTourFor('saip_tour_ttaip');
+    if (this.destroyed) return;
+    const revision = this.authService.cambiosSesion?.() ?? 0;
+    const changed = revision !== this.revision;
+    this.revision = revision;
+    this.query.unsubscribe();
+    this.query = new Subscription();
+    const gen = ++this.generation, session = this.sessionKey();
+    this.apelaciones.set([]);
+    this.error.set('');
+    this.reintentable.set(false);
+    this.loading.set(changed || !this.resumen());
+    this.queryLoading.set(true);
 
-  getPriorityClass(priority: Priority): string {
-    if (priority === 'alta') return 'pill pill-high';
-    if (priority === 'media') return 'pill pill-medium';
-    return 'pill pill-low';
-  }
-
-  getResultadoBadgeClass(resultado: string | null): string {
-    const decision = this.normalizeDecision(resultado);
-    if (decision.startsWith('FUNDADO')) return 'badge-success';
-    if (decision.startsWith('INFUNDADO')) return 'badge-muted';
-    if (decision.includes('IMPROCEDENTE')) return 'badge-danger';
-    if (decision === 'ESTESE_A_LO_RESUELTO' || decision === 'RESUELTO_ESTESE_A_LO_RESUELTO') return 'badge-muted';
-    if (decision === 'NULIDAD_DEL_ACTO' || decision === 'RESUELTO_NULIDAD_ACTO') return 'badge-danger';
-    return 'badge-in-process';
-  }
-
-  getResultadoLabel(resultado: string | null): string {
-    const decision = this.normalizeDecision(resultado);
-
-    switch (decision) {
-      case 'FUNDADO':
-        return 'Fundado';
-      case 'FUNDADO_EN_PARTE':
-        return 'Fundado en parte';
-      case 'INFUNDADO':
-        return 'Infundado';
-      case 'INFUNDADO_EN_PARTE':
-        return 'Infundado en parte';
-      case 'RESUELTO_IMPROCEDENTE':
-      case 'IMPROCEDENTE':
-        return 'Improcedente';
-      case 'CONCLUSION_SUSTRACCION_MATERIA':
-        return 'Sustracción';
-      case 'CONCLUSION_DESISTIMIENTO':
-        return 'Desistimiento';
-      case 'ESTESE_A_LO_RESUELTO':
-      case 'RESUELTO_ESTESE_A_LO_RESUELTO':
-        return 'Estese a lo resuelto';
-      case 'NULIDAD_DEL_ACTO':
-      case 'RESUELTO_NULIDAD_ACTO':
-        return 'Nulidad del acto';
-      case 'TENER_POR_NO_PRESENTADO':
-        return 'No presentado';
-      default:
-        return 'Resuelto';
+    if (changed) {
+      this.loadedSession = '';
+      this.pagina.set(null);
+      this.resumen.set(null);
+      this.search.set('');
+      this.stageKey.set(this.focusStageFromState ?? 'todos');
+      this.descargosPresentados.set(false);
+      this.focusStageFromState = null;
+      this.paginaActual.set(1);
     }
-  }
 
-  getDiasColor(item: QueueItem): string {
-    const status = this.plazoStatus(item, this.stageFromKey(item.stageKey));
-    return this.toneColor(status.tone);
-  }
-
-  getDiasValor(item: QueueItem): string {
-    const status = this.plazoStatus(item, this.stageFromKey(item.stageKey));
-    return `${status.restantes}d`;
-  }
-
-  getProgressWidth(item: QueueItem): number {
-    return this.plazoStatus(item, this.stageFromKey(item.stageKey)).pct;
-  }
-
-  getActionRoute(item: QueueItem): string[] {
-    const expediente = item.apelacion.expediente || '';
-
-    switch (item.stageKey) {
-      case 'calificacion1':
-        return ['/ttaip/calificar', expediente];
-      case 'calificacion2':
-        return ['/ttaip/segunda-calificacion', expediente];
-      case 'resolucion':
-        return ['/ttaip/resolver', expediente];
-      case 'resueltos':
-        return ['/ttaip/apelacion', expediente];
-      default:
-        return ['/ttaip', expediente];
+    const account = this.authService.obtenerSesion();
+    if (!account?.token && this.authService.cerrandoSesion?.()) {
+      this.error.set(''); this.loading.set(true); this.queryLoading.set(false); return;
     }
-  }
+    if (!account?.token || !positiveId(account.usuarioId) || !['TTAIP', 'ADMINISTRADOR'].includes(account.tipoUsuario || '')) {
+      this.error.set('La sesión no permite consultar el panel del Tribunal. Utilice el acceso interno.');
+      this.loading.set(false);
+      this.queryLoading.set(false);
+      return;
+    }
+    if (changed) this.cargarPlazos();
 
-  getActionLabel(item: QueueItem): string {
-    const stage = this.stageFromKey(item.stageKey);
-    return stage.actionLabel || 'Ver';
-  }
+    const current = () => !this.destroyed && gen === this.generation && session === this.sessionKey() && revision === (this.authService.cambiosSesion?.() ?? 0);
+    const page = this.paginaActual() - 1, size = this.pageSize;
 
-  getTopEntidadWidth(count: number): number {
-    const top = this.topEntidades();
-    const max = top.length > 0 ? top[0].count : 1;
-    return (count / max) * 100;
-  }
-
-  getResolucionPct(value: number): number {
-    const total = this.resueltas().length;
-    if (total <= 0) return 0;
-    return Math.round((value / total) * 100);
-  }
-
-  private mergeUnique(groups: Apelacion[][]): Apelacion[] {
-    const byKey = new Map<string, Apelacion>();
-
-    for (const group of groups) {
-      for (const apelacion of group) {
-        const key = this.apelacionKey(apelacion);
-        const current = byKey.get(key);
-
-        if (!current || this.stageRank(apelacion.estado) >= this.stageRank(current.estado)) {
-          byKey.set(key, apelacion);
+    this.query.add(this.panelService.apelaciones({
+      pagina: page,
+      tamano: size,
+      busqueda: this.search().trim(),
+      etapa: this.stageKey(),
+      ...(this.descargosPresentados() ? { descargosPresentados: true } : {})
+    }).subscribe({
+      next: value => {
+        if (!current()) return;
+        const verified = validPanelPage<Apelacion>(value, page, size) ? readAppeals(value.contenido) : null;
+        if (!verified) {
+          this.error.set('La lista está incompleta o contiene identificadores incompatibles. No se muestran cifras ni expedientes sustitutos.');
+          this.loading.set(false);
+          this.queryLoading.set(false);
+          this.resumen.set(null);
+          this.pagina.set(null);
+          this.reintentable.set(true);
+          return;
         }
+        this.loadedSession = session;
+        this.apelaciones.set(verified);
+        this.pagina.set(value);
+        this.resumen.set(value.resumen);
+        this.loading.set(false);
+        this.queryLoading.set(false);
+      },
+      error: err => {
+        if (!current() || this.authService.cerrandoSesion?.()) return;
+        const messages: Record<number, string> = {
+          400: 'La consulta no es válida.',
+          401: 'La sesión no es válida. Inicie sesión de nuevo.',
+          403: 'No tiene autorización para el panel del Tribunal.',
+          404: 'No se encontró el recurso de consulta.',
+          422: 'Revise los datos de la consulta.'
+        };
+        this.error.set(messages[err.status] ?? (err.status === 0 ? 'No hay conexión con el servidor. Puede reintentar.' : 'No se pudo consultar el Tribunal. Puede reintentar.'));
+        this.loading.set(false);
+        this.queryLoading.set(false);
+        this.resumen.set(null);
+        this.pagina.set(null);
+        this.reintentable.set(err.status === 0 || err.status >= 500);
       }
+    }));
+  }
+
+  toneColor(tone: 'critical' | 'warn' | 'ok' | 'done'): string {
+    const map = { critical: 'var(--brand-700)', warn: 'var(--warning)', ok: 'var(--success)', done: 'var(--success)' };
+    return map[tone] || 'var(--foreground)';
+  }
+
+  getDiasValor(item: { apelacion: Apelacion }): string { return clockText(item.apelacion); }
+  plazoLista(item: { status: PlazoStatusResult; apelacion: Apelacion; stage: StageMeta }): string {
+    if (!item.status.informado) {
+      const { dias } = plazoPendiente(item.apelacion, item.stage);
+      return dias ? `${dias} días háb.` : 'Pendiente';
     }
-
-    return Array.from(byKey.values());
+    if (item.status.vencido) return 'Vencido';
+    return item.status.restantes === 0 ? 'Hoy' : `${item.status.restantes}d`;
   }
-
-  private stageRank(estado: string): number {
-    const ranks: Record<StageKey, number> = {
-      calificacion1: 1,
-      subsanacion: 2,
-      calificacion2: 3,
-      resolucion: 4,
-      resueltos: 5
-    };
-
-    const stage = this.mapEstadoToStage(estado);
-    return stage ? ranks[stage] : 0;
+  plazoListaCaption(item: { status: PlazoStatusResult; apelacion: Apelacion; stage: StageMeta }): string {
+    if (!item.status.informado) return plazoPendiente(item.apelacion, item.stage).motivo;
+    if (item.status.vencido) return 'plazo vencido';
+    if (item.status.restantes === 0) return 'vence hoy';
+    return item.status.suspendido > 0 ? 'efectivos' : 'restantes';
   }
-
-  private apelacionKey(apelacion: Apelacion): string {
-    if (apelacion.id) return `id-${apelacion.id}`;
-    return `exp-${apelacion.expediente || 'sin-expediente'}`;
+  fechaLimiteVisible(item: { status: PlazoStatusResult; apelacion: Apelacion }): string | null {
+    return item.status.limite ? this.formatearFecha(item.status.limite) : null;
   }
-
-  private countByStage(apelaciones: Apelacion[], key: StageKey): number {
-    return apelaciones.filter((apelacion) =>
-      !this.esPendienteElevacion(apelacion) && this.mapEstadoToStage(apelacion.estado) === key
-    ).length;
+  private formatearFecha(value: string): string {
+    const [y, m, d] = value.slice(0, 10).split('-');
+    return `${d}/${m}/${y}`;
   }
-
-  private esPendienteElevacion(apelacion: Apelacion): boolean {
-    return this.normalizeDecision(apelacion.estado) === 'PENDIENTE_ELEVACION';
-  }
-
-  private toQueueItem(apelacion: Apelacion): QueueItem {
-    const ciudadano = (apelacion.ciudadanoNombre || 'Ciudadano').trim();
-    const entidad = (apelacion.entidadNombre || 'Entidad pública').trim();
-    const descripcion = (apelacion.solicitudAsunto || apelacion.resumenSolicitudOriginal || apelacion.fundamentos || 'Recurso en trámite').trim();
-    const stageKey = this.mapEstadoToStage(apelacion.estado) ?? 'calificacion1';
-    const diasHabilesEnEtapa = this.estimateDiasEtapa(apelacion, stageKey);
-    const prioridad = this.estimatePriority(stageKey, diasHabilesEnEtapa);
-
-    return {
-      apelacion,
-      stageKey,
-      ciudadano,
-      iniciales: this.obtenerIniciales(ciudadano),
-      entidad,
-      materia: this.inferirMateria(descripcion),
-      descripcion,
-      diasHabilesEnEtapa,
-      prioridad,
-      resultado: this.extractResultado(apelacion)
-    };
-  }
-
-  private mapEstadoToStage(estadoRaw: string): StageKey | null {
-    const estado = this.normalizeDecision(estadoRaw);
-
-    if (estado === 'PENDIENTE_ELEVACION') return null;
-    if (estado === 'EN_CALIFICACION_1') return 'calificacion1';
-    if (estado === 'EN_SUBSANACION') return 'subsanacion';
-    if (estado === 'EN_CALIFICACION_2' || estado === 'NOTIFICACION_SEGUNDA_CALIFICACION') return 'calificacion2';
-    if (estado === 'EN_RESOLUCION') return 'resolucion';
-
-    return 'resueltos';
-  }
-
-  private estimateDiasEtapa(apelacion: Apelacion, stage: StageKey): number {
-    if (stage === 'subsanacion' && apelacion.fechaSubsanacion) {
-      return this.diasDesde(apelacion.fechaSubsanacion);
-    }
-
-    return this.diasDesde(apelacion.fechaApelacion);
-  }
-
-  private diasDesde(fechaRaw?: string): number {
-    if (!fechaRaw) return 0;
-
-    const parsed = new Date(fechaRaw);
-    if (Number.isNaN(parsed.getTime())) return 0;
-
-    const now = new Date();
-    const diff = now.getTime() - parsed.getTime();
-    if (diff <= 0) return 0;
-
-    return Math.floor(diff / (1000 * 60 * 60 * 24));
-  }
-
-  private estimatePriority(stage: StageKey, diasHabilesEnEtapa: number): Priority {
-    const stageMeta = this.stageFromKey(stage);
-    if (stageMeta.isResolved) return 'baja';
-
-    const restantes = Math.max(0, stageMeta.plazoDias - diasHabilesEnEtapa);
-    if (restantes <= 1) return 'alta';
-    if (restantes <= 3) return 'media';
-    return 'baja';
-  }
-
-  private extractResultado(apelacion: Apelacion): string | null {
-    const raw = apelacion.resolucion?.decision || apelacion.resultado;
-    const normalized = this.normalizeDecision(raw);
-    return normalized || null;
-  }
-
-  private inferirMateria(texto: string): string {
-    const value = texto.toLowerCase();
-
-    if (value.includes('salud') || value.includes('hospital')) return 'Salud';
-    if (value.includes('educa') || value.includes('coleg')) return 'Educacion';
-    if (value.includes('presupuesto') || value.includes('financ') || value.includes('econom')) return 'Economia';
-    if (value.includes('transporte') || value.includes('vial') || value.includes('obra')) return 'Transportes';
-    if (value.includes('trabajo') || value.includes('personal') || value.includes('rrhh')) return 'Laboral';
-    if (value.includes('seguridad') || value.includes('policial') || value.includes('interior')) return 'Seguridad';
-
-    return 'General';
-  }
-
-  private obtenerIniciales(nombre: string): string {
-    const words = nombre
-      .trim()
-      .split(/\s+/)
-      .filter((part) => part.length > 0);
-
-    if (words.length === 0) return 'TT';
-    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-
-    return `${words[0][0]}${words[1][0]}`.toUpperCase();
-  }
-
-  private matchesQuery(item: QueueItem, query: string): boolean {
-    const expediente = (item.apelacion.expediente || '').toLowerCase();
-    const ciudadano = item.ciudadano.toLowerCase();
-    const entidad = item.entidad.toLowerCase();
-    const materia = item.materia.toLowerCase();
-
-    return (
-      expediente.includes(query)
-      || ciudadano.includes(query)
-      || entidad.includes(query)
-      || materia.includes(query)
-    );
-  }
-
-  private plazoStatus(item: QueueItem, stage: StageMeta): PlazoStatus {
-    if (stage.isResolved) {
-      return { restantes: 0, pct: 100, tone: 'done' };
-    }
-
-    const restantes = Math.max(0, stage.plazoDias - item.diasHabilesEnEtapa);
-    const pct = Math.min(100, (item.diasHabilesEnEtapa / stage.plazoDias) * 100);
-
-    if (restantes <= 1) {
-      return { restantes, pct, tone: 'critical' };
-    }
-
-    if (restantes <= 2) {
-      return { restantes, pct, tone: 'warn' };
-    }
-
-    return { restantes, pct, tone: 'ok' };
-  }
-
-  private stageFromKey(key: StageKey): StageMeta {
-    return this.stages.find((stage) => stage.key === key) ?? this.stages[0];
-  }
-
-  private toneColor(tone: Tone): string {
-    if (tone === 'critical') return 'var(--brand-700)';
-    if (tone === 'warn') return 'var(--warning)';
-    return 'var(--success)';
-  }
-
-  private normalizeDecision(value: string | null | undefined): string {
-    return (value || '').trim().toUpperCase().replaceAll(' ', '_');
-  }
+  getActionRoute(item: { apelacion: Apelacion }): string[] { return actionFor(item.apelacion).route; }
+  getActionLabel(item: { apelacion: Apelacion }): string { return actionFor(item.apelacion).label; }
+  getActionReason(item: { apelacion: Apelacion }): string { return actionFor(item.apelacion).reason; }
+  getResultadoLabel(value: string | null): string { return value ? (decisionLabels[value] ?? 'Decisión no informada') : 'Decisión no informada'; }
+  getResultadoColor(value: string): string { return value === 'FUNDADO' ? 'var(--success)' : value === 'IMPROCEDENTE' ? 'var(--gold-dark)' : 'var(--brand-700)'; }
+  getTopEntidadWidth(count: number): number { return this.topEntidades().length ? (count / this.topEntidades()[0].count) * 100 : 0; }
+  fechaVisible(value: unknown): string | null { return recordedDate(value); }
+  nombreSala(apelacion: Apelacion): string { return apelacion.expedienteTtaip?.sala?.nombre || 'No informada'; }
+  get isFirstVisit(): boolean { return this.tourService.isFirstVisit('saip_tour_ttaip'); }
+  startTour(): void { this.tourService.startTour('saip_tour_ttaip', this.tourSteps); }
 }
-
-
-

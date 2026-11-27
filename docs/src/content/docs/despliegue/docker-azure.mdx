@@ -1,0 +1,127 @@
+---
+title: Docker y Azure
+description: Construcción de las imágenes Yaiku y operación de la VM existente con Azure CLI.
+---
+
+import { Card, CardGrid, Steps } from '@astrojs/starlight/components';
+
+Esta página describe el procedimiento que está en el repositorio. No crea
+recursos de Azure. La cuenta consultada el 9 de noviembre de 2026 es Azure for
+Students y ya tiene el grupo `rg-yaiku-brazilsouth` y la máquina `vm-yaiku` en
+`brazilsouth`. No hay un Azure Container Registry en esa suscripción: las
+imágenes se construyen fuera de la VM y se transfieren con `docker save` y
+`docker load`.
+
+El detalle de secretos, TLS, SMTP, S3 y backups está en
+`deploy/azure/README.md` y `deploy/azure/VALIDATION.md`. Esos archivos siguen
+siendo la fuente operativa. Esta página no los sustituye ni autoriza por sí
+sola un alta pública.
+
+## Qué se publica
+
+<CardGrid>
+  <Card title="Backend" icon="seti:java">
+    Imagen `yaiku-backend`. Java 25, Spring Boot 4.0.6, perfil `prod`, Flyway y `ddl-auto=validate`.
+  </Card>
+  <Card title="Frontend" icon="seti:javascript">
+    Imagen `yaiku-frontend`. Angular 22, build SSR real, Node 24.22.1 y pnpm 12.3.4.
+  </Card>
+  <Card title="Proxy" icon="seti:nginx">
+    Imagen `yaiku-proxy`. Solo Nginx se publica. PostgreSQL 18 vive en Compose y no sale a Internet.
+  </Card>
+</CardGrid>
+
+El navegador llama a `/api`. El SSR resuelve ese prefijo con
+`API_INTERNAL_ORIGIN=http://backend:8080`. `PUBLIC_ORIGIN` es el origen HTTPS
+único: CORS del backend y el hostname que aceptan el SSR y el proxy.
+
+## Construcción
+
+Cada imagen usa su propio contexto y su `.dockerignore`. No usar la raíz del
+monorepo como contexto. Quedan fuera agentes, `design-reference`, `node_modules`
+del host, logs, bases, secretos y backups.
+
+```sh
+docker build --platform linux/amd64 -t yaiku-backend:RELEASE backend
+docker build --platform linux/amd64 -t yaiku-frontend:RELEASE frontend
+docker build --platform linux/amd64 -t yaiku-proxy:RELEASE deploy/azure/nginx
+docker save -o images-RELEASE.tar yaiku-backend:RELEASE yaiku-frontend:RELEASE yaiku-proxy:RELEASE
+```
+
+`RELEASE` es la etiqueta de esa construcción. No reutilizar `prepared` como
+versión aprobada. El artefacto backend excluye `db/seed` y el fallback JWT de
+desarrollo. Una base nueva aplica las migraciones de `classpath:db/migration`.
+No se fabrica la migración ausente para rellenar la secuencia. Una base que ya
+tuvo seeds necesita un plan propio.
+
+## Secretos
+
+Copiar `deploy/azure/runtime.env.example` fuera del checkout, por ejemplo
+`/opt/yaiku-private/runtime.env`. Las contraseñas viven en archivos dentro de
+`YAIKU_SECRETS_DIR`, no en la imagen:
+
+| Archivo | Uso |
+| --- | --- |
+| `DB_ADMIN_PASSWORD` | Solo el contenedor PostgreSQL |
+| `DB_PASSWORD` | Rol de aplicación, distinto del administrador |
+| `JWT_SECRET` | Secreto nuevo de al menos 64 bytes. Compose lo monta como `jwt.secret` para `configtree:/run/secrets/` |
+| `APP_STORAGE_S3_ACCESS_KEY` | Credencial S3 de servidor |
+| `APP_STORAGE_S3_SECRET_KEY` | Secreto S3 de servidor |
+| `SPRING_MAIL_PASSWORD` | SMTP real. El perfil `prod` rechaza `MOCK` |
+
+También hacen falta `APP_STORAGE_S3_ENDPOINT`, región, bucket privado,
+`SPRING_MAIL_HOST`, usuario SMTP, remitente y `PUBLIC_ORIGIN` en HTTPS. FCM
+permanece desactivado. TLS usa `fullchain.pem` y `privkey.pem` desde
+`YAIKU_TLS_DIR`.
+
+## Arranque en la VM
+
+El script solo habla con el socket Docker local. Rechaza un contexto Docker
+remoto. No ejecuta `az` ni crea la máquina.
+
+```sh
+python deploy/azure/stack.py --env-file /PRIVATE/runtime.env config
+python deploy/azure/stack.py --env-file /PRIVATE/runtime.env build
+python deploy/azure/stack.py --env-file /PRIVATE/runtime.env start
+python deploy/azure/stack.py --env-file /PRIVATE/runtime.env status
+python deploy/azure/stack.py --env-file /PRIVATE/runtime.env stop
+```
+
+`start` espera salud en el orden base, backend, frontend y proxy. No borra el
+volumen. `stop` no usa `down -v`. Después de `docker load`, las variables
+`BACKEND_IMAGE`, `FRONTEND_IMAGE` y `PROXY_IMAGE` del envfile deben nombrar las
+etiquetas cargadas. Si se omite, Compose busca `yaiku-*:prepared`.
+
+En la VM, después de cargar el tar:
+
+```sh
+docker load -i /PRIVATE/images-RELEASE.tar
+```
+
+## Azure CLI
+
+La energía de la máquina ya existente se consulta y cambia con
+`deploy/azure/vm-power.ps1`. Encender la VM no arranca los contenedores.
+Apagar el sistema operativo no deja de facturar disco e IP; para eso el estado
+tiene que ser `deallocated`, y solo después de haber parado el stack.
+
+```powershell
+./deploy/azure/vm-power.ps1 -Action Status -Subscription SUB -ResourceGroup rg-yaiku-brazilsouth -Name vm-yaiku
+./deploy/azure/vm-power.ps1 -Action Start -Subscription SUB -ResourceGroup rg-yaiku-brazilsouth -Name vm-yaiku -AllowPowerChange
+./deploy/azure/vm-power.ps1 -Action Deallocate -Subscription SUB -ResourceGroup rg-yaiku-brazilsouth -Name vm-yaiku -AllowPowerChange -ServicesStopped
+```
+
+Sustituir `SUB` por la suscripción activa. El grupo que devolvió `az group list`
+es `rg-yaiku-brazilsouth`.
+
+## Comprobación
+
+El health del proxy solo acredita su listener. La ayuda pública acredita HTTP
+del backend. Login acredita el servidor SSR. Ninguno acredita S3, SMTP ni el
+contenido de la base. Un timeout de una actuación no demuestra rollback: hay
+que consultar la misma operación.
+
+Antes de abrir el servicio faltan, como mínimo, dominio y certificado, SMTP
+real o una decisión aparte para dejar el correo apagado, bucket S3 privado,
+primer administrador sin seed de desarrollo, y la confirmación de que el
+volumen de PostgreSQL está en el disco persistente de la VM.

@@ -1,0 +1,17 @@
+/* ConsultarEstado: reference tokens and adaptation scoped to the public summary. */
+:host { display: block; }
+.consulta-page { overflow-wrap: anywhere; }
+.consulta-page .grid > *, .consulta-page .flex-1 { min-width: 0; }
+.consulta-page :is(a, button, input, [tabindex]):focus-visible { outline: 2px solid var(--brand-600); outline-offset: 3px; }
+.consulta-page [tabindex="-1"] { scroll-margin-top: 7rem; }
+.consulta-heading { font-size: clamp(32px, 3.6vw, 44px); line-height: 1.06; letter-spacing: -0.025em; }
+.consulta-summary-code { font-size: 15px; }
+.consulta-days { font-size: 36px; line-height: 1; letter-spacing: -0.025em; color: var(--brand-700); }
+.consulta-feedback-title { font-size: 20px; letter-spacing: -0.015em; }
+.consulta-info-title { font-size: 17px; letter-spacing: -0.012em; }
+.consulta-page .consulta-notice { background: var(--brand-subtle); border: 1px solid var(--brand-200); }
+.consulta-page .consulta-details { background: linear-gradient(135deg, var(--brand-subtle), var(--card) 60%); border: 1px solid var(--brand-200); }
+.consulta-page button:disabled { cursor: not-allowed; opacity: 0.5; }
+@media (prefers-reduced-motion: reduce) {
+  .consulta-page :is(.animate-spin, .animate-fade-in-up) { animation: none; }
+}

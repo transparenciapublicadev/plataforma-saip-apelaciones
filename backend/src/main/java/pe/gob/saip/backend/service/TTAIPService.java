@@ -2,7 +2,8 @@ package pe.gob.saip.backend.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pe.gob.saip.backend.exception.RecursoNoEncontradoException;
+import pe.gob.saip.backend.model.dto.EnviarNotificacionRequest;
+import pe.gob.saip.backend.model.dto.IntentoNotificacionDTO;
 import pe.gob.saip.backend.model.dto.ApelacionDTO;
 import pe.gob.saip.backend.model.dto.CalificacionRequest;
 import pe.gob.saip.backend.model.dto.CancelarSuspensionTtaipRequest;
@@ -43,15 +44,21 @@ public class TTAIPService {
     private final ResolucionService resolucionService;
     private final MiembroTTAIPService miembroTTAIPService;
     private final ExpedienteTtaipService expedienteTtaipService;
+    private final TransicionesApelacionTtaipService transiciones;
+    private final MotorNotificacionesService motorNotificacionesService;
 
     public TTAIPService(ApelacionService apelacionService,
                         ResolucionService resolucionService,
                         MiembroTTAIPService miembroTTAIPService,
-                        ExpedienteTtaipService expedienteTtaipService) {
+                        ExpedienteTtaipService expedienteTtaipService,
+                        TransicionesApelacionTtaipService transiciones,
+                        MotorNotificacionesService motorNotificacionesService) {
         this.apelacionService = apelacionService;
         this.resolucionService = resolucionService;
         this.miembroTTAIPService = miembroTTAIPService;
         this.expedienteTtaipService = expedienteTtaipService;
+        this.transiciones = transiciones;
+        this.motorNotificacionesService = motorNotificacionesService;
     }
 
     // ============================================================
@@ -110,6 +117,8 @@ public class TTAIPService {
     public List<ApelacionDTO> listarResueltas() {
         return apelacionService.findAll().stream()
                 .filter(Apelacion::isResuelta)
+                .filter(ap -> ap.getResoluciones() == null || ap.getResoluciones().stream()
+                        .noneMatch(r -> r.isActosDocumentales() && r.getFechaValidacionActos() == null))
                 .map(ApelacionDTO::from)
                 .collect(Collectors.toList());
     }
@@ -203,7 +212,7 @@ public class TTAIPService {
         resolucion.setResultado("FUNDADO");
         resolucion.setIniciarProcesoDisciplinario(request.iniciarProcesoDisciplinario());
         guardarResolucionConDocumentos(resolucion);
-        apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO);
+        apelacion.setEstado(Apelacion.EstadoApelacion.NOTIFICACION_RESOLUCION_FINAL);
         apelacion.setResultado("FUNDADO");
         guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
@@ -221,7 +230,7 @@ public class TTAIPService {
         );
         resolucion.setResultado("INFUNDADO");
         guardarResolucionConDocumentos(resolucion);
-        apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO);
+        apelacion.setEstado(Apelacion.EstadoApelacion.NOTIFICACION_RESOLUCION_FINAL);
         apelacion.setResultado("INFUNDADO");
         guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
@@ -240,7 +249,7 @@ public class TTAIPService {
         resolucion.setResultado("FUNDADO_EN_PARTE");
         resolucion.setIniciarProcesoDisciplinario(request.iniciarProcesoDisciplinario());
         guardarResolucionConDocumentos(resolucion);
-        apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_FUNDADO_EN_PARTE);
+        apelacion.setEstado(Apelacion.EstadoApelacion.NOTIFICACION_RESOLUCION_FINAL);
         apelacion.setResultado("FUNDADO_EN_PARTE");
         guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
@@ -258,7 +267,7 @@ public class TTAIPService {
         );
         resolucion.setResultado("INFUNDADO_EN_PARTE");
         guardarResolucionConDocumentos(resolucion);
-        apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_INFUNDADO_EN_PARTE);
+        apelacion.setEstado(Apelacion.EstadoApelacion.NOTIFICACION_RESOLUCION_FINAL);
         apelacion.setResultado("INFUNDADO_EN_PARTE");
         guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
@@ -276,7 +285,7 @@ public class TTAIPService {
         );
         resolucion.setResultado("IMPROCEDENTE");
         guardarResolucionConDocumentos(resolucion);
-        apelacion.setEstado(Apelacion.EstadoApelacion.RESUELTO_IMPROCEDENTE);
+        apelacion.setEstado(Apelacion.EstadoApelacion.NOTIFICACION_RESOLUCION_FINAL);
         apelacion.setResultado("IMPROCEDENTE");
         guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
@@ -294,7 +303,7 @@ public class TTAIPService {
         );
         resolucion.setResultado("CONCLUSION_SUSTRACCION_MATERIA");
         guardarResolucionConDocumentos(resolucion);
-        apelacion.setEstado(Apelacion.EstadoApelacion.CONCLUSION_SUSTRACCION_MATERIA);
+        apelacion.setEstado(Apelacion.EstadoApelacion.NOTIFICACION_RESOLUCION_FINAL);
         apelacion.setResultado("CONCLUSION_SUSTRACCION_MATERIA");
         guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
@@ -312,7 +321,7 @@ public class TTAIPService {
         );
         resolucion.setResultado("CONCLUSION_DESISTIMIENTO");
         guardarResolucionConDocumentos(resolucion);
-        apelacion.setEstado(Apelacion.EstadoApelacion.CONCLUSION_DESISTIMIENTO);
+        apelacion.setEstado(Apelacion.EstadoApelacion.NOTIFICACION_RESOLUCION_FINAL);
         apelacion.setResultado("CONCLUSION_DESISTIMIENTO");
         guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
@@ -323,8 +332,7 @@ public class TTAIPService {
         return declararDecisionFinalEspecial(
                 apelacionId,
                 request,
-                Resolucion.DecisionResolucion.ESTESE_A_LO_RESUELTO,
-                Apelacion.EstadoApelacion.RESUELTO_ESTESE_A_LO_RESUELTO
+                Resolucion.DecisionResolucion.ESTESE_A_LO_RESUELTO
         );
     }
 
@@ -333,14 +341,19 @@ public class TTAIPService {
         return declararDecisionFinalEspecial(
                 apelacionId,
                 request,
-                Resolucion.DecisionResolucion.NULIDAD_DEL_ACTO,
-                Apelacion.EstadoApelacion.RESUELTO_NULIDAD_ACTO
+                Resolucion.DecisionResolucion.NULIDAD_DEL_ACTO
         );
     }
 
     @Transactional
     public ApelacionDTO declararTenerPorNoPresentado(Long apelacionId, CalificacionRequest request) {
         Apelacion apelacion = buscarApelacion(apelacionId);
+        pe.gob.saip.backend.model.dto.PlazoSubsanacionTtaipDTO plazo =
+                pe.gob.saip.backend.model.dto.PlazoSubsanacionTtaipDTO.from(apelacion);
+        if (plazo == null || !"VENCIDO".equals(plazo.estado())) {
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException(
+                    "No existe un plazo de subsanación iniciado por notificación eficaz y vencido");
+        }
         Resolucion resolucion = crearResolucion(
                 apelacion,
                 Resolucion.TipoResolucion.PRIMERA_CALIFICACION,
@@ -359,14 +372,27 @@ public class TTAIPService {
     @Transactional
     public ApelacionDTO notificarSegundaCalificacion(Long apelacionId) {
         Apelacion apelacion = buscarApelacion(apelacionId);
+        transiciones.validarAvanceSegunda(apelacion);
+        if (apelacion.getEstado() == Apelacion.EstadoApelacion.EN_RESOLUCION) {
+            return ApelacionDTO.from(apelacion);
+        }
         apelacion.setEstado(Apelacion.EstadoApelacion.EN_RESOLUCION);
         guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
     }
 
     @Transactional
+    public IntentoNotificacionDTO enviarNotificacion(Long expedienteId, Long notificacionId, EnviarNotificacionRequest request) {
+        transiciones.bloquearNotificacion(expedienteId, notificacionId);
+        expedienteTtaipService.verificarNotificacionHistorica(expedienteId, notificacionId);
+        return IntentoNotificacionDTO.from(motorNotificacionesService.enviarNotificacionTtaip(expedienteId, notificacionId, request));
+    }
+
+    @Transactional
     public ReprocesoNotificacionDTO reprocesarNotificacionFallida(ReprocesarNotificacionRequest request) {
         CedulaNotificacion.DestinatarioNotificacion destinatario = parseDestinatario(request.destinatario());
+        transiciones.bloquearReproceso(request.numeroCedulaOriginal(), destinatario);
+        expedienteTtaipService.verificarNotificacionHistorica(request.numeroCedulaOriginal(), destinatario);
         return ReprocesoNotificacionDTO.from(expedienteTtaipService.reprocesarNotificacionFallida(
                 request.numeroCedulaOriginal(),
                 destinatario,
@@ -392,6 +418,8 @@ public class TTAIPService {
     public NotificacionTtaipDTO registrarConstanciaEnvio(Long expedienteId,
                                                          Long notificacionId,
                                                          RegistrarConstanciaEnvioNotificacionRequest request) {
+        transiciones.bloquearNotificacion(expedienteId, notificacionId);
+        expedienteTtaipService.verificarNotificacionHistorica(expedienteId, notificacionId);
         return NotificacionTtaipDTO.from(
                 expedienteTtaipService.registrarConstanciaEnvio(expedienteId, notificacionId, request));
     }
@@ -400,6 +428,8 @@ public class TTAIPService {
     public NotificacionTtaipDTO registrarAcuseAutomatico(Long expedienteId,
                                                          Long notificacionId,
                                                          RegistrarAcuseAutomaticoNotificacionRequest request) {
+        transiciones.bloquearNotificacion(expedienteId, notificacionId);
+        expedienteTtaipService.verificarNotificacionHistorica(expedienteId, notificacionId);
         return NotificacionTtaipDTO.from(
                 expedienteTtaipService.registrarAcuseAutomatico(expedienteId, notificacionId, request));
     }
@@ -408,12 +438,15 @@ public class TTAIPService {
     public NotificacionTtaipDTO validarNotificacionManualmente(Long expedienteId,
                                                                Long notificacionId,
                                                                ValidarNotificacionManualRequest request) {
+        transiciones.bloquearNotificacion(expedienteId, notificacionId);
+        expedienteTtaipService.verificarNotificacionHistorica(expedienteId, notificacionId);
         return NotificacionTtaipDTO.from(
                 expedienteTtaipService.validarNotificacionManualmente(expedienteId, notificacionId, request));
     }
 
     @Transactional
     public DescargoEntidadTtaipDTO requerirDescargos(Long expedienteId, RequerirDescargoEntidadRequest request) {
+        transiciones.bloquearExpedienteAccesible(expedienteId);
         return DescargoEntidadTtaipDTO.from(expedienteTtaipService.requerirDescargos(expedienteId, request));
     }
 
@@ -434,13 +467,22 @@ public class TTAIPService {
     public DescargoEntidadTtaipDTO presentarDescargo(Long expedienteId,
                                                      Long descargoId,
                                                      PresentarDescargoEntidadRequest request) {
+        transiciones.bloquearExpedienteAccesible(expedienteId);
+        var expediente = expedienteTtaipService.buscarExpediente(expedienteId);
+        var admision = ExpedienteTtaipService.resolucionAdmision(expediente);
+        if (admision != null && admision.isActosDocumentales()) {
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException("Presente el oficio mediante la operación documental de descargos");
+        }
         return DescargoEntidadTtaipDTO.from(expedienteTtaipService.presentarDescargo(expedienteId, descargoId, request));
     }
 
     @Transactional
     public List<DescargoEntidadTtaipDTO> procesarDescargosVencidos() {
-        return expedienteTtaipService.procesarDescargosVencidos()
-                .stream()
+        return expedienteTtaipService.expedientesConDescargosVencidos().stream()
+                .flatMap(id -> {
+                    transiciones.bloquearExpedienteAccesible(id);
+                    return expedienteTtaipService.procesarDescargosVencidos(id).stream();
+                })
                 .map(DescargoEntidadTtaipDTO::from)
                 .toList();
     }
@@ -532,16 +574,17 @@ public class TTAIPService {
     // ============================================================
 
     private Apelacion buscarApelacion(Long apelacionId) {
-        return apelacionService.findById(apelacionId)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Apelación no encontrada con ID: " + apelacionId));
+        return transiciones.bloquear(apelacionId);
     }
 
     private ApelacionDTO declararDecisionFinalEspecial(Long apelacionId,
                                                        ResolucionRequest request,
-                                                       Resolucion.DecisionResolucion decision,
-                                                       Apelacion.EstadoApelacion estadoFinal) {
+                                                       Resolucion.DecisionResolucion decision) {
         Apelacion apelacion = buscarApelacion(apelacionId);
-        validarPuedeResolverFinal(apelacion);
+        if (apelacion.isResuelta()) {
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException(
+                    "Regla de negocio: la apelación ya está resuelta o cerrada; no se puede emitir una nueva resolución final");
+        }
         Resolucion resolucion = crearResolucion(
                 apelacion,
                 Resolucion.TipoResolucion.RESOLUCION_FINAL,
@@ -553,22 +596,10 @@ public class TTAIPService {
         resolucion.setFundamentoLegal(normalizarNullable(request.fundamentoLegal()));
         resolucion.setObservaciones(normalizarNullable(request.observaciones()));
         guardarResolucionConDocumentos(resolucion);
-        apelacion.setEstado(estadoFinal);
+        apelacion.setEstado(Apelacion.EstadoApelacion.NOTIFICACION_RESOLUCION_FINAL);
         apelacion.setResultado(decision.name());
         guardarApelacionConExpediente(apelacion);
         return ApelacionDTO.from(apelacion);
-    }
-
-    private void validarPuedeResolverFinal(Apelacion apelacion) {
-        if (apelacion.isResuelta()) {
-            throw new IllegalArgumentException(
-                    "Regla de negocio: la apelación ya está resuelta o cerrada; no se puede emitir una nueva resolución final");
-        }
-        if (apelacion.getEstado() != Apelacion.EstadoApelacion.EN_RESOLUCION) {
-            throw new IllegalArgumentException(
-                    "La apelación debe estar en estado EN_RESOLUCION para emitir resolución final. Estado actual: "
-                            + apelacion.getEstado());
-        }
     }
 
     private String normalizarNullable(String value) {
@@ -590,6 +621,18 @@ public class TTAIPService {
                                        Resolucion.DecisionResolucion decision,
                                        String fundamentos,
                                        Long miembroId) {
+        transiciones.validarActuacion(apelacion, tipo, decision);
+        if (tipo == Resolucion.TipoResolucion.RESOLUCION_FINAL
+                && CumplimientoDocumentalTtaipService.exigeCumplimiento(decision)
+                && apelacion.getEntidadApeladaEfectiva() == null) {
+            throw new pe.gob.saip.backend.exception.ConflictoEstadoException(
+                    "La resolución fundada requiere identificar a la entidad obligada en el catálogo");
+        }
+        if (tipo == Resolucion.TipoResolucion.RESOLUCION_FINAL && apelacion.getExpedienteTtaip() != null) {
+            var expediente = apelacion.getExpedienteTtaip();
+            expedienteTtaipService.avanzarSegundaNotificada(expediente);
+            expedienteTtaipService.procesarDescargosVencidos(expediente.getId());
+        }
         Resolucion resolucion = new Resolucion();
         resolucion.setApelacion(apelacion);
         resolucion.setTipoResolucion(tipo);

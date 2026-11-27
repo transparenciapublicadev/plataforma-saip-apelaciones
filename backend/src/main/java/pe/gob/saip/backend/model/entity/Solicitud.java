@@ -8,7 +8,9 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import pe.gob.saip.backend.config.ClockConfig;
 import pe.gob.saip.backend.util.DiasHabilesUtil;
+import pe.gob.saip.backend.util.PlazoAtencionVigente;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -81,6 +83,18 @@ public class Solicitud {
     @Column(name = "tipo_informacion", length = 100)
     private String tipoInformacion;
 
+    @Column(name = "oficina_destinataria", length = 160)
+    private String oficinaDestinataria;
+
+    @Column(name = "area_responsable", length = 160)
+    private String areaResponsable;
+
+    @Column(name = "encargado_area", length = 160)
+    private String encargadoArea;
+
+    @Column(name = "fecha_asignacion_area")
+    private LocalDate fechaAsignacionArea;
+
     @Column(name = "consentimiento_datos_personales")
     private Boolean consentimientoDatosPersonales;
 
@@ -111,11 +125,31 @@ public class Solicitud {
     @OneToOne(mappedBy = "solicitud", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     private Apelacion apelacion;
 
+    /** Recovers the optional office the citizen wrote into the description before it had its own column. */
+    public static String oficinaIndicada(String descripcion) {
+        if (descripcion == null) return null;
+        String marca = "[Oficina destinataria: ";
+        int inicio = descripcion.indexOf(marca);
+        if (inicio < 0) return null;
+        int desde = inicio + marca.length();
+        int fin = descripcion.indexOf(']', desde);
+        if (fin < 0) return null;
+        String valor = descripcion.substring(desde, fin).trim();
+        if (valor.isEmpty()) return null;
+        return valor.length() > 160 ? valor.substring(0, 160) : valor;
+    }
+
+    public void registrarOficinaDesdeDescripcion() {
+        String indicada = oficinaIndicada(descripcion);
+        if (indicada != null) oficinaDestinataria = indicada;
+    }
+
     @PrePersist
     protected void onCreate() {
         fechaPresentacion = LocalDateTime.now();
-        // BR-SAIP-001/002: Plazo de 10 días hábiles (excluye fines de semana y feriados peruanos)
-        fechaLimite = DiasHabilesUtil.sumarDiasHabiles(LocalDate.now(), 10);
+        // El alta usa los días de atención guardados en Plazos y calendario.
+        fechaLimite = DiasHabilesUtil.sumarDiasHabiles(
+                LocalDate.now(ClockConfig.ZONA_LIMA), PlazoAtencionVigente.dias());
         if (estado == null) {
             estado = EstadoSolicitud.RECEPCIONADA;
         }
@@ -170,10 +204,11 @@ public class Solicitud {
      * Negativo si ya venció.
      */
     public int getDiasRestantes() {
-        if (fechaLimite != null) {
-            return DiasHabilesUtil.diasHabilesRestantes(fechaLimite);
+        if (fechaLimite == null) {
+            return 0;
         }
-        return 0;
+        LocalDate ancla = fechaPresentacion == null ? null : fechaPresentacion.toLocalDate();
+        return DiasHabilesUtil.diasHabilesVigentes(ancla, fechaLimite, LocalDate.now(ClockConfig.ZONA_LIMA));
     }
 
     /**
@@ -192,7 +227,10 @@ public class Solicitud {
      * Verde (5+), Ámbar (2-4), Rojo (0-1), Negro (vencido)
      */
     public String getSemaforo() {
-        int dias = getDiasRestantes();
+        return semaforoParaDiasRestantes(getDiasRestantes());
+    }
+
+    public static String semaforoParaDiasRestantes(int dias) {
         if (dias < 0) return "NEGRO";
         if (dias <= 1) return "ROJO";
         if (dias <= 4) return "AMBAR";

@@ -2,12 +2,21 @@ package pe.gob.saip.backend.service;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import pe.gob.saip.backend.config.StorageProperties;
@@ -19,8 +28,10 @@ import pe.gob.saip.backend.model.dto.DocumentoRelacionRequest;
 import pe.gob.saip.backend.model.dto.DocumentoUploadRequest;
 import pe.gob.saip.backend.model.entity.Apelacion;
 import pe.gob.saip.backend.model.entity.CedulaNotificacion;
+import pe.gob.saip.backend.model.entity.CronogramaEntregaParcialSolicitud;
 import pe.gob.saip.backend.model.entity.Documento;
 import pe.gob.saip.backend.model.entity.ExpedienteTtaip;
+import pe.gob.saip.backend.model.entity.PresentacionAdmisionTtaip;
 import pe.gob.saip.backend.model.entity.Respuesta;
 import pe.gob.saip.backend.model.entity.Resolucion;
 import pe.gob.saip.backend.model.entity.Solicitud;
@@ -41,6 +52,8 @@ import pe.gob.saip.backend.storage.StorageUploadResult;
 
 @Service
 public class DocumentoService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentoService.class);
 
     private final DocumentoRepository documentoRepository;
     private final SolicitudRepository solicitudRepository;
@@ -91,15 +104,48 @@ public class DocumentoService {
         documento.setEstado(Documento.EstadoDocumento.ACTIVO);
         documento.setCreadoPor(autorizacion.obtenerUsuarioActual());
         asociarRecurso(documento, request);
+        return DocumentoMetadataDTO.from(guardarArchivo(file, documento));
+    }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Documento subirDocumentoDeEntrega(MultipartFile archivo, CronogramaEntregaParcialSolicitud entrega) {
+        if (archivo == null || archivo.isEmpty()) {
+            throw new IllegalArgumentException("Los documentos de la entrega no pueden estar vacíos");
+        }
+        Documento documento = new Documento();
+        documento.setTipoDocumento(Documento.TipoDocumento.RESPUESTA_ENTIDAD);
+        documento.setEstado(Documento.EstadoDocumento.ACTIVO);
+        documento.setCreadoPor(autorizacion.obtenerUsuarioActual());
+        documento.setEntregaParcial(entrega);
+        return guardarArchivo(archivo, documento);
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Documento subirActoTtaip(MultipartFile archivo, Documento documento, String nombre) {
+        if (archivo == null || archivo.isEmpty()) {
+            throw new IllegalArgumentException("El archivo documental es obligatorio");
+        }
+        documento.setEstado(Documento.EstadoDocumento.ACTIVO);
+        documento.setCreadoPor(autorizacion.obtenerUsuarioActual());
+        return guardarArchivo(archivo, documento, nombre);
+    }
+
+    private Documento guardarArchivo(MultipartFile file, Documento documento) {
+        return guardarArchivo(file, documento, null);
+    }
+
+    private Documento guardarArchivo(MultipartFile file, Documento documento, String nombre) {
         StorageProvider provider = providerFor(activeProvider);
         StorageUploadResult upload;
+        AtomicBoolean cleanupAttempted;
         try (InputStream content = file.getInputStream()) {
             upload = provider.upload(new StorageUploadRequest(
-                    file.getOriginalFilename(),
+                    nombre != null ? nombre : file.getOriginalFilename(),
                     file.getContentType(),
                     file.getSize(),
                     content));
+            // Register before closing the stream: closing may also fail after a successful upload.
+            cleanupAttempted = compensarEnRollback(provider, upload.metadata().storageKey());
         } catch (IOException exception) {
             throw new StorageException(
                     StorageException.Reason.IO_ERROR,
@@ -117,12 +163,14 @@ public class DocumentoService {
         documento.setStorageKey(metadata.storageKey());
 
         try {
-            return DocumentoMetadataDTO.from(documentoRepository.save(documento));
+            return documentoRepository.save(documento);
         } catch (RuntimeException exception) {
-            try {
-                provider.delete(metadata.storageKey());
-            } catch (RuntimeException cleanupException) {
-                exception.addSuppressed(cleanupException);
+            if (cleanupAttempted.compareAndSet(false, true)) {
+                try {
+                    provider.delete(metadata.storageKey());
+                } catch (RuntimeException cleanupException) {
+                    exception.addSuppressed(cleanupException);
+                }
             }
             throw exception;
         }
@@ -145,12 +193,16 @@ public class DocumentoService {
         StorageProvider provider = providerFor(original.getStorageProvider());
         StorageDownloadResult download = provider.download(original.getStorageKey(), original.getContentType());
         StorageUploadResult upload;
+        AtomicBoolean cleanupAttempted;
         try (InputStream content = download.content()) {
             upload = provider.upload(new StorageUploadRequest(
                     original.getNombreOriginal(),
                     original.getContentType(),
                     original.getSizeBytes(),
                     content));
+            // A later receipt/act failure must compensate this copy, never its source.
+            // Register before closing: close itself can fail after upload succeeded.
+            cleanupAttempted = compensarEnRollback(provider, upload.metadata().storageKey());
         } catch (IOException exception) {
             throw new StorageException(
                     StorageException.Reason.IO_ERROR,
@@ -170,13 +222,81 @@ public class DocumentoService {
         try {
             return DocumentoMetadataDTO.from(documentoRepository.save(copia));
         } catch (RuntimeException exception) {
-            try {
-                provider.delete(metadata.storageKey());
-            } catch (RuntimeException cleanupException) {
-                exception.addSuppressed(cleanupException);
+            if (cleanupAttempted.compareAndSet(false, true)) {
+                try {
+                    provider.delete(metadata.storageKey());
+                } catch (RuntimeException cleanupException) {
+                    exception.addSuppressed(cleanupException);
+                }
             }
             throw exception;
         }
+    }
+
+    private static final Set<Documento.TipoDocumento> DOCUMENTOS_DEL_ADMINISTRADO = EnumSet.of(
+            Documento.TipoDocumento.SOLICITUD_ORIGINAL,
+            Documento.TipoDocumento.DOCUMENTO_ADJUNTO,
+            Documento.TipoDocumento.SUBSANACION,
+            Documento.TipoDocumento.OTRO);
+
+    /**
+     * El expediente de destino recibe los archivos que el administrado presentó ante la entidad de origen.
+     * Conservan el expediente y la entidad de esa gestión para no leerse como una precisión nueva.
+     */
+    @Transactional
+    public void copiarDocumentosDelAdministrado(Solicitud origen, Solicitud destino) {
+        if (origen == null || destino == null || origen.getId() == null || destino.getId() == null) {
+            return;
+        }
+        String expediente = origen.getExpediente();
+        String entidad = origen.getEntidad() != null ? origen.getEntidad().getNombre() : null;
+        List<Documento> fuentes = documentoRepository.findBySolicitud_IdSolicitudAndEstadoOrderByFechaCreacionDesc(
+                origen.getId(), Documento.EstadoDocumento.ACTIVO);
+        var archivosDelAdministrado = fuentes.stream()
+                .filter(DocumentoService::esDocumentoDelAdministrado)
+                .sorted(Comparator.comparing(Documento::getStorageKey))
+                .toList();
+        for (Documento fuente : archivosDelAdministrado) {
+            if (!bloquearObjetoYListarReferenciasActivas(fuente).contains(fuente.getId())) {
+                continue;
+            }
+            Documento copia = new Documento();
+            copia.setNombreOriginal(fuente.getNombreOriginal());
+            copia.setStorageKey(fuente.getStorageKey());
+            copia.setContentType(fuente.getContentType());
+            copia.setSizeBytes(fuente.getSizeBytes());
+            copia.setHashSha256(fuente.getHashSha256());
+            copia.setStorageProvider(fuente.getStorageProvider() != null
+                    ? fuente.getStorageProvider() : StorageProviderType.LOCAL);
+            copia.setStorageBucket(fuente.getStorageBucket());
+            copia.setTipoDocumento(fuente.getTipoDocumento());
+            copia.setEstado(Documento.EstadoDocumento.ACTIVO);
+            copia.setFechaCreacion(fuente.getFechaCreacion());
+            copia.setCreadoPor(fuente.getCreadoPor());
+            copia.setSolicitud(destino);
+            copia.setExpedienteOrigen(expediente);
+            copia.setEntidadOrigen(entidad);
+            documentoRepository.save(copia);
+        }
+    }
+
+    private static boolean esDocumentoDelAdministrado(Documento documento) {
+        return documento.getNombreOriginal() != null
+                && !documento.getNombreOriginal().isBlank()
+                && documento.getStorageKey() != null
+                && !documento.getStorageKey().isBlank()
+                && documento.getContentType() != null
+                && !documento.getContentType().isBlank()
+                && documento.getTipoDocumento() != null
+                && DOCUMENTOS_DEL_ADMINISTRADO.contains(documento.getTipoDocumento())
+                && !documento.isBorradorTtaip()
+                && !documento.isSoloInstitucionalTtaip()
+                && documento.getRespuesta() == null
+                && documento.getApelacion() == null
+                && documento.getResolucion() == null
+                && documento.getExpedienteTtaip() == null
+                && documento.getCedulaNotificacion() == null
+                && documento.getEntregaParcial() == null;
     }
 
     @Transactional(readOnly = true)
@@ -184,6 +304,39 @@ public class DocumentoService {
         Documento documento = buscarActivo(documentoId);
         verificarAcceso(documento);
         return DocumentoMetadataDTO.from(documento);
+    }
+
+    /** Confirms an authorized document still exists before acknowledging a precision. */
+    @Transactional(readOnly = true)
+    public DocumentoMetadataDTO obtenerMetadataDisponible(Long documentoId) {
+        Documento documento = buscarActivo(documentoId);
+        verificarAcceso(documento);
+        if (!providerFor(documento.getStorageProvider()).exists(documento.getStorageKey())) {
+            throw new StorageException(StorageException.Reason.IO_ERROR,
+                    "No se pudo verificar el archivo recibido; vuelva a consultar la recepción");
+        }
+        return DocumentoMetadataDTO.from(documento);
+    }
+
+    private AtomicBoolean compensarEnRollback(StorageProvider provider, String storageKey) {
+        AtomicBoolean cleanupAttempted = new AtomicBoolean();
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    // Unknown outcomes must be reconciled; deleting could destroy a committed upload.
+                    if (status == STATUS_ROLLED_BACK && cleanupAttempted.compareAndSet(false, true)) {
+                        try {
+                            provider.delete(storageKey);
+                        } catch (RuntimeException exception) {
+                            LOGGER.error("No fue posible compensar un archivo tras rollback documental", exception);
+                        }
+                    }
+                }
+            });
+        }
+        return cleanupAttempted;
     }
 
     @Transactional(readOnly = true)
@@ -217,6 +370,7 @@ public class DocumentoService {
                             Documento.EstadoDocumento.ACTIVO);
         } else if (request.resolucionId() != null) {
             Resolucion resolucion = buscarResolucion(request.resolucionId());
+            verificarResolucionNotificable(resolucion);
             autorizacion.verificarApelacionAccesible(resolucion.getApelacion());
             documentos = documentoRepository
                     .findByResolucion_IdResolucionAndEstadoOrderByFechaCreacionDesc(
@@ -224,6 +378,7 @@ public class DocumentoService {
                             Documento.EstadoDocumento.ACTIVO);
         } else {
             CedulaNotificacion cedula = buscarCedula(request.cedulaNotificacionId());
+            verificarDestinatario(cedula);
             autorizacion.verificarApelacionAccesible(cedula.getResolucion().getApelacion());
             documentos = documentoRepository
                     .findByCedulaNotificacion_IdCedulaAndEstadoOrderByFechaCreacionDesc(
@@ -231,7 +386,10 @@ public class DocumentoService {
                             Documento.EstadoDocumento.ACTIVO);
         }
 
-        return documentos.stream().map(DocumentoMetadataDTO::from).toList();
+        return documentos.stream()
+                .filter(doc -> doc.getPresentacionAdmision() == null || puedeLeerPresentacion(doc))
+                .filter(doc -> !doc.isSoloInstitucionalTtaip() || autorizacion.esAdministradorOTtaip() || autorizacion.esFuncionario())
+                .map(DocumentoMetadataDTO::from).toList();
     }
 
     @Transactional(readOnly = true)
@@ -252,9 +410,33 @@ public class DocumentoService {
     public void eliminar(Long documentoId) {
         autorizacion.verificarAdministrador();
         Documento documento = buscarActivo(documentoId);
-        providerFor(documento.getStorageProvider()).delete(documento.getStorageKey());
+        if (documento.getEntregaParcial() != null) {
+            throw new ConflictoEstadoException("El documento pertenece a una entrega parcial registrada");
+        }
+        if (documento.getCumplimiento() != null || documento.getPresentacionAdmision() != null
+                || documento.isBorradorTtaip() || documento.isSoloInstitucionalTtaip()
+                || (documento.getCedulaNotificacion() != null && documento.getCedulaNotificacion().getTipoActo() != null)
+                || (documento.getResolucion() != null && documento.getResolucion().isActosDocumentales())) {
+            throw new ConflictoEstadoException("El archivo pertenece a una actuación documental TTAIP");
+        }
+        var referencias = bloquearObjetoYListarReferenciasActivas(documento);
+        if (!referencias.contains(documentoId)) {
+            throw new RecursoNoEncontradoException("Documento activo no encontrado");
+        }
+        if (referencias.size() == 1) {
+            providerFor(documento.getStorageProvider()).delete(documento.getStorageKey());
+        }
         documento.setEstado(Documento.EstadoDocumento.ELIMINADO);
         documentoRepository.save(documento);
+    }
+
+    private List<Long> bloquearObjetoYListarReferenciasActivas(Documento documento) {
+        StorageProviderType provider = documento.getStorageProvider();
+        String key = documento.getStorageKey();
+        // La fila más antigua conserva su identidad aunque se elimine lógicamente.
+        // El conteo separado ve las referencias creadas por la transacción que liberó el bloqueo.
+        documentoRepository.findFirstByStorageProviderAndStorageKeyOrderByIdDocumentoAsc(provider, key);
+        return documentoRepository.idsPorObjetoYEstado(provider, key, Documento.EstadoDocumento.ACTIVO);
     }
 
     private void validarCarga(MultipartFile file, DocumentoUploadRequest request) {
@@ -264,6 +446,7 @@ public class DocumentoService {
         if (request == null || request.tipoDocumento() == null) {
             throw new IllegalArgumentException("El tipo de documento es obligatorio");
         }
+        validarTipoCargaGeneral(request.tipoDocumento());
         if (request.relationCount() != 1) {
             throw new IllegalArgumentException(
                     "El documento debe asociarse exactamente a un recurso de negocio");
@@ -294,11 +477,51 @@ public class DocumentoService {
         } else if (request.resolucionId() != null) {
             documento.setResolucion(buscarResolucion(request.resolucionId()));
         } else if (request.cedulaNotificacionId() != null) {
-            documento.setCedulaNotificacion(buscarCedula(request.cedulaNotificacionId()));
+            CedulaNotificacion cedula = buscarCedula(request.cedulaNotificacionId());
+            if (cedula.getTipoActo() != null) throw new ConflictoEstadoException("Use los actos documentales de la notificación");
+            documento.setCedulaNotificacion(cedula);
         }
     }
 
+    private boolean puedeLeerPresentacion(Documento documento) {
+        var parte = autorizacion.esFuncionario() ? CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA
+                : CedulaNotificacion.DestinatarioNotificacion.CIUDADANO;
+        return autorizacion.esAdministradorOTtaip() || documento.getPresentacionAdmision().visiblePara(parte,
+                documento.getClaseAdjuntoAdmision() == PresentacionAdmisionTtaip.Adjunto.RESPUESTA);
+    }
+
     private void verificarAcceso(Documento documento) {
+        if (documento.getCumplimiento() != null) {
+            var cumplimiento = documento.getCumplimiento();
+            autorizacion.verificarApelacionAccesible(cumplimiento.getApelacion());
+            boolean visible = autorizacion.esFuncionario()
+                    || (autorizacion.esAdministradorOTtaip() && cumplimiento.getOperacionRemision() != null)
+                    || (!autorizacion.esAdministradorOTtaip()
+                        && documento.getClaseAdjuntoCumplimiento().visibleAlAdministrado());
+            if (!visible) {
+                throw new org.springframework.security.access.AccessDeniedException("El documento de cumplimiento no está disponible para esta parte");
+            }
+            return;
+        }
+        if (documento.getPresentacionAdmision() != null) {
+            autorizacion.verificarApelacionAccesible(documento.getPresentacionAdmision().getExpediente().getApelacion());
+            if (!puedeLeerPresentacion(documento)) {
+                throw new org.springframework.security.access.AccessDeniedException("El escrito corresponde a la otra parte");
+            }
+            return;
+        }
+        if (documento.isBorradorTtaip()) {
+            autorizacion.verificarTtaipOAdministrador();
+            return;
+        }
+        if (documento.isSoloInstitucionalTtaip()) {
+            autorizacion.verificarExpedienteTtaipInstitucional(documento.getExpedienteTtaip().getId());
+            return;
+        }
+        if (documento.getEntregaParcial() != null) {
+            autorizacion.verificarSolicitudAccesible(documento.getEntregaParcial().getAmpliacion().getSolicitud());
+            return;
+        }
         if (documento.getSolicitud() != null) {
             autorizacion.verificarSolicitudAccesible(documento.getSolicitud());
             return;
@@ -317,15 +540,32 @@ public class DocumentoService {
             return;
         }
         if (documento.getResolucion() != null) {
+            verificarResolucionNotificable(documento.getResolucion());
             autorizacion.verificarApelacionAccesible(documento.getResolucion().getApelacion());
             return;
         }
         if (documento.getCedulaNotificacion() != null) {
+            verificarDestinatario(documento.getCedulaNotificacion());
             autorizacion.verificarApelacionAccesible(
                     documento.getCedulaNotificacion().getResolucion().getApelacion());
             return;
         }
         throw new IllegalStateException("El documento no tiene una relación de negocio válida");
+    }
+
+    private void verificarResolucionNotificable(Resolucion resolucion) {
+        if (resolucion.isActosDocumentales() && resolucion.getDecision() == Resolucion.DecisionResolucion.INADMISIBLE
+                && autorizacion.esFuncionario()) {
+            throw new org.springframework.security.access.AccessDeniedException("La inadmisibilidad se notifica al recurrente");
+        }
+    }
+
+    private void verificarDestinatario(CedulaNotificacion cedula) {
+        if (cedula.getTipoActo() != null && !autorizacion.esAdministradorOTtaip()
+                && ("BORRADOR_REPROCESO".equals(cedula.getEstado())
+                || autorizacion.esFuncionario() != (cedula.getDestinatario() == CedulaNotificacion.DestinatarioNotificacion.ENTIDAD_PUBLICA))) {
+            throw new org.springframework.security.access.AccessDeniedException("El documento corresponde al otro destinatario");
+        }
     }
 
     private Documento buscarActivo(Long documentoId) {
@@ -410,10 +650,19 @@ public class DocumentoService {
         }
     }
 
+    private void validarTipoCargaGeneral(Documento.TipoDocumento tipo) {
+        if (List.of(Documento.TipoDocumento.CARGO_NOTIFICACION_TTAIP, Documento.TipoDocumento.ACUSE_NOTIFICACION_TTAIP,
+                Documento.TipoDocumento.CARTA_NOTIFICACION_TTAIP, Documento.TipoDocumento.OFICIO_CARTA_TTAIP)
+                .contains(tipo)) {
+            throw new IllegalArgumentException("Use la operación de actos documentales TTAIP");
+        }
+    }
+
     private void validarCargaClonacion(DocumentoUploadRequest request) {
         if (request == null || request.tipoDocumento() == null) {
             throw new IllegalArgumentException("El tipo de documento es obligatorio");
         }
+        validarTipoCargaGeneral(request.tipoDocumento());
         if (request.relationCount() != 1) {
             throw new IllegalArgumentException(
                     "El documento debe asociarse exactamente a un recurso de negocio");

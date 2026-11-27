@@ -1,23 +1,22 @@
-<div class="min-h-screen bg-background">
-  <section class="relative bg-paper border-b border-border overflow-hidden">
+<div class="help-page min-h-screen bg-background">
+  <!-- Hero -->
+  <div class="relative bg-paper border-b border-border overflow-hidden">
     <div class="absolute inset-0 opacity-[0.05]" style="background: radial-gradient(60% 80% at 80% 0%, var(--brand-500), transparent 70%)"></div>
-    <div class="relative max-w-5xl mx-auto px-6 md:px-10 pt-28 pb-12" data-hero>
+    <div class="relative max-w-5xl mx-auto px-6 md:px-10 pt-28 pb-12">
       <a routerLink="/" class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
-        <svg lucideArrowRight class="w-4 h-4 rotate-180"></svg>
-        Volver al inicio
+        <svg aria-hidden="true" lucideArrowLeft class="w-4 h-4"></svg> Volver al inicio
       </a>
-
-      <div class="flex items-start gap-5 mb-8">
-        <div class="w-14 h-14 rounded-lg flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), var(--shadow-sm)">
-          <svg lucideHelpCircle class="w-7 h-7 text-white"></svg>
+      <div class="help-hero flex items-start gap-5 mb-8">
+        <div class="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), var(--shadow-sm)">
+          <svg aria-hidden="true" lucideHelpCircle class="w-7 h-7 text-white"></svg>
         </div>
         <div>
-          <span class="eyebrow">Centro de ayuda · TTAIP</span>
+          <span class="eyebrow">Centro de ayuda · SAIP / TTAIP</span>
           <h1 class="font-display mt-1.5" style="font-size: clamp(34px, 4vw, 48px); line-height: 1.05; letter-spacing: -0.025em">
-            Resuelva sus <span class="italic" style="color: var(--brand-700)">dudas</span>
+            Todo lo que necesita <span class="italic" style="color: var(--brand-700)">saber</span>
           </h1>
           <p class="text-muted-foreground mt-2 max-w-xl">
-            {{ totalQuestions() }} preguntas frecuentes sobre el sistema SAIP y el proceso de acceso a informacion publica.
+            Entienda paso a paso el recorrido de su solicitud y de su apelación, el significado de cada estado y las respuestas a {{ totalQuestions() }} preguntas frecuentes.
           </p>
         </div>
       </div>
@@ -25,174 +24,392 @@
       <div class="form-shell max-w-2xl">
         <div class="p-3">
           <div class="relative">
-            <svg lucideSearch class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
+            <svg aria-hidden="true" lucideSearch class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
             <input
-              id="faq-search"
-              class="field-input has-icon-left !pl-10"
-              placeholder="Buscar en preguntas frecuentes..."
-              [value]="query()"
-              (input)="setQuery($event)"
+              #searchInput
+              id="help-search"
+              type="search"
+              aria-describedby="help-search-note"
+              class="field-input pl-10"
+              placeholder="Buscar en el centro de ayuda…"
+              [value]="searchQuery()"
+              (input)="onSearch(searchInput.value)"
             />
+            <label for="help-search" class="sr-only">Buscar en el centro de ayuda</label>
           </div>
         </div>
       </div>
+      <p id="help-search-note" class="text-xs text-muted-foreground mt-3">Busque en las preguntas y respuestas de esta guía. La búsqueda es local.</p>
+      <p role="status" aria-live="polite" aria-atomic="true" class="text-sm text-muted-foreground mt-2">
+        @if (isSearching()) { {{ matchingQuestions() }} preguntas encontradas. }
+      </p>
     </div>
-  </section>
+  </div>
 
-  <div class="max-w-5xl mx-auto px-6 md:px-10 py-10 space-y-7">
-    <section
-      class="grid grid-cols-2 md:grid-cols-4 gap-4"
-      data-motion-stagger
-      data-motion-y="12"
-      data-motion-duration="0.38"
-      data-motion-delay-step="0.05"
-    >
-      @for (category of categories(); track category.id) {
+  <div class="max-w-5xl mx-auto px-6 md:px-10 py-10 space-y-8">
+    <!-- Section tabs (when not searching) -->
+    @if (!isSearching()) {
+      <div class="flex flex-wrap gap-2" role="group" aria-label="Secciones del centro de ayuda">
         <button
           type="button"
-          data-motion-item
-          [class]="openCategory() === category.id
-            ? 'rounded-lg p-4 text-left border border-[var(--brand-300)] bg-[var(--brand-subtle)] shadow-sm transition-all'
-            : 'rounded-lg p-4 text-left border border-[var(--border)] bg-[var(--card)] hover:border-[var(--brand-200)] transition-all'"
-          (click)="seleccionarCategoria(category.id)"
+          (click)="setTab('recorrido')"
+          [attr.aria-pressed]="tab() === 'recorrido'"
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer"
+          [style.background]="tab() === 'recorrido' ? 'var(--brand-700)' : 'var(--card)'"
+          [style.color]="tab() === 'recorrido' ? '#fff' : 'var(--foreground)'"
+          [style.border]="tab() === 'recorrido' ? '1px solid transparent' : '1px solid var(--border)'"
+          [style.boxShadow]="tab() === 'recorrido' ? 'var(--shadow-sm)' : 'none'"
         >
-          <div
-            [class]="iconClassForCategory(openCategory() === category.id)"
-            [style.background]="openCategory() === category.id ? category.accent : 'var(--background)'"
-            [style.color]="openCategory() === category.id ? '#ffffff' : category.accent"
-          >
-            @switch (category.icon) {
-              @case ('file') {
-                <svg lucideFileText class="w-5 h-5"></svg>
-              }
-              @case ('scale') {
-                <svg lucideScale class="w-5 h-5"></svg>
-              }
-              @case ('clock') {
-                <svg lucideClock class="w-5 h-5"></svg>
-              }
-              @default {
-                <svg lucideShield class="w-5 h-5"></svg>
-              }
+          <svg aria-hidden="true" lucideRoute class="w-4 h-4"></svg>
+          Cómo funciona
+        </button>
+
+        <button
+          type="button"
+          (click)="setTab('estados')"
+          [attr.aria-pressed]="tab() === 'estados'"
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer"
+          [style.background]="tab() === 'estados' ? 'var(--brand-700)' : 'var(--card)'"
+          [style.color]="tab() === 'estados' ? '#fff' : 'var(--foreground)'"
+          [style.border]="tab() === 'estados' ? '1px solid transparent' : '1px solid var(--border)'"
+          [style.boxShadow]="tab() === 'estados' ? 'var(--shadow-sm)' : 'none'"
+        >
+          <svg aria-hidden="true" lucideBookOpen class="w-4 h-4"></svg>
+          Glosario de estados
+        </button>
+
+        <button
+          type="button"
+          (click)="setTab('faq')"
+          [attr.aria-pressed]="tab() === 'faq'"
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer"
+          [style.background]="tab() === 'faq' ? 'var(--brand-700)' : 'var(--card)'"
+          [style.color]="tab() === 'faq' ? '#fff' : 'var(--foreground)'"
+          [style.border]="tab() === 'faq' ? '1px solid transparent' : '1px solid var(--border)'"
+          [style.boxShadow]="tab() === 'faq' ? 'var(--shadow-sm)' : 'none'"
+        >
+          <svg aria-hidden="true" lucideListChecks class="w-4 h-4"></svg>
+          Preguntas frecuentes
+        </button>
+      </div>
+    }
+
+    <aside class="rounded-lg p-4 text-sm text-muted-foreground" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)" aria-label="Alcance de la orientación">
+      Esta guía orienta sobre las funciones disponibles; no es asesoría legal ni acredita actuaciones de un expediente. Consulte sus datos y comunicaciones autorizadas. Los plazos ausentes o contradictorios no se calculan aquí.
+    </aside>
+
+    <!-- ── TAB: RECORRIDO ─────────────────────────────────────────── -->
+    @if (!isSearching() && tab() === 'recorrido') {
+      <div class="space-y-6">
+        <!-- SAIP Journey -->
+        <section class="form-shell overflow-hidden">
+          <div class="h-[3px]" style="background: linear-gradient(90deg, var(--brand-500), transparent)"></div>
+          <div class="form-section-header">
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                <svg aria-hidden="true" lucideFileText class="w-5 h-5" style="color: var(--brand-700)"></svg>
+              </div>
+              <div>
+                <span class="eyebrow">Primera instancia · ante la entidad</span>
+                <h2 class="form-section-title">El recorrido de su solicitud (SAIP)</h2>
+              </div>
+            </div>
+          </div>
+          <div class="p-6 md:p-8 pt-2">
+            @for (step of saipJourney; track step.title; let last = $last) {
+              <div class="relative pl-16">
+                <!-- Rail vertical -->
+                @if (!last) {
+                  <span class="absolute left-[27px] top-14 bottom-[-28px] w-px" style="background: var(--border)"></span>
+                }
+                <!-- Icon box -->
+                <div class="absolute left-0 top-0 w-14 h-14 rounded-lg flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm)">
+                  @switch (step.icon) {
+                    @case ('send') { <svg aria-hidden="true" lucideSend class="w-6 h-6" [style.color]="step.accent"></svg> }
+                    @case ('file-search') { <svg aria-hidden="true" lucideFileSearch class="w-6 h-6" [style.color]="step.accent"></svg> }
+                    @case ('clock') { <svg aria-hidden="true" lucideClock class="w-6 h-6" [style.color]="step.accent"></svg> }
+                    @case ('package-check') { <svg aria-hidden="true" lucidePackageCheck class="w-6 h-6" [style.color]="step.accent"></svg> }
+                    @case ('coins') { <svg aria-hidden="true" lucideCoins class="w-6 h-6" [style.color]="step.accent"></svg> }
+                    @case ('scale') { <svg aria-hidden="true" lucideScale class="w-6 h-6" [style.color]="step.accent"></svg> }
+                    @default { <svg aria-hidden="true" lucideSend class="w-6 h-6" [style.color]="step.accent"></svg> }
+                  }
+                </div>
+                <!-- Content -->
+                <div class="pb-8">
+                  <div class="flex flex-wrap items-center gap-2.5">
+                    <h3 class="font-display text-foreground" style="font-size: 18px; letter-spacing: -0.01em">{{ step.title }}</h3>
+                    <span class="font-mono text-[10px] tracking-widest uppercase px-2 py-0.5 rounded-full" [style.color]="step.accent" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                      {{ step.plazo }}
+                    </span>
+                  </div>
+                  <p class="text-sm text-muted-foreground mt-1.5 leading-relaxed max-w-2xl">{{ step.desc }}</p>
+
+                  <!-- Branches / Ramas -->
+                  @if (step.ramas.length > 0) {
+                    <div class="grid sm:grid-cols-2 gap-2.5 mt-3.5 max-w-3xl">
+                      @for (rama of step.ramas; track rama.label) {
+                        <div
+                          class="rounded-md p-3 flex items-start gap-2.5"
+                          [style.background]="rama.tone === 'ok' ? 'color-mix(in srgb, var(--success) 10%, transparent)' : rama.tone === 'warn' ? 'color-mix(in srgb, var(--warning) 12%, transparent)' : rama.tone === 'bad' ? 'color-mix(in srgb, var(--brand-700) 8%, transparent)' : 'var(--brand-subtle)'"
+                          [style.border]="rama.tone === 'ok' ? '1px solid color-mix(in srgb, var(--success) 35%, transparent)' : rama.tone === 'warn' ? '1px solid color-mix(in srgb, var(--warning) 38%, transparent)' : rama.tone === 'bad' ? '1px solid color-mix(in srgb, var(--brand-700) 30%, transparent)' : '1px solid var(--brand-200)'"
+                        >
+                          @switch (rama.tone) {
+                            @case ('ok') { <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--success)"></svg> }
+                            @case ('warn') { <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--warning)"></svg> }
+                            @case ('bad') { <svg aria-hidden="true" lucideXCircle class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--brand-700)"></svg> }
+                            @default { <svg aria-hidden="true" lucideCircleDot class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--info)"></svg> }
+                          }
+                          <div>
+                            <div class="text-[13px] font-semibold text-foreground">{{ rama.label }}</div>
+                            <div class="text-[13px] text-foreground/80 leading-relaxed mt-0.5">{{ rama.text }}</div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
             }
           </div>
-          <div class="text-sm font-medium text-foreground">{{ category.title }}</div>
-          <div class="font-mono text-[11px] tracking-widest text-muted-foreground mt-1">{{ category.questions.length }} preguntas</div>
-        </button>
-      }
-    </section>
+        </section>
 
-    @if (categories().length === 0) {
-      <section class="form-shell">
-        <div class="p-12 text-center">
-          <div class="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-            <svg lucideSearch class="w-5 h-5 text-[var(--brand-700)]"></svg>
-          </div>
-          <h3 class="font-display" style="font-size: 18px">Sin resultados</h3>
-          <p class="text-sm text-muted-foreground mt-1 mb-4">No hay preguntas que coincidan con "{{ query() }}".</p>
-          <button type="button" class="btn-ghost-brand" (click)="limpiarBusqueda()">Limpiar busqueda</button>
-        </div>
-      </section>
-    } @else {
-      <section
-        class="space-y-4"
-        data-motion-stagger
-        data-motion-y="14"
-        data-motion-duration="0.42"
-        data-motion-delay-step="0.06"
-      >
-        @for (category of categories(); track category.id; let ci = $index) {
-          <article class="form-shell overflow-hidden" data-motion-item>
-            <button
-              type="button"
-              class="w-full text-left"
-              (click)="toggleCategory(category.id)"
-              [attr.aria-expanded]="openCategory() === category.id"
-            >
-              <div class="form-section-header flex items-start justify-between gap-4">
-                <div class="flex items-center gap-4">
-                  <div class="w-10 h-10 rounded-md flex items-center justify-center bg-[var(--brand-subtle)] border border-[var(--brand-200)]" [style.color]="category.accent">
-                    @switch (category.icon) {
-                      @case ('file') {
-                        <svg lucideFileText class="w-5 h-5"></svg>
-                      }
-                      @case ('scale') {
-                        <svg lucideScale class="w-5 h-5"></svg>
-                      }
-                      @case ('clock') {
-                        <svg lucideClock class="w-5 h-5"></svg>
-                      }
-                      @default {
-                        <svg lucideShield class="w-5 h-5"></svg>
-                      }
-                    }
-                  </div>
-                  <div>
-                    <span class="eyebrow">0{{ ci + 1 }} · {{ category.questions.length }} preguntas</span>
-                    <h2 class="form-section-title">{{ category.title }}</h2>
-                  </div>
-                </div>
-                <svg lucideChevronDown class="w-5 h-5 text-muted-foreground transition-transform" [class.rotate-180]="openCategory() === category.id"></svg>
+        <!-- Apelación Journey -->
+        <section class="form-shell overflow-hidden">
+          <div class="h-[3px]" style="background: linear-gradient(90deg, var(--gold), transparent)"></div>
+          <div class="form-section-header">
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                <svg aria-hidden="true" lucideScale class="w-5 h-5" style="color: var(--gold-dark)"></svg>
               </div>
-            </button>
+              <div>
+                <span class="eyebrow">Segunda instancia · ante el TTAIP</span>
+                <h2 class="form-section-title">El recorrido de su apelación</h2>
+              </div>
+            </div>
+          </div>
+          <div class="p-6 md:p-8 pt-2">
+            @for (step of apelacionJourney; track step.title; let last = $last) {
+              <div class="relative pl-16">
+                @if (!last) {
+                  <span class="absolute left-[27px] top-14 bottom-[-28px] w-px" style="background: var(--border)"></span>
+                }
+                <div class="absolute left-0 top-0 w-14 h-14 rounded-lg flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-sm)">
+                  @switch (step.icon) {
+                    @case ('split') { <svg aria-hidden="true" lucideSplit class="w-6 h-6" [style.color]="step.accent"></svg> }
+                    @case ('file-search') { <svg aria-hidden="true" lucideFileSearch class="w-6 h-6" [style.color]="step.accent"></svg> }
+                    @case ('pause-circle') { <svg aria-hidden="true" lucidePauseCircle class="w-6 h-6" [style.color]="step.accent"></svg> }
+                    @case ('gavel') { <svg aria-hidden="true" lucideGavel class="w-6 h-6" [style.color]="step.accent"></svg> }
+                    @case ('bell') { <svg aria-hidden="true" lucideBell class="w-6 h-6" [style.color]="step.accent"></svg> }
+                    @case ('rotate-ccw') { <svg aria-hidden="true" lucideRotateCcw class="w-6 h-6" [style.color]="step.accent"></svg> }
+                    @default { <svg aria-hidden="true" lucideScale class="w-6 h-6" [style.color]="step.accent"></svg> }
+                  }
+                </div>
+                <div class="pb-8">
+                  <div class="flex flex-wrap items-center gap-2.5">
+                    <h3 class="font-display text-foreground" style="font-size: 18px; letter-spacing: -0.01em">{{ step.title }}</h3>
+                    <span class="font-mono text-[10px] tracking-widest uppercase px-2 py-0.5 rounded-full" [style.color]="step.accent" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                      {{ step.plazo }}
+                    </span>
+                  </div>
+                  <p class="text-sm text-muted-foreground mt-1.5 leading-relaxed max-w-2xl">{{ step.desc }}</p>
 
-            @if (openCategory() === category.id) {
-              <div class="border-t border-[var(--border)]">
-                @for (item of category.questions; track item.question; let i = $index) {
-                  <div class="border-b last:border-0 border-[var(--border)]">
-                    <button
-                      type="button"
-                      class="w-full px-6 py-4 flex items-start justify-between text-left gap-4 hover:bg-[color:var(--brand-subtle)] transition-colors"
-                      (click)="toggleQuestion(category.id + '-' + i)"
-                      [attr.aria-expanded]="openQuestion() === category.id + '-' + i"
-                    >
-                      <div class="flex items-start gap-3 flex-1">
-                        <span class="font-mono text-[11px] tracking-widest mt-1 shrink-0" style="color: var(--brand-700)">
-                          {{ (i + 1).toString().padStart(2, '0') }}
-                        </span>
-                        <span class="text-sm text-foreground leading-relaxed">{{ item.question }}</span>
-                      </div>
-                      <svg lucideArrowRight class="w-4 h-4 mt-1 shrink-0 transition-transform" [class.rotate-90]="openQuestion() === category.id + '-' + i" [style.color]="category.accent"></svg>
-                    </button>
-
-                    @if (openQuestion() === category.id + '-' + i) {
-                      <div class="px-6 pb-5 pl-[68px] animate-fade-in">
-                        <div class="rounded-md p-4 text-sm text-foreground/85 leading-relaxed bg-[var(--brand-subtle)]" [style.border-left]="'3px solid ' + category.accent">
-                          {{ item.answer }}
+                  @if (step.ramas.length > 0) {
+                    <div class="grid sm:grid-cols-2 gap-2.5 mt-3.5 max-w-3xl">
+                      @for (rama of step.ramas; track rama.label) {
+                        <div
+                          class="rounded-md p-3 flex items-start gap-2.5"
+                          [style.background]="rama.tone === 'ok' ? 'color-mix(in srgb, var(--success) 10%, transparent)' : rama.tone === 'warn' ? 'color-mix(in srgb, var(--warning) 12%, transparent)' : rama.tone === 'bad' ? 'color-mix(in srgb, var(--brand-700) 8%, transparent)' : 'var(--brand-subtle)'"
+                          [style.border]="rama.tone === 'ok' ? '1px solid color-mix(in srgb, var(--success) 35%, transparent)' : rama.tone === 'warn' ? '1px solid color-mix(in srgb, var(--warning) 38%, transparent)' : rama.tone === 'bad' ? '1px solid color-mix(in srgb, var(--brand-700) 30%, transparent)' : '1px solid var(--brand-200)'"
+                        >
+                          @switch (rama.tone) {
+                            @case ('ok') { <svg aria-hidden="true" lucideCheckCircle2 class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--success)"></svg> }
+                            @case ('warn') { <svg aria-hidden="true" lucideAlertTriangle class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--warning)"></svg> }
+                            @case ('bad') { <svg aria-hidden="true" lucideXCircle class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--brand-700)"></svg> }
+                            @default { <svg aria-hidden="true" lucideCircleDot class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--info)"></svg> }
+                          }
+                          <div>
+                            <div class="text-[13px] font-semibold text-foreground">{{ rama.label }}</div>
+                            <div class="text-[13px] text-foreground/80 leading-relaxed mt-0.5">{{ rama.text }}</div>
+                          </div>
                         </div>
-                      </div>
-                    }
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+      </div>
+    }
+
+    <!-- ── TAB: ESTADOS ───────────────────────────────────────────── -->
+    @if (!isSearching() && tab() === 'estados') {
+      <div class="space-y-6">
+        @for (g of glosario; track g.grupo) {
+          <section class="form-shell overflow-hidden">
+            <div class="form-section-header">
+              <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                  <svg aria-hidden="true" lucideCircleDot class="w-5 h-5" [style.color]="g.accent"></svg>
+                </div>
+                <div>
+                  <span class="eyebrow">{{ g.items.length }} estados</span>
+                  <h2 class="form-section-title">{{ g.grupo }}</h2>
+                </div>
+              </div>
+            </div>
+            <div class="divide-y divide-[var(--border)]">
+              @for (it of g.items; track it.estado) {
+                <div class="px-6 py-3.5 grid sm:grid-cols-[220px_1fr] gap-1.5 sm:gap-5 items-start">
+                  <div class="flex items-center gap-2.5">
+                    <span class="w-2 h-2 rounded-full flex-shrink-0" [style.background]="g.accent"></span>
+                    <span class="text-sm font-medium text-foreground">{{ it.estado }}</span>
+                  </div>
+                  <span class="text-[13px] text-muted-foreground leading-relaxed">{{ it.desc }}</span>
+                </div>
+              }
+            </div>
+          </section>
+        }
+      </div>
+    }
+
+    <!-- ── TAB: FAQ (o búsqueda activa) ───────────────────────────── -->
+    @if (isSearching() || tab() === 'faq') {
+      <div class="space-y-6">
+        <!-- Quick category cards (only when not searching) -->
+        @if (!isSearching()) {
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            @for (cat of faqCategories; track cat.id) {
+              <button
+                type="button"
+                (click)="setCategory(cat.id)"
+                [attr.aria-pressed]="openCategory() === cat.id"
+                [attr.aria-controls]="'help-category-panel-' + cat.id"
+                class="rounded-lg p-4 text-left transition-all cursor-pointer"
+                [style.background]="openCategory() === cat.id ? 'var(--brand-subtle)' : 'var(--card)'"
+                [style.border]="openCategory() === cat.id ? '1px solid var(--brand-300)' : '1px solid var(--border)'"
+                [style.boxShadow]="openCategory() === cat.id ? 'var(--shadow-sm)' : 'none'"
+              >
+                <div
+                  class="w-10 h-10 rounded-md flex items-center justify-center mb-3"
+                  [style.background]="openCategory() === cat.id ? cat.accent : 'var(--background)'"
+                  [style.border]="openCategory() === cat.id ? '1px solid transparent' : '1px solid var(--border)'"
+                >
+                  @switch (cat.icon) {
+                    @case ('file') { <svg aria-hidden="true" lucideFileText class="w-5 h-5" [style.color]="openCategory() === cat.id ? '#fff' : cat.accent"></svg> }
+                    @case ('pen') { <svg aria-hidden="true" lucidePenLine class="w-5 h-5" [style.color]="openCategory() === cat.id ? '#fff' : cat.accent"></svg> }
+                    @case ('package') { <svg aria-hidden="true" lucidePackageCheck class="w-5 h-5" [style.color]="openCategory() === cat.id ? '#fff' : cat.accent"></svg> }
+                    @case ('scale') { <svg aria-hidden="true" lucideScale class="w-5 h-5" [style.color]="openCategory() === cat.id ? '#fff' : cat.accent"></svg> }
+                    @case ('clock') { <svg aria-hidden="true" lucideClock class="w-5 h-5" [style.color]="openCategory() === cat.id ? '#fff' : cat.accent"></svg> }
+                    @default { <svg aria-hidden="true" lucideShield class="w-5 h-5" [style.color]="openCategory() === cat.id ? '#fff' : cat.accent"></svg> }
+                  }
+                </div>
+                <div class="text-sm font-medium text-foreground">{{ cat.title }}</div>
+                <div class="font-mono text-[11px] tracking-widest text-muted-foreground mt-1">{{ cat.questions.length }} preguntas</div>
+              </button>
+            }
+          </div>
+        }
+
+                <!-- FAQ accordion list: stable question IDs also survive filtering. -->
+        <div class="space-y-4">
+          @for (cat of currentFaqList(); track cat.id; let ci = $index) {
+            @let isOpen = isSearching() || openCategory() === cat.id;
+            <section class="form-shell overflow-hidden">
+              <h2 class="help-category-heading">
+                <button type="button"
+                  [id]="'help-category-' + cat.id"
+                  class="help-category-toggle form-section-header w-full text-left flex items-start justify-between gap-4"
+                  [disabled]="isSearching()"
+                  [attr.aria-expanded]="isOpen"
+                  [attr.aria-controls]="'help-category-panel-' + cat.id"
+                  (click)="toggleCategory(cat.id)">
+                  <span class="help-category-title flex items-center gap-4">
+                    <span class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                      @switch (cat.icon) {
+                        @case ('file') { <svg aria-hidden="true" lucideFileText class="w-5 h-5" [style.color]="cat.accent"></svg> }
+                        @case ('pen') { <svg aria-hidden="true" lucidePenLine class="w-5 h-5" [style.color]="cat.accent"></svg> }
+                        @case ('package') { <svg aria-hidden="true" lucidePackageCheck class="w-5 h-5" [style.color]="cat.accent"></svg> }
+                        @case ('scale') { <svg aria-hidden="true" lucideScale class="w-5 h-5" [style.color]="cat.accent"></svg> }
+                        @case ('clock') { <svg aria-hidden="true" lucideClock class="w-5 h-5" [style.color]="cat.accent"></svg> }
+                        @default { <svg aria-hidden="true" lucideShield class="w-5 h-5" [style.color]="cat.accent"></svg> }
+                      }
+                    </span>
+                    <span>
+                      <span class="eyebrow block">{{ (ci + 1) < 10 ? '0' + (ci + 1) : (ci + 1) }} · {{ cat.questions.length }} preguntas</span>
+                      <span class="form-section-title block">{{ cat.title }}</span>
+                    </span>
+                  </span>
+                  @if (!isSearching()) {
+                    <svg aria-hidden="true" lucideChevronDown class="w-5 h-5 shrink-0 text-muted-foreground transition-transform" [class.rotate-180]="isOpen"></svg>
+                  }
+                </button>
+              </h2>
+              <div [id]="'help-category-panel-' + cat.id" [hidden]="!isOpen" class="border-t border-[var(--border)]">
+                @for (faq of cat.questions; track faq.id; let idx = $index) {
+                  @let key = cat.id + '-' + faq.id;
+                  @let open = openQuestion() === key;
+                  <div class="border-b last:border-0 border-[var(--border)]">
+                    <h3 class="help-question-heading">
+                      <button type="button"
+                        [id]="'help-question-' + key"
+                        [attr.aria-expanded]="open"
+                        [attr.aria-controls]="'help-answer-' + key"
+                        class="w-full px-6 py-4 flex items-start justify-between text-left gap-4 hover:bg-[color:var(--brand-subtle)] transition-colors cursor-pointer"
+                        (click)="toggleQuestion(key)">
+                        <span class="flex items-start gap-3 flex-1 min-w-0">
+                          <span class="font-mono text-[11px] tracking-widest mt-1 shrink-0" style="color: var(--brand-700)">
+                            {{ (idx + 1) < 10 ? '0' + (idx + 1) : (idx + 1) }}
+                          </span>
+                          <span class="text-sm text-foreground leading-relaxed">{{ faq.q }}</span>
+                        </span>
+                        <svg aria-hidden="true" lucideChevronRight class="w-4 h-4 mt-1 shrink-0 transition-transform" [class.rotate-90]="open" [style.color]="cat.accent"></svg>
+                      </button>
+                    </h3>
+                    <div [id]="'help-answer-' + key" [hidden]="!open" role="region" [attr.aria-labelledby]="'help-question-' + key" class="help-answer px-6 pb-5 pl-[68px]">
+                      <p class="rounded-md p-4 text-sm text-foreground/85 leading-relaxed" style="background: var(--brand-subtle); border-left: 3px solid var(--brand-700)">{{ faq.a }}</p>
+                    </div>
                   </div>
                 }
               </div>
-            }
-          </article>
+            </section>
+          }
+        </div>
+
+        <!-- Sin resultados -->
+        @if (isSearching() && filteredCategories().length === 0) {
+          <div class="form-shell">
+            <div class="p-12 text-center">
+              <div class="w-12 h-12 mx-auto rounded-lg flex items-center justify-center mb-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                <svg aria-hidden="true" lucideSearch class="w-5 h-5" style="color: var(--brand-700)"></svg>
+              </div>
+              <h2 class="font-display" style="font-size: 18px">Sin resultados</h2>
+              <p class="text-sm text-muted-foreground mt-1 mb-4">No hay preguntas que coincidan con "{{ searchQuery() }}".</p>
+              <button type="button" class="btn-ghost-brand" (click)="limpiarBusqueda()">Limpiar búsqueda</button>
+            </div>
+          </div>
         }
-      </section>
+      </div>
     }
 
-    <section
-      class="grid md:grid-cols-2 gap-4"
-      data-motion-stagger
-      data-motion-y="14"
-      data-motion-duration="0.4"
-      data-motion-delay-step="0.08"
-    >
+    <!-- Quick action cards -->
+    <div class="grid md:grid-cols-2 gap-4">
       <a
-        routerLink="/login"
-        class="form-shell text-left transition-all hover:-translate-y-[1px]"
+        routerLink="/ciudadano/nueva-saip"
+        class="form-shell text-left transition-all hover:-translate-y-[1px] block"
         style="box-shadow: var(--shadow-sm)"
-        data-motion-item
       >
         <div class="p-6 flex items-start gap-4">
-          <div class="w-12 h-12 rounded-md flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
-            <svg lucideFileText class="w-6 h-6 text-white"></svg>
+          <div class="w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
+            <svg aria-hidden="true" lucideFileText class="w-6 h-6 text-white"></svg>
           </div>
           <div class="flex-1">
-            <h4 class="font-display" style="font-size: 18px; letter-spacing: -0.01em">Presentar una SAIP</h4>
-            <p class="text-sm text-muted-foreground mt-1">Complete el formulario digital para solicitar informacion publica.</p>
+            <h2 class="font-display" style="font-size: 18px; letter-spacing: -0.01em">Presentar una SAIP</h2>
+            <p class="text-sm text-muted-foreground mt-1">Complete el formulario digital con el acceso del administrado. Requiere iniciar sesión.</p>
             <span class="inline-flex items-center gap-1 text-sm mt-2" style="color: var(--brand-700)">
-              Ir al formulario <svg lucideArrowRight class="w-3.5 h-3.5"></svg>
+              Ir al formulario <svg aria-hidden="true" lucideArrowRight class="w-3.5 h-3.5"></svg>
             </span>
           </div>
         </div>
@@ -200,59 +417,61 @@
 
       <a
         routerLink="/consultar"
-        class="form-shell text-left transition-all hover:-translate-y-[1px]"
+        class="form-shell text-left transition-all hover:-translate-y-[1px] block"
         style="box-shadow: var(--shadow-sm)"
-        data-motion-item
       >
         <div class="p-6 flex items-start gap-4">
-          <div class="w-12 h-12 rounded-md flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
-            <svg lucideSearch class="w-6 h-6 text-white"></svg>
+          <div class="w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
+            <svg aria-hidden="true" lucideSearch class="w-6 h-6 text-white"></svg>
           </div>
           <div class="flex-1">
-            <h4 class="font-display" style="font-size: 18px; letter-spacing: -0.01em">Consultar estado</h4>
-            <p class="text-sm text-muted-foreground mt-1">Busque el estado de su solicitud con el numero de expediente.</p>
+            <h2 class="font-display" style="font-size: 18px; letter-spacing: -0.01em">Consultar estado</h2>
+            <p class="text-sm text-muted-foreground mt-1">Consulte el resumen público por código SAIP, sin el asunto ni documentos privados.</p>
             <span class="inline-flex items-center gap-1 text-sm mt-2" style="color: var(--brand-700)">
-              Consultar <svg lucideArrowRight class="w-3.5 h-3.5"></svg>
+              Consultar <svg aria-hidden="true" lucideArrowRight class="w-3.5 h-3.5"></svg>
             </span>
           </div>
         </div>
       </a>
-    </section>
+    </div>
 
-    <section class="form-shell overflow-hidden" data-reveal>
+    <!-- Institutional contact -->
+    <section class="form-shell overflow-hidden">
       <div class="h-[3px]" style="background: linear-gradient(90deg, var(--brand-500), var(--gold), transparent)"></div>
       <div class="p-7 md:p-9">
         <div class="text-center mb-7">
-          <span class="eyebrow">Contacto institucional</span>
-          <h3 class="font-display mt-1.5" style="font-size: 26px; letter-spacing: -0.02em">No encontro lo que buscaba?</h3>
-          <p class="text-sm text-muted-foreground mt-1.5">Comuniquese directamente con el equipo del TTAIP.</p>
+          <span class="eyebrow">Canales de soporte</span>
+          <h2 class="font-display mt-1.5" style="font-size: 26px; letter-spacing: -0.02em">¿No encontró lo que buscaba?</h2>
+          <p class="text-sm text-muted-foreground mt-1.5">No hay un canal de soporte verificado configurado en esta página. No se envían mensajes, tickets ni solicitudes de recuperación desde aquí.</p>
         </div>
         <div class="grid md:grid-cols-3 gap-4">
           <div class="rounded-lg p-4 flex items-center gap-3" style="background: var(--card); border: 1px solid var(--border)">
-            <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-              <svg lucidePhone class="w-5 h-5 text-[var(--brand-700)]"></svg>
+            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+              <svg aria-hidden="true" lucidePhone class="w-5 h-5" style="color: var(--brand-700)"></svg>
             </div>
             <div>
-              <div class="uppercase tracking-widest text-[10px] text-muted-foreground">Telefono</div>
-              <div class="text-sm text-foreground font-medium">{{ contacto().telefono || 'No registrado' }}</div>
+              <div class="uppercase tracking-widest text-[10px] text-muted-foreground">Teléfono</div>
+              <div class="text-sm text-foreground font-medium">No configurado</div>
             </div>
           </div>
+
           <div class="rounded-lg p-4 flex items-center gap-3" style="background: var(--card); border: 1px solid var(--border)">
-            <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-              <svg lucideMail class="w-5 h-5 text-[var(--brand-700)]"></svg>
+            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+              <svg aria-hidden="true" lucideMail class="w-5 h-5" style="color: var(--brand-700)"></svg>
             </div>
             <div>
               <div class="uppercase tracking-widest text-[10px] text-muted-foreground">Correo</div>
-              <div class="text-sm text-foreground font-medium">{{ contacto().correo || 'No registrado' }}</div>
+              <div class="text-sm text-foreground font-medium">No configurado</div>
             </div>
           </div>
+
           <div class="rounded-lg p-4 flex items-center gap-3" style="background: var(--card); border: 1px solid var(--border)">
-            <div class="w-10 h-10 rounded-md flex items-center justify-center shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
-              <svg lucideMapPin class="w-5 h-5 text-[var(--brand-700)]"></svg>
+            <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+              <svg aria-hidden="true" lucideMapPin class="w-5 h-5" style="color: var(--brand-700)"></svg>
             </div>
             <div>
-              <div class="uppercase tracking-widest text-[10px] text-muted-foreground">Direccion</div>
-              <div class="text-sm text-foreground font-medium">{{ contacto().direccion || 'No registrado' }}</div>
+              <div class="uppercase tracking-widest text-[10px] text-muted-foreground">Dirección</div>
+              <div class="text-sm text-foreground font-medium">No configurada</div>
             </div>
           </div>
         </div>

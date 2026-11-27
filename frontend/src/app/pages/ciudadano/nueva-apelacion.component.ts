@@ -1,84 +1,110 @@
-import { Component, ChangeDetectionStrategy, OnInit, signal, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, Injector, OnDestroy, OnInit, afterNextRender, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse } from '@angular/common/http';
+import { combineLatest, Subscription, timeout } from 'rxjs';
 import { ApelacionService } from '../../services/apelacion.service';
 import { EntidadService } from '../../services/entidad.service';
 import { SolicitudService } from '../../services/solicitud.service';
 import { AuthService } from '../../services/auth.service';
-import {
-  CanalPresentacionApelacion,
-  TipoDenegatoriaApelacion,
-  TipoOrigenApelacion
-} from '../../models/apelacion.model';
-import { Entidad } from '../../models/entidad.model';
-import { Solicitud } from '../../models/solicitud.model';
-import {
-  ReferenceConfirmModalComponent,
-  ReferenceConfirmSummary,
-  ReferenceConfirmWarning
-} from '../../shared/reference-confirm-modal.component';
-import {
-  ReferenceSuccessMeta,
-  ReferenceSuccessModalComponent,
-  ReferenceSuccessNextStep
-} from '../../shared/reference-success-modal.component';
-import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { DocumentoService } from '../../services/documento.service';
-import { TipoDocumento, validarDocumento, DocumentoMetadata } from '../../models/documento.model';
-import { problemDetailsMessage } from '../../utils/problem-details.util';
+import { Apelacion, ApelacionCreate, ApelacionCreateAnteEntidad, ApelacionCreateExterna, CanalPresentacionApelacion, TipoDenegatoriaApelacion, TipoOrigenApelacion } from '../../models/apelacion.model';
+import { Entidad } from '../../models/entidad.model';
+import { aISO, hoyLima } from '../../models/calendario.model';
+import { ampliacionParaApelar, ampliacionPermiteApelar, Solicitud, tienePlazoAmpliadoVigente } from '../../models/solicitud.model';
+import { DocumentoMetadata, DOCUMENTO_ACCEPT, DOCUMENTO_RELATION_KEYS, TipoDocumento, validarDocumento } from '../../models/documento.model';
+import { EstadoConsulta, falloConsulta } from '../../utils/consulta-remota.util';
+import { YaikuCargandoComponent } from '../../shared/yaiku-cargando.component';
+import { ReferenceConfirmModalComponent, ReferenceConfirmSummary, ReferenceConfirmWarning } from '../../shared/reference-confirm-modal.component';
+import { ReferenceSuccessModalComponent, ReferenceSuccessMeta, ReferenceSuccessNextStep } from '../../shared/reference-success-modal.component';
+import { DocumentPreviewModalComponent, DocumentPreviewTarget } from '../../shared/document-preview-modal.component';
+import { StatusBadgeComponent } from '../../shared/status-badge.component';
+import { LucideArrowLeft, LucideArrowRight, LucideScale, LucideSend, LucideInfo, LucideSearch, LucideFileText,
+  LucideAlertCircle, LucideEye, LucideDownload, LucideX, LucideUpload, LucideArchive } from '@lucide/angular';
 
-interface RequiredAppealDocument {
-  n: string;
-  fileNum: 1 | 2 | 3;
-  label: string;
-  desc: string;
+import type { AltaApelacionRecepcionDTO, RegistrarAltaApelacionRequest } from '../../api/types';
+
+type Comando = { modo: 'directa'; datos: ApelacionCreate } | { modo: 'ante-entidad'; datos: ApelacionCreateAnteEntidad }
+  | { modo: 'externa'; datos: ApelacionCreateExterna };
+type GrupoDocumental = 1 | 2 | 3;
+const FECHA_PRESENTACION = new Intl.DateTimeFormat('es-PE', {
+  dateStyle: 'long', timeZone: 'UTC'
+});
+interface DocumentoEnvio {
+  label: string; tipo: TipoDocumento; file?: File; origen?: DocumentoMetadata;
+  estado: 'pendiente' | 'enviando' | 'registrado' | 'rechazado' | 'incierto'; documento?: DocumentoMetadata;
 }
-
-import { LucideArrowLeft, LucideScale, LucideSend, LucideInfo } from '@lucide/angular';
-
+interface Intento { clave: string; comando: Comando; documentos: DocumentoEnvio[]; contexto: string; solicitudExpediente?: string; }
 @Component({
-  selector: 'app-nueva-apelacion',
-  imports: [
-    CommonModule, FormsModule, RouterLink, ReferenceConfirmModalComponent, ReferenceSuccessModalComponent,
-    LucideArrowLeft, LucideScale, LucideSend, LucideInfo
-  ],
-  templateUrl: './nueva-apelacion.component.html',
-  styleUrl: './nueva-apelacion.component.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  selector: 'app-nueva-apelacion', imports: [CommonModule, FormsModule, RouterLink, YaikuCargandoComponent, ReferenceConfirmModalComponent,
+    ReferenceSuccessModalComponent, DocumentPreviewModalComponent, StatusBadgeComponent, LucideArrowLeft,
+    LucideArrowRight, LucideScale, LucideSend, LucideInfo, LucideSearch, LucideFileText, LucideAlertCircle,
+    LucideEye, LucideDownload, LucideX, LucideUpload, LucideArchive],
+  templateUrl: './nueva-apelacion.component.html', styleUrl: './nueva-apelacion.component.css', changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class NuevaApelacionComponent implements OnInit {
+export class NuevaApelacionComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly apelacionService = inject(ApelacionService);
   private readonly entidadService = inject(EntidadService);
   private readonly solicitudService = inject(SolicitudService);
   private readonly authService = inject(AuthService);
   private readonly documentoService = inject(DocumentoService);
-
-  solicitud = signal<Solicitud | null>(null);
-  solicitudesApelables = signal<Solicitud[]>([]);
-  loading = signal<boolean>(false);
-  loadingSolicitud = signal<boolean>(true);
-  error = signal<string>('');
-  mensaje = signal<string>('');
-  confirmModalAbierto = signal<boolean>(false);
-  successModalAbierto = signal<boolean>(false);
-  expedienteTtaip = signal<string>('');
-  uploadedDocumentsCount = signal<number>(0);
-  documentUploadWarning = signal<string>('');
-
-  modoSeleccion = signal<boolean>(false);
-  searchTerm = signal<string>('');
-  doc1Auto = signal<DocumentoMetadata | null>(null);
-  doc2Auto = signal<DocumentoMetadata | null>(null);
-  file1 = signal<File | null>(null);
-  file2 = signal<File | null>(null);
-  file3 = signal<File | null>(null);
-  tipoOrigen = signal<TipoOrigenApelacion>('SAIP_INTERNA');
-  canalPresentacion = signal<CanalPresentacionApelacion>('DIRECTA_TTAIP');
-  entidades = signal<Entidad[]>([]);
-
+  readonly solicitud = signal<Solicitud | null>(null);
+  readonly solicitudesApelables = signal<Solicitud[]>([]);
+  readonly entidades = signal<Entidad[]>([]);
+  readonly estadoConsulta = signal<EstadoConsulta>('cargando');
+  readonly errorConsulta = signal('');
+  readonly reintentarConsulta = signal(false);
+  readonly estadoEntidades = signal<EstadoConsulta>('cargando');
+  readonly errorEntidades = signal('');
+  readonly loadingSolicitud = signal(true);
+  readonly loading = signal(false);
+  readonly modoSeleccion = signal(true);
+  readonly searchTerm = signal('');
+  readonly tipoOrigen = signal<TipoOrigenApelacion>('SAIP_INTERNA');
+  readonly canalPresentacion = signal<CanalPresentacionApelacion>('DIRECTA_TTAIP');
+  readonly modoEntidad = signal<'catalogo' | 'declarada'>('catalogo');
+  readonly tipoDenegatoriaExterna = signal<TipoDenegatoriaApelacion>('EXPRESA');
+  readonly error = signal('');
+  readonly errores = signal<Record<string, string>>({});
+  readonly documentoError = signal('');
+  readonly documentosIncompletos = signal(false);
+  readonly confirmModalAbierto = signal(false);
+  readonly successModalAbierto = signal(false);
+  readonly apelacionCreada = signal<Apelacion | null>(null);
+  readonly expedienteTtaip = signal('');
+  readonly estadoEnvio = signal<'lista' | 'rechazada' | 'incierta' | 'sin-recepcion' | 'confirmada'>('lista');
+  readonly operacionPendiente = signal(false);
+  readonly claveOperacion = signal('');
+  readonly recepcionId = signal<number | null>(null);
+  private recepcionEsperada: AltaApelacionRecepcionDTO | null = null;
+  readonly documentosEnviados = signal<DocumentoEnvio[]>([]);
+  readonly documentosConsultados = signal<DocumentoMetadata[] | null>(null);
+  readonly errorRecuperacion = signal('');
+  readonly bloqueado = computed(() => this.loading() || !!this.apelacionCreada() || this.operacionPendiente());
+  readonly archivos = signal<Record<GrupoDocumental, readonly File[]>>({ 1: [], 2: [], 3: [] });
+  private readonly excluidos = signal<ReadonlySet<number>>(new Set());
+  readonly avisosArchivo = signal<Record<number, string>>({});
+  readonly previewTarget = signal<DocumentPreviewTarget | null>(null);
+  readonly isPreviewOpen = signal(false);
+  readonly accept = DOCUMENTO_ACCEPT;
+  readonly filteredSolicitudes = computed(() => {
+    const term = this.searchTerm().trim().toLowerCase();
+    return this.solicitudesApelables().filter(s => !term || [s.expediente, s.asunto, s.entidadNombre].some(v => v?.toLowerCase().includes(term)));
+  });
+  readonly documentos = computed(() => [
+    { n: 1 as const, label: 'SAIP original', desc: this.esApelacionExterna() ? 'Puede añadir copias de la solicitud externa.' : 'Incluya una copia de la solicitud presentada a la entidad. Puede acompañarla con sus anexos.' },
+    { n: 2 as const, label: this.esApelacionExterna() && this.tipoDenegatoriaExterna() === 'TACITA' ? 'Sustento de silencio' : 'Respuesta de la entidad',
+      desc: this.requiereRespuesta() ? 'Incluya al menos un documento de la respuesta de la entidad.' : 'Puede añadir archivos de respaldo.' },
+    { n: 3 as const, label: 'Recurso fundamentado', desc: 'Puede añadir documentos que complementen sus fundamentos escritos.' }
+  ]);
+  readonly archivosCargados = computed(() => this.documentos().reduce(
+    (total, { n }) => total + this.archivos()[n].length + this.documentosPara(n).length, 0));
   fundamentos = '';
   entidadExternaId: number | null = null;
   entidadExternaNombre = '';
@@ -87,777 +113,573 @@ export class NuevaApelacionComponent implements OnInit {
   numeroSolicitudExterna = '';
   fechaPresentacionSolicitudExterna = '';
   fechaRespuestaEntidad = '';
-  tipoDenegatoriaExterna = signal<TipoDenegatoriaApelacion>('EXPRESA');
   resumenSolicitudOriginal = '';
   resumenRespuestaEntidad = '';
+  referenciaDocumentoSolicitud = '';
   referenciaCargoRecepcion = '';
+  referenciaRespuestaEntidad = '';
+  evidenciaSilencioAdministrativo = '';
   observacionExterna = '';
-  fechaPresentacionAnteEntidad = this.fechaHoyIso();
+  fechaPresentacionAnteEntidad = '';
   referenciaCargoPresentacionEntidad = '';
   observacionPresentacionEntidad = '';
-
-  readonly hasFile1 = computed(() => !!this.file1() || !!this.doc1Auto());
-  readonly hasFile2 = computed(() => !!this.file2() || !!this.doc2Auto());
-  readonly hasFile3 = computed(() => !!this.file3());
-
-  readonly uploadedCount = computed(() => [this.hasFile1(), this.hasFile2(), this.hasFile3()].filter(Boolean).length);
-  readonly allFilesUploaded = computed(() => this.uploadedCount() === 3);
-  readonly requiredDocuments = computed<RequiredAppealDocument[]>(() => [
-      {
-        n: '01',
-        fileNum: 1,
-        label: 'SAIP original',
-        desc: 'Documento de su solicitud original presentada a la entidad.'
-      },
-      {
-        n: '02',
-        fileNum: 2,
-        label: this.esApelacionExterna() && this.tipoDenegatoriaExterna() === 'TACITA'
-          ? 'Sustento de silencio administrativo'
-          : 'Respuesta de la entidad',
-        desc: this.esApelacionExterna() && this.tipoDenegatoriaExterna() === 'TACITA'
-          ? 'Constancia o declaración que sustenta la ausencia de respuesta dentro del plazo.'
-          : 'Documento oficial de respuesta emitido por la entidad.'
-      },
-      {
-        n: '03',
-        fileNum: 3,
-        label: 'Recurso fundamentado',
-        desc: 'Documento donde fundamenta las razones de su apelación.'
+  private consultas = new Subscription();
+  private catalogo = new Subscription();
+  private operaciones = new Subscription();
+  private descargas = new Subscription();
+  private generacion = 0;
+  private destruido = false;
+  private token = this.authService.getToken();
+  private revision = this.authService.cambiosSesion();
+  private entrada: { expediente?: string; id?: number; invalida?: boolean } = {};
+  private fuenteActual: { expediente?: string; id?: number } | null = null;
+  private confirmacion: Intento | null = null;
+  private intento: Intento | null = null;
+  constructor() {
+    effect(() => { const revision = this.authService.cambiosSesion(); untracked(() => {
+      if (revision !== this.revision || this.token !== this.authService.getToken()) {
+        this.revision = revision; this.token = this.authService.getToken(); this.cargarEntrada();
       }
-    ]);
-
-  readonly filteredSolicitudes = computed(() => {
-    const term = this.searchTerm().trim().toLowerCase();
-    const solicitudes = this.solicitudesApelables();
-    if (!term) {
-      return solicitudes;
-    }
-
-    return solicitudes.filter((sol) => {
-      const expediente = (sol.expediente || '').toLowerCase();
-      const entidad = (sol.entidadNombre || '').toLowerCase();
-      const asunto = (sol.asunto || '').toLowerCase();
-      return expediente.includes(term) || entidad.includes(term) || asunto.includes(term);
-    });
-  });
-
+    }); });
+  }
   ngOnInit(): void {
-    this.cargarEntidades();
-    const expediente = this.route.snapshot.paramMap.get('expediente');
-    if (expediente) {
-      this.cargarSolicitud(expediente);
-      return;
+    combineLatest([this.route.paramMap, this.route.queryParamMap]).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(([params, query]) => {
+      const exp = params.get('expediente') || query.get('expediente') || undefined, raw = query.get('solicitudId');
+      this.entrada = { expediente: exp, id: raw && /^\d+$/.test(raw) ? Number(raw) : undefined,
+        invalida: !!raw && (!/^\d+$/.test(raw) || !this.idValido(Number(raw)))
+          || !!params.get('expediente') && !!query.get('expediente') && params.get('expediente') !== query.get('expediente') };
+      this.cargarEntrada();
+    });
+  }
+  ngOnDestroy(): void { this.destruido = true; this.limpiarContexto(); }
+  private idValido(id: unknown): id is number { return typeof id === 'number' && Number.isSafeInteger(id) && id > 0; }
+  private actual(gen = this.generacion): boolean { return !this.destruido && gen === this.generacion && !!this.token
+    && this.token === this.authService.getToken() && this.revision === this.authService.cambiosSesion(); }
+  private limpiarContexto(): void {
+    this.generacion++; this.consultas.unsubscribe(); this.catalogo.unsubscribe(); this.operaciones.unsubscribe(); this.descargas.unsubscribe();
+    this.consultas = new Subscription(); this.operaciones = new Subscription(); this.descargas = new Subscription();
+    this.solicitud.set(null); this.solicitudesApelables.set([]); this.entidades.set([]);
+    this.archivos.set({ 1: [], 2: [], 3: [] }); this.excluidos.set(new Set()); this.fundamentos = ''; this.searchTerm.set('');
+    this.tipoOrigen.set('SAIP_INTERNA'); this.canalPresentacion.set('DIRECTA_TTAIP'); this.modoEntidad.set('catalogo');
+    this.tipoDenegatoriaExterna.set('EXPRESA'); this.entidadExternaId = null;
+    this.entidadExternaNombre = ''; this.entidadExternaRuc = ''; this.entidadExternaEmail = ''; this.numeroSolicitudExterna = '';
+    this.fechaPresentacionSolicitudExterna = ''; this.fechaRespuestaEntidad = ''; this.resumenSolicitudOriginal = '';
+    this.resumenRespuestaEntidad = ''; this.referenciaDocumentoSolicitud = ''; this.referenciaCargoRecepcion = '';
+    this.referenciaRespuestaEntidad = ''; this.evidenciaSilencioAdministrativo = ''; this.observacionExterna = '';
+    this.fechaPresentacionAnteEntidad = ''; this.referenciaCargoPresentacionEntidad = ''; this.observacionPresentacionEntidad = '';
+    this.error.set(''); this.errores.set({}); this.errorConsulta.set(''); this.errorEntidades.set(''); this.documentoError.set(''); this.reintentarConsulta.set(false);
+    this.documentosIncompletos.set(false); this.avisosArchivo.set({}); this.loading.set(false); this.loadingSolicitud.set(false);
+    this.modoSeleccion.set(true); this.confirmModalAbierto.set(false); this.successModalAbierto.set(false); this.cerrarPreview();
+    this.apelacionCreada.set(null); this.expedienteTtaip.set(''); this.estadoEnvio.set('lista'); this.documentosEnviados.set([]);
+    this.documentosConsultados.set(null); this.errorRecuperacion.set(''); this.confirmacion = null; this.intento = null;
+    this.operacionPendiente.set(false); this.claveOperacion.set(''); this.recepcionId.set(null); this.recepcionEsperada = null;
+  }
+  private cargarEntrada(): void {
+    if (this.destruido) return;
+    if (this.entrada.invalida) { this.limpiarContexto(); this.estadoConsulta.set('validacion'); this.errorConsulta.set('Los identificadores de la solicitud no son válidos o son incompatibles.'); return; }
+    if (this.entrada.id) this.cargarSolicitudPorId(this.entrada.id, this.entrada.expediente);
+    else if (this.entrada.expediente) this.cargarSolicitud(this.entrada.expediente);
+    else this.cargarSolicitudesApelables();
+  }
+  cargarEntidades(): void {
+    this.catalogo.unsubscribe(); this.catalogo = new Subscription();
+    const gen = this.generacion; this.entidades.set([]); this.estadoEntidades.set('cargando'); this.errorEntidades.set('');
+    if (!this.actual()) { this.estadoEntidades.set('autenticacion'); return; }
+    this.catalogo.add(this.entidadService.findActivas().subscribe({ next: data => {
+      if (!this.actual(gen)) return;
+      if (!Array.isArray(data) || data.some(e => !e || !this.idValido(e.id) || !e.nombre?.trim()) || new Set(data.map(e => e.id)).size !== data.length) {
+        this.estadoEntidades.set('error'); this.errorEntidades.set('El catálogo de entidades está incompleto.'); return;
+      }
+      this.entidades.set(data); this.estadoEntidades.set(data.length ? 'disponible' : 'vacio');
+    }, error: error => { if (this.actual(gen)) { const fallo = falloConsulta(error, 'las entidades'); this.estadoEntidades.set(fallo.estado); this.errorEntidades.set(fallo.mensaje); } } }));
+  }
+  cargarSolicitud(expediente: string): void { this.consultarSolicitud({ expediente }); }
+  cargarSolicitudPorId(id: number, expediente?: string): void { this.consultarSolicitud({ id, expediente }); }
+  private consultarSolicitud(ref: { id?: number; expediente?: string }): void {
+    this.limpiarContexto(); this.modoSeleccion.set(false); this.estadoConsulta.set('cargando'); this.loadingSolicitud.set(true); this.cargarEntidades();
+    this.subirAlInicio();
+    this.fuenteActual = ref;
+    if (!this.actual() || ref.id !== undefined && !this.idValido(ref.id) || !ref.id && !ref.expediente?.trim()) {
+      this.estadoConsulta.set('validacion'); this.errorConsulta.set('No se pudo identificar la solicitud y el ciudadano.'); this.loadingSolicitud.set(false); return;
     }
-
-    this.route.queryParams.subscribe((params) => {
-      if (params['solicitudId']) {
-        this.cargarSolicitudPorId(parseInt(params['solicitudId'], 10));
-      } else if (params['expediente']) {
-        this.cargarSolicitud(params['expediente']);
-      } else {
-        this.modoSeleccion.set(true);
-        this.cargarSolicitudesApelables();
-      }
-    });
-  }
-
-  cargarSolicitud(expediente: string): void {
-    this.loadingSolicitud.set(true);
-    this.modoSeleccion.set(false);
-    this.solicitudService.findByExpediente(expediente).subscribe({
-      next: (data) => {
-        this.solicitud.set(data);
-        this.inicializarDocumentosAutoCargados(data);
-        this.loadingSolicitud.set(false);
-      },
-      error: () => {
-        this.error.set('Error al cargar la solicitud');
-        this.loadingSolicitud.set(false);
-      }
-    });
-  }
-
-  cargarSolicitudPorId(id: number): void {
-    this.loadingSolicitud.set(true);
-    this.modoSeleccion.set(false);
-    this.solicitudService.findById(id).subscribe({
-      next: (data) => {
-        this.solicitud.set(data);
-        this.inicializarDocumentosAutoCargados(data);
-        this.loadingSolicitud.set(false);
-      },
-      error: () => {
-        this.error.set('Error al cargar la solicitud');
-        this.loadingSolicitud.set(false);
-      }
-    });
-  }
-
-  cargarSolicitudesApelables(): void {
-    this.loadingSolicitud.set(true);
-    const sesion = this.authService.obtenerSesion();
-    if (!sesion?.ciudadanoId) {
-      this.error.set('Error de sesión');
+    const gen = this.generacion;
+    this.consultas.add((ref.id ? this.solicitudService.findById(ref.id) : this.solicitudService.findByExpediente(ref.expediente!)).subscribe({ next: data => {
+      if (!this.actual(gen)) return;
       this.loadingSolicitud.set(false);
-      return;
-    }
-
-    this.solicitudService.findByCiudadanoId(sesion.ciudadanoId).subscribe({
-      next: (data) => {
-        const estadosApelables = new Set(['DENEGADA', 'RESPONDIDA', 'VENCIDA']);
-        const apelables = data.filter((sol) => estadosApelables.has(sol.estado) && !sol.apelacion);
-        this.solicitudesApelables.set(apelables);
-        this.loadingSolicitud.set(false);
-
-        if (apelables.length === 0) {
-          this.error.set('No tiene solicitudes apelables en este momento.');
-        }
-      },
-      error: () => {
-        this.error.set('Error al cargar las solicitudes');
-        this.loadingSolicitud.set(false);
+      if (!data) { this.estadoConsulta.set('vacio'); this.errorConsulta.set('El servidor no devolvió la solicitud.'); this.reintentarConsulta.set(true); return; }
+      if (!this.solicitudCompatible(data) || ref.id && data.id !== ref.id || ref.expediente && data.expediente !== ref.expediente) {
+        this.estadoConsulta.set('error'); this.errorConsulta.set('La información no corresponde a la solicitud autorizada o está incompleta.'); this.reintentarConsulta.set(true); return;
       }
-    });
+      this.solicitud.set(data); this.estadoConsulta.set('disponible'); this.inicializarDocumentos(data);
+    }, error: error => { if (this.actual(gen)) { const fallo = falloConsulta(error, 'la solicitud'); this.estadoConsulta.set(fallo.estado);
+      this.errorConsulta.set(fallo.mensaje); this.reintentarConsulta.set(fallo.reintentable); this.loadingSolicitud.set(false); } } }));
   }
-
-  seleccionarSolicitud(solicitud: Solicitud): void {
-    this.tipoOrigen.set('SAIP_INTERNA');
-    this.canalPresentacion.set('DIRECTA_TTAIP');
-    this.solicitud.set(solicitud);
-    this.inicializarDocumentosAutoCargados(solicitud);
-    this.modoSeleccion.set(false);
-    this.error.set('');
-
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+  private solicitudCompatible(s: Solicitud): boolean {
+    return this.idValido(s.id) && !!s.expediente?.trim() && s.ciudadanoId === this.authService.obtenerSesion()?.ciudadanoId && this.idValido(s.entidadId);
+  }
+  private esApelableEnSelector(s: Solicitud): boolean {
+    if (s.apelacion) return false;
+    if (ampliacionPermiteApelar(ampliacionParaApelar(s))) return true;
+    const tipo = s.respuesta?.tipoRespuesta;
+    if (tipo) return true;
+    const estado = (s.estado || '').toUpperCase();
+    return estado === 'RESPONDIDA' || estado === 'DENEGADA' || estado === 'VENCIDA';
+  }
+  avisoPlazoAmpliacion(s: Solicitud): string | null {
+    if (this.esApelableEnSelector(s)) return null;
+    const ancla = aISO(ampliacionParaApelar(s)?.fechaLimiteOriginal);
+    if (!ancla) return null;
+    const fecha = this.fechaCorta(ancla);
+    if (hoyLima() <= ancla) {
+      return `Puede apelar el cronograma desde el día hábil siguiente al ${fecha}, durante 15 días hábiles. Recibió la ampliación, así que no es silencio administrativo.`;
     }
+    return 'El plazo de 15 días hábiles para apelar el cronograma ya terminó. Podrá presentar su apelación cuando reciba una entrega.';
   }
-
-  iniciarApelacionExterna(): void {
-    this.tipoOrigen.set('EXTERNA');
-    this.canalPresentacion.set('DIRECTA_TTAIP');
-    this.solicitud.set(null);
-    this.inicializarDocumentosAutoCargados(null);
-    this.modoSeleccion.set(false);
-    this.loadingSolicitud.set(false);
-    this.error.set('');
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+  private fechaCorta(iso: string): string {
+    const [anio, mes, dia] = iso.split('-');
+    return `${dia}/${mes}/${anio}`;
   }
-
-  volverASeleccion(): void {
-    this.solicitud.set(null);
-    this.tipoOrigen.set('SAIP_INTERNA');
-    this.canalPresentacion.set('DIRECTA_TTAIP');
-    this.modoSeleccion.set(true);
-    this.fundamentos = '';
-    this.inicializarDocumentosAutoCargados(null);
-    this.searchTerm.set('');
-    this.error.set('');
-    this.mensaje.set('');
-    this.resetDatosExternos();
+  fechaVisible(s: Solicitud): string {
+    const raw = s.respuesta?.fechaRespuesta || s.fechaPresentacion || '';
+    return raw ? raw.slice(0, 10) : 'Fecha no recuperada';
   }
-
-  private inicializarDocumentosAutoCargados(solicitud: Solicitud | null): void {
-    if (!solicitud) {
-      this.doc1Auto.set(null);
-      this.doc2Auto.set(null);
-      this.file1.set(null);
-      this.file2.set(null);
-      this.file3.set(null);
-      return;
-    }
-
-    // SAIP original
-    const docOriginal = solicitud.documentosMetadata?.find(
-      (d) => d.tipoDocumento === 'SOLICITUD_ORIGINAL'
-    ) || null;
-    this.doc1Auto.set(docOriginal);
-    this.file1.set(null);
-
-    // Respuesta de la entidad
-    const docRespuesta = solicitud.respuesta?.documentosMetadata?.find(
-      (d) => d.tipoDocumento === 'RESPUESTA_ENTIDAD'
-    ) || null;
-    this.doc2Auto.set(docRespuesta);
-    this.file2.set(null);
-    this.file3.set(null);
+  estadoVisible(s: Solicitud): string {
+    const estado = (s.estado || '').toUpperCase();
+    if (estado === 'RESPONDIDA' || estado === 'DENEGADA') return estado;
+    if (tienePlazoAmpliadoVigente(s)) return 'PLAZO_AMPLIADO';
+    return s.estado || '';
   }
-
-  actualizarBusqueda(value: string): void {
-    this.searchTerm.set(value);
-  }
-
-  onFileChange(event: Event, fileNum: 1 | 2 | 3): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0] ?? null;
-    if (file) {
-      const validationError = validarDocumento(file);
-      if (validationError) {
-        input.value = '';
-        this.error.set(validationError);
-        return;
+  vinoDesdeLista(): boolean { return !this.entrada.expediente && !this.entrada.id; }
+  cargarSolicitudesApelables(): void {
+    this.limpiarContexto(); this.estadoConsulta.set('cargando'); this.loadingSolicitud.set(true); this.cargarEntidades();
+    this.fuenteActual = null;
+    const ciudadano = this.authService.obtenerSesion()?.ciudadanoId;
+    if (!this.actual() || !this.idValido(ciudadano)) { this.estadoConsulta.set('autenticacion'); this.errorConsulta.set('Inicie sesión como ciudadano.'); this.loadingSolicitud.set(false); return; }
+    const gen = this.generacion;
+    this.consultas.add(this.solicitudService.findByCiudadanoId(ciudadano).subscribe({ next: data => {
+      if (!this.actual(gen)) return;
+      this.loadingSolicitud.set(false);
+      if (!Array.isArray(data) || data.some(s => !s || !this.solicitudCompatible(s)) || new Set(data.map(s => s.id)).size !== data.length) {
+        this.estadoConsulta.set('error'); this.errorConsulta.set('La lista está incompleta o contiene una relación incompatible.'); this.reintentarConsulta.set(true); return;
       }
-    }
-
-    if (fileNum === 1) {
-      this.file1.set(file);
-    } else if (fileNum === 2) {
-      this.file2.set(file);
-    } else {
-      this.file3.set(file);
-    }
-    this.error.set('');
+      const apelables = data.filter(s => this.esApelableEnSelector(s));
+      this.solicitudesApelables.set(apelables); this.estadoConsulta.set(apelables.length ? 'disponible' : 'vacio');
+    }, error: error => { if (this.actual(gen)) { const fallo = falloConsulta(error, 'sus solicitudes'); this.estadoConsulta.set(fallo.estado);
+      this.errorConsulta.set(fallo.mensaje); this.reintentarConsulta.set(fallo.reintentable); this.loadingSolicitud.set(false); } } }));
   }
-
-  removeFile(fileNum: 1 | 2 | 3): void {
-    if (fileNum === 1) {
-      this.file1.set(null);
-      this.doc1Auto.set(null);
-    } else if (fileNum === 2) {
-      this.file2.set(null);
-      this.doc2Auto.set(null);
-    } else {
-      this.file3.set(null);
-    }
+  seleccionarSolicitud(sol: Solicitud): void {
+    if (!this.actual() || !this.solicitudesApelables().some(s => s.id === sol.id && s.expediente === sol.expediente)) return;
+    this.cargarSolicitudPorId(sol.id, sol.expediente);
   }
-
-  previewFile(fileNum: 1 | 2 | 3): void {
-    if (fileNum === 1) {
-      if (this.file1()) {
-        this.abrirFileLocal(this.file1()!);
-      } else if (this.doc1Auto()) {
-        this.abrirFileRemoto(this.doc1Auto()!);
-      }
-    } else if (fileNum === 2) {
-      if (this.file2()) {
-        this.abrirFileLocal(this.file2()!);
-      } else if (this.doc2Auto()) {
-        this.abrirFileRemoto(this.doc2Auto()!);
-      }
-    } else {
-      if (this.file3()) {
-        this.abrirFileLocal(this.file3()!);
-      }
-    }
+  iniciarApelacionExterna(): void { if (this.destruido) return; this.limpiarContexto(); this.fuenteActual = null; this.tipoOrigen.set('EXTERNA'); this.modoSeleccion.set(false); this.estadoConsulta.set('disponible'); this.cargarEntidades(); this.subirAlInicio(); }
+  volverASeleccion(): void { if (!this.destruido) this.cargarSolicitudesApelables(); }
+  reintentarFuente(): void { if (this.fuenteActual) this.consultarSolicitud(this.fuenteActual); else this.cargarEntrada(); }
+  esApelacionExterna(): boolean { return this.tipoOrigen() === 'EXTERNA'; }
+  esPresentacionAnteEntidad(): boolean { return !this.esApelacionExterna() && this.canalPresentacion() === 'ANTE_ENTIDAD'; }
+  cambiarCanal(canal: CanalPresentacionApelacion): void { if (!this.bloqueado() && this.actual()) { this.canalPresentacion.set(canal); this.confirmacion = null; this.confirmModalAbierto.set(false); } }
+  cambiarEntidad(modo: 'catalogo' | 'declarada'): void { if (!this.bloqueado() && this.actual()) { this.modoEntidad.set(modo); this.entidadExternaId = null; this.entidadExternaNombre = ''; this.entidadExternaRuc = ''; this.entidadExternaEmail = ''; } }
+  cambiarDenegatoria(tipo: TipoDenegatoriaApelacion): void {
+    if (this.bloqueado() || !this.actual()) return;
+    this.tipoDenegatoriaExterna.set(tipo); this.fechaRespuestaEntidad = ''; this.resumenRespuestaEntidad = ''; this.referenciaRespuestaEntidad = ''; this.evidenciaSilencioAdministrativo = '';
+    this.archivos.update(archivos => ({ ...archivos, 2: [] }));
+    this.avisosArchivo.update(avisos => ({ ...avisos, 2: '' }));
+    this.cerrarPreview(); this.confirmacion = null;
   }
-
-  downloadFile(fileNum: 1 | 2 | 3): void {
-    if (fileNum === 1) {
-      if (this.file1()) {
-        this.descargarFileLocal(this.file1()!);
-      } else if (this.doc1Auto()) {
-        this.descargarFileRemoto(this.doc1Auto()!);
-      }
-    } else if (fileNum === 2) {
-      if (this.file2()) {
-        this.descargarFileLocal(this.file2()!);
-      } else if (this.doc2Auto()) {
-        this.descargarFileRemoto(this.doc2Auto()!);
-      }
-    } else {
-      if (this.file3()) {
-        this.descargarFileLocal(this.file3()!);
-      }
-    }
+  private metadataFuente(d: DocumentoMetadata, tipo: TipoDocumento, key: 'solicitudId' | 'respuestaId', id: number): boolean {
+    return !!d && this.idValido(d.id) && d.tipoDocumento === tipo && d.estado === 'ACTIVO' && d[key] === id && !!d.nombreOriginal
+      && typeof d.sizeBytes === 'number' && d.sizeBytes > 0 && !!d.contentType?.trim() && /^[a-f0-9]{64}$/.test(d.hashSha256 || '')
+      && DOCUMENTO_RELATION_KEYS.every(k => k === key || d[k] == null);
   }
-
-  private abrirFileLocal(file: File): void {
-    if (typeof window === 'undefined') return;
-    const objectUrl = URL.createObjectURL(file);
-    window.open(objectUrl, '_blank');
+  private inicializarDocumentos(s: Solicitud): void {
+    const fuente1 = Array.isArray(s.documentosMetadata) ? s.documentosMetadata : [];
+    const fuente2 = Array.isArray(s.respuesta?.documentosMetadata) ? s.respuesta.documentosMetadata : [];
+    const entregables = this.entregablesRecibidos(s);
+    this.documentosIncompletos.set(!Array.isArray(s.documentosMetadata)
+      || fuente1.filter(d => d?.tipoDocumento === 'SOLICITUD_ORIGINAL' || d?.tipoDocumento === 'DOCUMENTO_ADJUNTO').length !== this.antecedentes(1).length
+      || this.requiereRespuesta() && (!Array.isArray(s.respuesta?.documentosMetadata)
+        || fuente2.filter(d => d?.tipoDocumento === 'RESPUESTA_ENTIDAD').length + entregables.length !== this.antecedentes(2).length)
+      || this.entregableIncompleto(s));
   }
-
-  private abrirFileRemoto(doc: DocumentoMetadata): void {
-    if (typeof window === 'undefined' || !doc.id) return;
-    this.loading.set(true);
-    this.documentoService.download(doc.id, doc.nombreOriginal || 'documento').subscribe({
-      next: ({ blob }) => {
-        this.loading.set(false);
-        const objectUrl = URL.createObjectURL(blob);
-        window.open(objectUrl, '_blank');
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.error.set(problemDetailsMessage(err, 'No se pudo abrir el documento.'));
-      }
-    });
+  private entregableIncompleto(s: Solicitud): boolean {
+    const ampliacion = ampliacionParaApelar(s);
+    return (ampliacion?.cronograma ?? []).some(hito => hito.ampliacionId === ampliacion?.id && hito.estado === 'ENTREGADA'
+      && Array.isArray(hito.documentos) && hito.documentos.some(d => !this.metadataEntregable(d)));
   }
-
-  private descargarFileLocal(file: File): void {
-    if (typeof window === 'undefined') return;
-    const objectUrl = URL.createObjectURL(file);
-    const anchor = document.createElement('a');
-    anchor.href = objectUrl;
-    anchor.download = file.name;
-    anchor.rel = 'noopener';
-    anchor.click();
-    URL.revokeObjectURL(objectUrl);
+  private entregablesRecibidos(s: Solicitud): DocumentoMetadata[] {
+    const ampliacion = ampliacionParaApelar(s);
+    if (!ampliacion) return [];
+    return (ampliacion.cronograma ?? [])
+      .filter(hito => hito.ampliacionId === ampliacion.id && hito.estado === 'ENTREGADA' && Array.isArray(hito.documentos))
+      .flatMap(hito => hito.documentos ?? [])
+      .filter(d => this.metadataEntregable(d));
   }
-
-  private descargarFileRemoto(doc: DocumentoMetadata): void {
-    if (typeof window === 'undefined' || !doc.id) return;
-    this.loading.set(true);
-    this.documentoService.download(doc.id, doc.nombreOriginal || 'documento').subscribe({
-      next: ({ blob, filename }) => {
-        this.loading.set(false);
-        const objectUrl = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = objectUrl;
-        anchor.download = filename;
-        anchor.rel = 'noopener';
-        anchor.click();
-        URL.revokeObjectURL(objectUrl);
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.error.set(problemDetailsMessage(err, 'No se pudo descargar el documento.'));
-      }
-    });
+  private metadataEntregable(d: DocumentoMetadata | null | undefined): d is DocumentoMetadata {
+    return !!d && this.idValido(d.id) && d.tipoDocumento === 'RESPUESTA_ENTIDAD' && d.estado === 'ACTIVO'
+      && !!d.nombreOriginal && typeof d.sizeBytes === 'number' && d.sizeBytes > 0 && !!d.contentType?.trim()
+      && /^[a-f0-9]{64}$/.test(d.hashSha256 || '')
+      && DOCUMENTO_RELATION_KEYS.every(k => d[k] == null);
   }
-
-  getEstadoBadgeClass(estado: string): string {
-    if (estado === 'DENEGADA' || estado === 'VENCIDA') {
-      return 'pill pill-high';
-    }
-    if (estado === 'RESPONDIDA') {
-      return 'pill';
-    }
-    return 'pill pill-medium';
+  private antecedentes(n: GrupoDocumental): DocumentoMetadata[] {
+    const s = this.solicitud();
+    if (!s || !this.actual() || n === 3) return [];
+    const respuestaId = s.respuesta?.id;
+    const originales = Array.isArray(s.documentosMetadata) ? s.documentosMetadata : [];
+    const respuestas = Array.isArray(s.respuesta?.documentosMetadata) ? s.respuesta.documentosMetadata : [];
+    const deRespuesta = this.requiereRespuesta() && this.idValido(respuestaId)
+      ? respuestas.filter(d => this.metadataFuente(d, 'RESPUESTA_ENTIDAD', 'respuestaId', respuestaId))
+      : [];
+    const documentos = n === 1
+      ? originales.filter(d => this.metadataFuente(d, 'SOLICITUD_ORIGINAL', 'solicitudId', s.id)
+        || this.metadataFuente(d, 'DOCUMENTO_ADJUNTO', 'solicitudId', s.id))
+      : [...deRespuesta, ...this.entregablesRecibidos(s)];
+    return [...new Map(documentos.map(d => [d.id, d])).values()];
   }
-
-  getEstadoDisplay(estado: string): string {
-    return estado.replaceAll('_', ' ');
+  documentosPara(n: GrupoDocumental): DocumentoMetadata[] {
+    return this.antecedentes(n).filter(d => !this.excluidos().has(d.id!));
   }
-
-  fileFor(fileNum: 1 | 2 | 3): File | null {
-    if (fileNum === 1) return this.file1();
-    if (fileNum === 2) return this.file2();
-    return this.file3();
+  antecedentesExcluidos(n: GrupoDocumental): DocumentoMetadata[] {
+    return this.antecedentes(n).filter(d => this.excluidos().has(d.id!));
   }
-
-  fileSizeLabel(file: File): string {
-    return this.formatBytes(file.size);
-  }
-
-  formatBytes(bytes?: number): string {
-    if (bytes === undefined || bytes === null) return 'N/D';
-    return bytes >= 1024 * 1024
-      ? `${(bytes / 1024 / 1024).toFixed(2)} MB`
-      : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  }
-
-  hasDocument(fileNum: 1 | 2 | 3): boolean {
-    if (fileNum === 1) return !!this.file1() || !!this.doc1Auto();
-    if (fileNum === 2) return !!this.file2() || !!this.doc2Auto();
-    return !!this.file3();
-  }
-
-  isAutoLoaded(fileNum: 1 | 2 | 3): boolean {
-    if (fileNum === 1) return !!this.doc1Auto();
-    if (fileNum === 2) return !!this.doc2Auto();
-    return false;
-  }
-
-  documentNameFor(fileNum: 1 | 2 | 3): string {
-    if (fileNum === 1) {
-      return this.file1()?.name || this.doc1Auto()?.nombreOriginal || '';
-    }
-    if (fileNum === 2) {
-      return this.file2()?.name || this.doc2Auto()?.nombreOriginal || '';
-    }
-    return this.file3()?.name || '';
-  }
-
-  documentSizeFor(fileNum: 1 | 2 | 3): string {
-    if (fileNum === 1) {
-      if (this.file1()) return this.fileSizeLabel(this.file1()!);
-      if (this.doc1Auto()) return this.formatBytes(this.doc1Auto()?.sizeBytes);
-    }
-    if (fileNum === 2) {
-      if (this.file2()) return this.fileSizeLabel(this.file2()!);
-      if (this.doc2Auto()) return this.formatBytes(this.doc2Auto()?.sizeBytes);
-    }
-    if (fileNum === 3) {
-      if (this.file3()) return this.fileSizeLabel(this.file3()!);
-    }
-    return '';
-  }
-
-  puedeEnviar(): boolean {
-    return (this.esApelacionExterna() ? this.datosExternosValidos() : !!this.solicitud())
-      && (!this.esPresentacionAnteEntidad()
-        || (!!this.fechaPresentacionAnteEntidad && this.referenciaCargoPresentacionEntidad.trim().length > 0))
-      && this.allFilesUploaded()
-      && this.fundamentos.trim().length >= 50;
-  }
-
-  abrirConfirmacionApelacion(): void {
-    if (!this.validarApelacion()) {
-      return;
-    }
-
-    this.confirmModalAbierto.set(true);
-  }
-
-  crearApelacion(): void {
-    if (!this.validarApelacion()) {
-      return;
-    }
-
-    const sesion = this.authService.obtenerSesion();
-    if (!sesion?.ciudadanoId) {
-      this.error.set('Error de sesión');
-      return;
-    }
-
-    this.confirmModalAbierto.set(false);
-    this.loading.set(true);
-    this.error.set('');
-    this.documentUploadWarning.set('');
-    this.uploadedDocumentsCount.set(0);
-
-    const creacion$ = this.esApelacionExterna()
-      ? this.apelacionService.crearExterna({
-          ciudadanoId: sesion.ciudadanoId,
-          entidadId: this.entidadExternaId ?? undefined,
-          entidadExternaNombre: this.entidadExternaNombre.trim() || undefined,
-          entidadExternaRuc: this.entidadExternaRuc.trim() || undefined,
-          entidadExternaEmail: this.entidadExternaEmail.trim() || undefined,
-          numeroSolicitudExterna: this.numeroSolicitudExterna.trim(),
-          fechaPresentacionSolicitudExterna: this.fechaPresentacionSolicitudExterna,
-          fechaRespuestaEntidad: this.tipoDenegatoriaExterna() === 'EXPRESA' ? this.fechaRespuestaEntidad : undefined,
-          tipoDenegatoria: this.tipoDenegatoriaExterna(),
-          resumenSolicitudOriginal: this.resumenSolicitudOriginal.trim(),
-          resumenRespuestaEntidad: this.tipoDenegatoriaExterna() === 'EXPRESA'
-            ? this.resumenRespuestaEntidad.trim() || undefined
-            : undefined,
-          referenciaDocumentoSolicitud: this.file1()?.name || this.doc1Auto()?.nombreOriginal || '',
-          referenciaCargoRecepcion: this.referenciaCargoRecepcion.trim() || undefined,
-          referenciaRespuestaEntidad: this.tipoDenegatoriaExterna() === 'EXPRESA'
-            ? this.file2()?.name || this.doc2Auto()?.nombreOriginal || undefined
-            : undefined,
-          evidenciaSilencioAdministrativo: this.tipoDenegatoriaExterna() === 'TACITA'
-            ? this.file2()?.name || this.doc2Auto()?.nombreOriginal || undefined
-            : undefined,
-          fundamentos: this.fundamentos.trim(),
-          observacion: this.observacionExterna.trim() || undefined
-        })
-      : this.esPresentacionAnteEntidad()
-      ? this.apelacionService.crearAnteEntidad({
-          solicitudId: this.solicitud()!.id,
-          ciudadanoId: sesion.ciudadanoId,
-          fundamentos: this.fundamentos.trim(),
-          fechaPresentacionAnteEntidad: this.fechaPresentacionAnteEntidad,
-          referenciaCargoPresentacion: this.referenciaCargoPresentacionEntidad.trim(),
-          observacion: this.observacionPresentacionEntidad.trim() || undefined
-        })
-      : this.apelacionService.crear({
-          solicitudId: this.solicitud()!.id,
-          ciudadanoId: sesion.ciudadanoId,
-          fundamentos: this.fundamentos.trim()
-        });
-
-    creacion$.pipe(
-      switchMap((resp) => {
-        this.expedienteTtaip.set(resp.expediente || '');
-        const tasks = [];
-
-        // Documento 1: SAIP Original (Clonación vs Upload)
-        if (this.doc1Auto()) {
-          tasks.push(this.clonarAppealDocument(resp.id, this.doc1Auto()!.id!, 'SOLICITUD_ORIGINAL'));
-        } else if (this.file1()) {
-          tasks.push(this.uploadAppealDocument(resp.id, this.file1()!, 'SOLICITUD_ORIGINAL'));
-        } else {
-          tasks.push(of(false));
-        }
-
-        // Documento 2: Respuesta / Silencio (Clonación vs Upload)
-        const doc2Tipo = this.esApelacionExterna() && this.tipoDenegatoriaExterna() === 'TACITA'
-          ? 'DOCUMENTO_ADJUNTO'
-          : 'RESPUESTA_ENTIDAD';
-        if (this.doc2Auto()) {
-          tasks.push(this.clonarAppealDocument(resp.id, this.doc2Auto()!.id!, doc2Tipo));
-        } else if (this.file2()) {
-          tasks.push(this.uploadAppealDocument(resp.id, this.file2()!, doc2Tipo));
-        } else {
-          tasks.push(of(false));
-        }
-
-        // Documento 3: Recurso Apelación (Upload manual siempre)
-        if (this.file3()) {
-          tasks.push(this.uploadAppealDocument(resp.id, this.file3()!, 'RECURSO_APELACION'));
-        } else {
-          tasks.push(of(false));
-        }
-
-        return forkJoin(tasks).pipe(
-          map((results) => ({
-            resp,
-            uploadedCount: results.filter(Boolean).length
-          }))
-        );
-      })
-    ).subscribe({
-      next: ({ resp, uploadedCount }) => {
-        this.loading.set(false);
-        this.uploadedDocumentsCount.set(uploadedCount);
-        this.file1.set(null);
-        this.doc1Auto.set(null);
-        this.file2.set(null);
-        this.doc2Auto.set(null);
-        this.file3.set(null);
-        this.mensaje.set(`Apelación creada correctamente. Expediente: ${resp.expediente}`);
-        this.successModalAbierto.set(true);
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.error.set(problemDetailsMessage(err, 'Error al crear la apelación.'));
-      }
-    });
-  }
-
-  apelacionConfirmSummary(): ReferenceConfirmSummary[] {
+  adjuntosPara(n: GrupoDocumental) {
     return [
-      { label: this.esApelacionExterna() ? 'Solicitud externa' : 'Expediente', value: this.solicitudOrigenDisplay(), mono: true },
-      { label: 'Entidad', value: this.entidadOrigenDisplay() },
-      { label: 'Asunto original', value: this.asuntoOrigenDisplay() },
-      { label: 'Documentos', value: `${this.uploadedCount()} de 3 adjuntos` },
-      { label: 'Fundamentos', value: `${this.fundamentos.trim().length} caracteres` },
-      { label: 'Ingreso', value: this.canalPresentacionDisplay() }
+      ...this.documentosPara(n).map(doc => ({ adjunto: doc, nombre: doc.nombreOriginal, bytes: doc.sizeBytes, antecedente: true })),
+      ...this.archivos()[n].map(file => ({ adjunto: file, nombre: file.name, bytes: file.size, antecedente: false }))
     ];
   }
-
+  incluirAntecedente(n: GrupoDocumental, id: number): void {
+    if (this.bloqueado() || !this.antecedentes(n).some(d => d.id === id)) return;
+    this.excluidos.update(ids => new Set([...ids].filter(excluido => excluido !== id)));
+    this.enfocar(`apelacion-elegir-${n}`);
+  }
+  onFileChange(event: Event, n: GrupoDocumental): void {
+    const input = event.target as HTMLInputElement;
+    this.agregarArchivos(n, Array.from(input.files ?? []));
+    input.value = '';
+  }
+  onFileDrop(event: DragEvent, n: GrupoDocumental): void {
+    event.preventDefault();
+    this.agregarArchivos(n, Array.from(event.dataTransfer?.files ?? []));
+  }
+  private agregarArchivos(n: GrupoDocumental, seleccion: File[]): void {
+    if (!this.actual() || this.bloqueado() || !seleccion.length) return;
+    const aceptados: File[] = [], errores: string[] = [];
+    for (const file of seleccion) {
+      const error = !file.size ? 'No se admiten archivos vacíos.' : validarDocumento(file);
+      if (error) errores.push(`${file.name}: ${error}`);
+      else aceptados.push(file);
+    }
+    this.archivos.update(archivos => ({ ...archivos, [n]: [...new Set([...archivos[n], ...aceptados])] }));
+    this.avisosArchivo.update(avisos => ({ ...avisos, [n]: errores.join(' ') }));
+  }
+  quitarArchivo(n: GrupoDocumental, adjunto: File | DocumentoMetadata): void {
+    if (!this.actual() || this.bloqueado()) return;
+    if (adjunto instanceof File) {
+      this.archivos.update(archivos => ({ ...archivos, [n]: archivos[n].filter(file => file !== adjunto) }));
+    } else if (this.documentosPara(n).some(doc => doc.id === adjunto.id)) {
+      this.excluidos.update(ids => new Set([...ids, adjunto.id!]));
+    }
+    this.cerrarPreview();
+    this.enfocar(`apelacion-elegir-${n}`);
+  }
+  previewFile(n: GrupoDocumental, adjunto: File | DocumentoMetadata): void {
+    if (!this.actual()) return;
+    const doc = adjunto instanceof File
+      ? this.archivos()[n].includes(adjunto) ? { file: adjunto, blob: adjunto, nombre: adjunto.name, tipo: adjunto.type } : null
+      : this.documentosPara(n).find(d => d.id === adjunto.id);
+    if (!doc) return;
+    this.previewTarget.set('file' in doc ? doc : { id: doc.id, nombre: doc.nombreOriginal!, tipo: doc.contentType });
+    this.isPreviewOpen.set(true);
+  }
+  cerrarPreview(): void { this.isPreviewOpen.set(false); this.previewTarget.set(null); }
+  downloadFile(n: GrupoDocumental, adjunto: File | DocumentoMetadata): void {
+    if (!this.actual()) return;
+    if (adjunto instanceof File) {
+      if (this.archivos()[n].includes(adjunto)) this.descargarBlob(adjunto, adjunto.name);
+    } else {
+      const doc = this.documentosPara(n).find(d => d.id === adjunto.id);
+      if (doc) this.descargar(doc);
+    }
+  }
+  private descargar(doc: DocumentoMetadata): void {
+    const gen = this.generacion; this.documentoError.set('');
+    this.descargas.add(this.documentoService.download(doc.id!, doc.nombreOriginal || 'documento').subscribe({
+      next: ({ blob, filename }) => { if (this.actual(gen)) this.descargarBlob(blob, filename); },
+      error: error => { if (this.actual(gen)) this.documentoError.set(falloConsulta(error, 'el documento').mensaje); }
+    }));
+  }
+  private descargarBlob(blob: Blob, nombre: string): void { const url = URL.createObjectURL(blob), anchor = document.createElement('a'); anchor.href = url; anchor.download = nombre; anchor.rel = 'noopener'; anchor.click(); URL.revokeObjectURL(url); }
+  requiereRespuesta(): boolean { return !this.esApelacionExterna() && !!this.solicitud()?.respuesta && this.solicitud()?.respuesta?.tipoRespuesta !== 'SILENCIO_ADMINISTRATIVO'; }
+  limiteFundamentos(): number | null { return this.esApelacionExterna() || this.esPresentacionAnteEntidad() ? 5000 : null; }
+  private validar(): Record<string, string> {
+    const e: Record<string, string> = {};
+    if (!this.actual() || !this.idValido(this.authService.obtenerSesion()?.ciudadanoId)) e['sesion'] = 'No se identificó al ciudadano autenticado.';
+    if (!this.fundamentos.trim() || this.limiteFundamentos() && this.fundamentos.trim().length > this.limiteFundamentos()!) e['fundamentos'] = 'Ingrese los fundamentos; respete el límite indicado para este comando.';
+    if (this.esApelacionExterna()) {
+      if (this.modoEntidad() === 'catalogo' ? this.estadoEntidades() !== 'disponible' || !this.entidades().some(v => v.id === this.entidadExternaId) : !this.entidadExternaNombre.trim()) e['entidad'] = 'Seleccione una entidad del catálogo o declare expresamente su nombre.';
+      for (const [campo, valor, max] of [ ['Entidad declarada', this.entidadExternaNombre, 200], ['RUC declarado', this.entidadExternaRuc, 20], ['Correo declarado', this.entidadExternaEmail, 120], ['Número de solicitud', this.numeroSolicitudExterna, 100], ['Resumen de solicitud', this.resumenSolicitudOriginal, 5000], ['Resumen de respuesta', this.resumenRespuestaEntidad, 5000], ['Referencia de solicitud', this.referenciaDocumentoSolicitud, 500], ['Referencia del cargo', this.referenciaCargoRecepcion, 500], ['Referencia de respuesta', this.referenciaRespuestaEntidad, 500], ['Sustento de silencio', this.evidenciaSilencioAdministrativo, 5000], ['Observación', this.observacionExterna, 5000] ] as const) if (valor.trim().length > max) e['externa'] = `${campo}: máximo ${max} caracteres.`;
+      if (!this.numeroSolicitudExterna.trim() || !this.fechaPresentacionSolicitudExterna || !this.resumenSolicitudOriginal.trim() || !this.referenciaDocumentoSolicitud.trim()) e['externa'] = 'Complete número, fecha, resumen y referencia declarada del documento de la solicitud externa.';
+      if (this.entidadExternaEmail && !/^[^\s@]+@[^\s@]+$/.test(this.entidadExternaEmail.trim())) e['correo'] = 'Revise el correo declarado de la entidad.';
+      if (this.tipoDenegatoriaExterna() === 'EXPRESA') {
+        if (!this.fechaRespuestaEntidad || !this.resumenRespuestaEntidad.trim() && !this.referenciaRespuestaEntidad.trim()) e['respuesta'] = 'La denegatoria expresa exige fecha y resumen o referencia de la respuesta.';
+      } else if (this.tipoDenegatoriaExterna() !== 'TACITA' || !this.evidenciaSilencioAdministrativo.trim()) e['respuesta'] = 'Declare el sustento del silencio administrativo; no se deduce de una fecha o estado.';
+    } else {
+      const s = this.solicitud();
+      if (!s || !this.solicitudCompatible(s) || s.apelacion !== null || s.respuesta === undefined || s.respuesta && !this.idValido(s.respuesta.id)) e['solicitud'] = 'La solicitud está incompleta o ya registra una apelación. Actualice su consulta.';
+      if (s && !this.esApelableEnSelector(s)) e['plazo'] = this.avisoPlazoAmpliacion(s) ?? 'Esta solicitud no está en plazo de apelación.';
+      if (!this.archivos()[1].length && !this.documentosPara(1).some(d => d.tipoDocumento === 'SOLICITUD_ORIGINAL')) e['documentos'] = 'Seleccione una copia real de la SAIP original o un antecedente registrado.';
+      if (this.requiereRespuesta() && !this.archivos()[2].length && !this.documentosPara(2).length) e['respuesta'] = 'Incluya al menos un documento de la respuesta de la entidad.';
+      if (this.esPresentacionAnteEntidad() && (!this.fechaPresentacionAnteEntidad || !this.referenciaCargoPresentacionEntidad.trim()
+        || this.referenciaCargoPresentacionEntidad.trim().length > 500 || this.observacionPresentacionEntidad.trim().length > 5000)) e['cargo'] = 'Ingrese la fecha real y referencia del cargo ante entidad (máximo 500); observación hasta 5000 caracteres.';
+    }
+    if (Object.values(this.archivos()).some(files => files.some(file => !file.size || validarDocumento(file)))) {
+      e['archivos'] = 'Revise los archivos seleccionados y el límite de 10 MB por archivo.';
+    }
+    return e;
+  }
+  puedeEnviar(): boolean { return !this.bloqueado() && !this.loadingSolicitud() && Object.keys(this.validar()).length === 0; }
+  abrirConfirmacionApelacion(): void {
+    if (this.bloqueado()) return;
+    const e = this.validar(); this.errores.set(e); this.error.set(Object.keys(e).length ? 'Revise los campos señalados antes de presentar.' : '');
+    if (Object.keys(e).length) { this.enfocar('apelacion-errores'); return; }
+    this.confirmacion = this.capturar(); this.confirmModalAbierto.set(true);
+  }
+  private contexto(): string { return `${this.tipoOrigen()}:${this.solicitud()?.id ?? ''}:${this.canalPresentacion()}:${this.modoEntidad()}`; }
+  private capturar(clave: string = crypto.randomUUID()): Intento {
+    const ciudadanoId = this.authService.obtenerSesion()!.ciudadanoId!, fundamentos = this.fundamentos.trim();
+    let comando: Comando;
+    if (this.esApelacionExterna()) comando = { modo: 'externa', datos: { ciudadanoId,
+      entidadId: this.modoEntidad() === 'catalogo' ? this.entidadExternaId! : undefined,
+      entidadExternaNombre: this.modoEntidad() === 'declarada' ? this.entidadExternaNombre.trim() : undefined,
+      entidadExternaRuc: this.modoEntidad() === 'declarada' ? this.entidadExternaRuc.trim() || undefined : undefined,
+      entidadExternaEmail: this.modoEntidad() === 'declarada' ? this.entidadExternaEmail.trim() || undefined : undefined,
+      numeroSolicitudExterna: this.numeroSolicitudExterna.trim(), fechaPresentacionSolicitudExterna: this.fechaPresentacionSolicitudExterna,
+      tipoDenegatoria: this.tipoDenegatoriaExterna(), resumenSolicitudOriginal: this.resumenSolicitudOriginal.trim(), referenciaDocumentoSolicitud: this.referenciaDocumentoSolicitud.trim(),
+      referenciaCargoRecepcion: this.referenciaCargoRecepcion.trim() || undefined, fundamentos, observacion: this.observacionExterna.trim() || undefined,
+      ...(this.tipoDenegatoriaExterna() === 'EXPRESA' ? { fechaRespuestaEntidad: this.fechaRespuestaEntidad, resumenRespuestaEntidad: this.resumenRespuestaEntidad.trim() || undefined, referenciaRespuestaEntidad: this.referenciaRespuestaEntidad.trim() || undefined }
+        : { evidenciaSilencioAdministrativo: this.evidenciaSilencioAdministrativo.trim() }) } };
+    else if (this.esPresentacionAnteEntidad()) comando = { modo: 'ante-entidad', datos: { solicitudId: this.solicitud()!.id, ciudadanoId, fundamentos,
+      fechaPresentacionAnteEntidad: this.fechaPresentacionAnteEntidad, referenciaCargoPresentacion: this.referenciaCargoPresentacionEntidad.trim(), observacion: this.observacionPresentacionEntidad.trim() || undefined } };
+    else comando = { modo: 'directa', datos: { solicitudId: this.solicitud()!.id, ciudadanoId, fundamentos } };
+    return { clave, comando, contexto: this.contexto(), solicitudExpediente: this.solicitud()?.expediente,
+      documentos: this.documentos().flatMap(({ n, label }) => {
+        const respuestaExpresa = this.esApelacionExterna() ? this.tipoDenegatoriaExterna() === 'EXPRESA' : this.requiereRespuesta();
+        const tipo: TipoDocumento = n === 1 ? 'SOLICITUD_ORIGINAL' : n === 3 ? 'RECURSO_APELACION'
+          : respuestaExpresa ? 'RESPUESTA_ENTIDAD' : 'DOCUMENTO_ADJUNTO';
+        return [
+          ...this.documentosPara(n).map(origen => ({ label, tipo: origen.tipoDocumento as TipoDocumento, origen: { ...origen }, estado: 'pendiente' as const })),
+          ...this.archivos()[n].map(file => ({ label, tipo, file, estado: 'pendiente' as const }))
+        ];
+      }) };
+  }
+  crearApelacion(): void {
+    if (this.bloqueado() || !this.actual()) return;
+    const e = this.validar(); this.errores.set(e); if (Object.keys(e).length) { this.error.set('Revise los campos señalados antes de presentar.'); return; }
+    const intento = this.capturar(this.confirmacion?.clave);
+    if (this.confirmacion && (JSON.stringify(intento.comando) !== JSON.stringify(this.confirmacion.comando) || intento.documentos.length !== this.confirmacion.documentos.length
+      || intento.documentos.some((d, i) => d.file !== this.confirmacion!.documentos[i].file || d.origen?.id !== this.confirmacion!.documentos[i].origen?.id || d.origen?.hashSha256 !== this.confirmacion!.documentos[i].origen?.hashSha256))) {
+      this.error.set('El contenido cambió. Revise y confirme nuevamente.'); this.confirmModalAbierto.set(false); this.confirmacion = null; return;
+    }
+    this.intento = intento; this.claveOperacion.set(intento.clave); this.operacionPendiente.set(true); this.recepcionEsperada = null;
+    this.enviarOperacion(intento, this.generacion);
+  }
+  private datosRecepcion(i: Intento): RegistrarAltaApelacionRequest {
+    const c = i.comando;
+    const datos: Record<string, unknown> = { claveOperacion: i.clave,
+      modalidad: c.modo === 'externa' ? 'EXTERNA' : c.modo === 'ante-entidad' ? 'ANTE_ENTIDAD' : 'DIRECTA_TTAIP' };
+    for (const key of ['solicitudId', 'fundamentos', 'entidadId', 'entidadExternaNombre', 'entidadExternaRuc', 'entidadExternaEmail',
+      'numeroSolicitudExterna', 'fechaPresentacionSolicitudExterna', 'fechaRespuestaEntidad', 'tipoDenegatoria',
+      'resumenSolicitudOriginal', 'resumenRespuestaEntidad', 'referenciaDocumentoSolicitud', 'referenciaCargoRecepcion',
+      'referenciaRespuestaEntidad', 'evidenciaSilencioAdministrativo', 'observacion', 'fechaPresentacionAnteEntidad', 'referenciaCargoPresentacion']) {
+      const value = (c.datos as unknown as Record<string, unknown>)[key]; if (value != null) datos[key] = value;
+    }
+    datos['documentos'] = i.documentos.map(d => ({ tipoDocumento: d.tipo,
+      ...(d.origen ? { origenId: d.origen.id, hashOrigen: d.origen.hashSha256 } : {}) }));
+    return datos as unknown as RegistrarAltaApelacionRequest;
+  }
+  private enviarOperacion(i: Intento, gen: number): void {
+    if (!this.intentoActual(gen) || this.intento !== i) return;
+    this.loading.set(true); this.error.set(''); this.estadoEnvio.set('lista'); this.documentosEnviados.set(i.documentos);
+    this.operaciones.add(this.apelacionService.registrarAlta(this.datosRecepcion(i), i.documentos.flatMap(d => d.file ? [d.file] : [])).pipe(timeout(30_000)).subscribe({
+      next: r => {
+        if (!this.intentoActual(gen) || this.intento !== i) return;
+        this.confirmModalAbierto.set(false);
+        if (!this.recepcionCompatible(r, i) || !this.mismaRecepcion(r)) { this.incierta('Aún no pudimos confirmar su apelación. Compruebe si se presentó antes de volver a enviarla.'); return; }
+        this.recepcionEsperada = r; this.consultarRecepcion(i, gen);
+      }, error: error => {
+        if (!this.intentoActual(gen) || this.intento !== i) return;
+        this.loading.set(false); this.confirmModalAbierto.set(false);
+        if (!(error instanceof HttpErrorResponse) || error.status === 0 || error.status >= 500) {
+          this.incierta('La apelación podría haberse presentado. Compruebe el resultado antes de volver a enviarla.');
+        } else {
+          this.estadoEnvio.set('rechazada'); this.error.set(error.status === 401 ? 'Su sesión no es válida. Inicie sesión nuevamente.'
+            : error.status === 403 ? 'No tiene permiso para registrar este recurso.' : error.status === 409
+              ? 'No se pudo confirmar este envío. Compruebe el resultado antes de presentar otra apelación.'
+              : error.status === 413 ? 'Los archivos nuevos superan el tamaño total admitido. Quite alguno o use archivos más pequeños.'
+                : 'No se pudo presentar la apelación. Revise los datos y vuelva a intentarlo.');
+          if (error.status !== 409) { this.operacionPendiente.set(false); this.intento = null; this.confirmacion = null; }
+        }
+      }
+    }));
+  }
+  private intentoActual(gen: number): boolean { return this.actual(gen) && !!this.intento && this.intento.contexto === this.contexto(); }
+  private incierta(mensaje: string): void { this.estadoEnvio.set('incierta'); this.loading.set(false); this.confirmModalAbierto.set(false); this.error.set(mensaje); }
+  private registroCompatible(r: Apelacion | null, i: Intento, alta: boolean): r is Apelacion {
+    const c = i.comando;
+    if (!r || !this.idValido(r.id) || !r.expediente?.trim() || r.ciudadanoId !== c.datos.ciudadanoId
+      || alta && (r.fundamentos !== c.datos.fundamentos || r.estado !== (c.modo === 'ante-entidad' ? 'PENDIENTE_ELEVACION' : 'EN_CALIFICACION_1'))) return false;
+    if (c.modo !== 'externa') {
+      if (r.tipoOrigen !== 'SAIP_INTERNA' || r.solicitudId !== c.datos.solicitudId || r.solicitudExpediente !== i.solicitudExpediente || r.entidadId !== this.solicitud()?.entidadId) return false;
+      if (c.modo === 'ante-entidad' && alta && (!this.idValido(r.elevacion?.id) || r.elevacion?.apelacionId !== r.id || r.elevacion.fechaPresentacionAnteEntidad !== c.datos.fechaPresentacionAnteEntidad || r.elevacion.referenciaCargoPresentacion !== c.datos.referenciaCargoPresentacion)) return false;
+      return true;
+    }
+    return r.tipoOrigen === 'EXTERNA' && r.solicitudId == null && (r.entidadId ?? undefined) === c.datos.entidadId
+      && (['numeroSolicitudExterna', 'fechaPresentacionSolicitudExterna', 'entidadExternaNombre', 'entidadExternaRuc',
+        'entidadExternaEmail', 'tipoDenegatoria', 'resumenSolicitudOriginal', 'referenciaDocumentoSolicitud',
+        'referenciaCargoRecepcion', 'fechaRespuestaEntidad', 'resumenRespuestaEntidad', 'referenciaRespuestaEntidad',
+        'evidenciaSilencioAdministrativo', 'observacion'] as const).every(key => (r[key] ?? undefined) === c.datos[key]);
+  }
+  private documentoDeApelacion(d: DocumentoMetadata, id = this.apelacionCreada()?.id): boolean {
+    return !!d && this.idValido(d.id) && d.apelacionId === id && d.estado === 'ACTIVO'
+      && DOCUMENTO_RELATION_KEYS.every(k => k === 'apelacionId' || d[k] == null);
+  }
+  private recepcionCompatible(r: AltaApelacionRecepcionDTO | null, i: Intento): r is AltaApelacionRecepcionDTO {
+    const modalidad = this.datosRecepcion(i).modalidad;
+    return !!r && this.idValido(r.id) && r.claveOperacion === i.clave && r.modalidad === modalidad
+      && typeof r.fechaRecepcion === 'string' && /^\d{4}-\d{2}-\d{2}/.test(r.fechaRecepcion) && Number.isFinite(Date.parse(r.fechaRecepcion))
+      && this.registroCompatible(r.apelacion as Apelacion, i, false) && r.apelacion.fundamentos === i.comando.datos.fundamentos
+      && (i.comando.modo !== 'ante-entidad' || this.idValido(r.apelacion.elevacion?.id)
+        && r.apelacion.elevacion?.apelacionId === r.apelacion.id
+        && r.apelacion.elevacion?.fechaPresentacionAnteEntidad === i.comando.datos.fechaPresentacionAnteEntidad
+        && r.apelacion.elevacion?.referenciaCargoPresentacion === i.comando.datos.referenciaCargoPresentacion)
+      && Array.isArray(r.documentos) && r.documentos.length === i.documentos.length
+      && new Set(r.documentos.map(d => d?.documento?.id)).size === r.documentos.length
+      && r.documentos.every((item, index) => {
+        const expected = i.documentos[index], doc = item?.documento;
+        return this.documentoDeApelacion(doc, r.apelacion.id) && doc.tipoDocumento === expected.tipo
+          && (item.origenId ?? undefined) === expected.origen?.id && doc.id !== expected.origen?.id
+          && item.hashAceptado === doc.hashSha256 && /^[a-f0-9]{64}$/i.test(item.hashAceptado || '')
+          // Names are descriptive; receipt, IDs and byte version identify uploads and copies.
+          && !!doc.nombreOriginal?.trim()
+          && doc.sizeBytes === (expected.file?.size ?? expected.origen?.sizeBytes)
+          && (!expected.origen || item.hashAceptado === expected.origen.hashSha256);
+      });
+  }
+  private mismaRecepcion(r: AltaApelacionRecepcionDTO): boolean {
+    const prior = this.recepcionEsperada;
+    return !prior || r.id === prior.id && r.fechaRecepcion === prior.fechaRecepcion && r.apelacion.id === prior.apelacion.id
+      && r.documentos.every((d, n) => d.documento.id === prior.documentos[n]?.documento.id);
+  }
+  comprobarRegistro(): void {
+    if (!this.actual() || this.loading() || !this.intento) return;
+    this.consultarRecepcion(this.intento, this.generacion);
+  }
+  reintentarAlta(): void {
+    if (!this.actual() || this.loading() || this.estadoEnvio() !== 'sin-recepcion' || !this.intento) return;
+    this.enviarOperacion(this.intento, this.generacion);
+  }
+  private consultarRecepcion(i: Intento, gen: number): void {
+    const confirmada = this.estadoEnvio() === 'confirmada';
+    this.loading.set(true); this.errorRecuperacion.set(''); this.documentosConsultados.set(null);
+    this.operaciones.add(this.apelacionService.obtenerRecepcionAlta(i.clave).pipe(timeout(30_000)).subscribe({ next: r => {
+      if (!this.intentoActual(gen) || this.intento !== i) return;
+      this.loading.set(false);
+      if (!this.recepcionCompatible(r, i) || !this.mismaRecepcion(r)) {
+        if (!confirmada) this.incierta('Aún no pudimos confirmar la presentación de su apelación.');
+        this.errorRecuperacion.set('La información consultada no coincide con su apelación o sus documentos.'); return;
+      }
+      this.recepcionEsperada = r; this.recepcionId.set(r.id); this.apelacionCreada.set(r.apelacion as Apelacion); this.expedienteTtaip.set(r.apelacion.expediente!);
+      i.documentos.forEach((d, n) => { d.documento = r.documentos[n].documento; d.estado = 'registrado'; });
+      this.documentosEnviados.set([...i.documentos]); this.documentosConsultados.set(r.documentos.map(d => d.documento));
+      this.operacionPendiente.set(false); this.estadoEnvio.set('confirmada'); this.error.set(''); if (!confirmada) this.successModalAbierto.set(true);
+    }, error: error => {
+      if (!this.intentoActual(gen) || this.intento !== i) return;
+      this.loading.set(false);
+      if (!confirmada && error?.status === 404) {
+        this.estadoEnvio.set('sin-recepcion'); this.error.set('Aún no se ha confirmado la presentación. Puede comprobar de nuevo o volver a enviar la misma apelación.');
+      } else {
+        if (!confirmada) this.incierta('No se pudo comprobar si su apelación se presentó. Vuelva a consultar antes de enviarla de nuevo.');
+        this.errorRecuperacion.set('No pudimos consultar la apelación y sus documentos en este momento.');
+      }
+    } }));
+  }
+  apelacionConfirmSummary(): ReferenceConfirmSummary[] {
+    const solicitud = this.solicitud();
+    return [
+      { label: 'Solicitud original', value: solicitud?.expediente || this.numeroSolicitudExterna.trim() || 'No indicada', mono: true },
+      { label: 'Entidad', value: this.entidadDisplay() },
+      { label: 'Asunto original', value: solicitud?.asunto || this.resumenSolicitudOriginal.trim() || 'No indicado' },
+      { label: 'Vía de ingreso', value: this.esPresentacionAnteEntidad() ? 'Ante la entidad' : 'Directa al TTAIP' },
+      { label: 'Documentos incluidos', value: String(this.archivosCargados()) },
+    ];
+  }
   apelacionWarning(): ReferenceConfirmWarning {
     return {
-      label: 'Recurso irrevocable',
-      detail: 'Una vez elevada, la apelación no puede retirarse. El TTAIP resolverá según los plazos legales.'
+      label: 'Antes de presentar',
+      detail: this.esPresentacionAnteEntidad()
+        ? 'Compruebe la fecha y el cargo de presentación. La entidad deberá remitir el recurso al Tribunal.'
+        : 'Compruebe que los documentos y los fundamentos correspondan a su solicitud. El Tribunal revisará si su apelación cumple los requisitos.',
     };
   }
-
+  estadoPresentacion(): string {
+    switch (this.apelacionCreada()?.estado) {
+      case 'EN_CALIFICACION_1': return 'En primera calificación';
+      case 'PENDIENTE_ELEVACION': return 'Pendiente de remisión al Tribunal';
+      case 'EN_SUBSANACION': return 'En subsanación';
+      case 'EN_CALIFICACION_2': return 'En segunda calificación';
+      case 'NOTIFICACION_SEGUNDA_CALIFICACION': return 'Pendiente de notificación';
+      case 'EN_RESOLUCION': return 'En resolución final';
+      default: return 'Consulte el expediente';
+    }
+  }
+  fechaPresentacion(): string {
+    const fecha = this.recepcionEsperada?.modalidad === 'ANTE_ENTIDAD'
+      ? this.apelacionCreada()?.elevacion?.fechaPresentacionAnteEntidad
+      : this.recepcionEsperada?.fechaRecepcion;
+    const dia = fecha?.slice(0, 10);
+    const valor = dia && Date.parse(`${dia}T00:00:00Z`);
+    return typeof valor === 'number' && Number.isFinite(valor) ? FECHA_PRESENTACION.format(valor) : 'Fecha por confirmar';
+  }
   apelacionSuccessMetadata(): ReferenceSuccessMeta[] {
-    return [
-      { label: this.esApelacionExterna() ? 'Solicitud externa' : 'Expediente original', value: this.solicitudOrigenDisplay(), mono: true },
-      { label: 'Entidad apelada', value: this.entidadOrigenDisplay() },
-      { label: 'Documentos adjuntos', value: `${this.uploadedDocumentsCount()} de 3` },
-      { label: 'Fundamentos', value: `${this.fundamentos.length} caracteres` }
-    ];
+    return this.apelacionCreada() ? [
+      { label: 'Estado', value: this.estadoPresentacion() },
+      { label: 'Fecha de presentación', value: this.fechaPresentacion() },
+      { label: 'Entidad', value: this.entidadDisplay() },
+      { label: 'Documentos adjuntos', value: String(this.documentosEnviados().filter(d => d.estado === 'registrado').length) },
+    ] : [];
   }
-
   apelacionNextSteps(): ReferenceSuccessNextStep[] {
-    if (this.esPresentacionAnteEntidad()) {
-      return [
-        {
-          label: 'La entidad debe elevar el recurso al TTAIP en 2 días hábiles.',
-          hint: 'El cargo presentado queda registrado para trazabilidad.'
-        },
-        { label: 'Si la entidad omite elevarlo, podrá comunicar la omisión al Tribunal con su prueba.' },
-        { label: 'Al ingresar al TTAIP, el recurso pasará a primera calificación.' }
-      ];
+    const seguimiento = { label: 'En Mi panel, abra el expediente para consultar su estado y las decisiones del Tribunal.' };
+    switch (this.apelacionCreada()?.estado) {
+      case 'PENDIENTE_ELEVACION':
+        return [{ label: 'La entidad debe remitir su apelación al Tribunal. La primera calificación comienza después de que el Tribunal la reciba.' }, seguimiento];
+      case 'EN_CALIFICACION_1':
+        return [
+          { label: 'El Tribunal tiene 7 días hábiles desde el día hábil siguiente a la recepción para revisar si su apelación cumple los requisitos.' },
+          seguimiento,
+          { label: 'Si el Tribunal le pide corregir o completar algo, consulte las observaciones y el plazo para responder.' },
+        ];
+      default: return [seguimiento];
     }
-    return [
-      {
-        label: '1ra calificación: el TTAIP determinará admisibilidad.',
-        hint: 'ADMISIBLE / INADMISIBLE / IMPROCEDENTE · 7 días háb.'
-      },
-      { label: 'Si es declarado INADMISIBLE, dispondrá de 2 días hábiles para subsanar.' },
-      { label: 'De ser admitido, el Tribunal emitirá resolución final en 10 días hábiles.' }
-    ];
   }
-
-  irPanelCiudadano(): void {
+  entidadDisplay(): string { return !this.esApelacionExterna() ? this.solicitud()?.entidadNombre || 'Nombre no disponible'
+    : this.modoEntidad() === 'catalogo' ? this.entidades().find(e => e.id === this.entidadExternaId)?.nombre || 'Entidad no disponible' : this.entidadExternaNombre || 'Nombre declarado no indicado'; }
+  rutaRegreso(): string[] { const s = this.solicitud(); return s && (this.entrada.expediente || this.entrada.id) ? ['/ciudadano/solicitud', s.expediente] : ['/ciudadano']; }
+  irPanelCiudadano(): void { if (this.actual()) this.router.navigate(['/ciudadano']); }
+  verSolicitudOrigen(): void { if (this.actual() && this.solicitud()) this.router.navigate(['/ciudadano/solicitud', this.solicitud()!.expediente]); }
+  cerrarResultado(): void {
     this.successModalAbierto.set(false);
-    this.router.navigate(['/ciudadano']);
-  }
-
-  verSolicitudOrigen(): void {
-    const expediente = this.solicitud()?.expediente;
-    this.successModalAbierto.set(false);
-    this.router.navigate(expediente ? ['/ciudadano/solicitud', expediente] : ['/ciudadano']);
-  }
-
-  esApelacionExterna(): boolean {
-    return this.tipoOrigen() === 'EXTERNA';
-  }
-
-  esPresentacionAnteEntidad(): boolean {
-    return !this.esApelacionExterna() && this.canalPresentacion() === 'ANTE_ENTIDAD';
-  }
-
-  canalPresentacionDisplay(): string {
-    return this.esPresentacionAnteEntidad() ? 'Ante la entidad pública' : 'Directo al TTAIP';
-  }
-
-  confirmDescription(): string {
-    return this.esPresentacionAnteEntidad()
-      ? 'Revise el expediente, cargo y fundamentos antes de registrar el recurso ante la entidad para su elevación.'
-      : 'Revise el expediente, los documentos y los fundamentos antes de presentar el recurso al Tribunal.';
-  }
-
-  confirmLabel(): string {
-    return this.esPresentacionAnteEntidad() ? 'Registrar ante entidad' : 'Presentar al Tribunal';
-  }
-
-  successEyebrow(): string {
-    return this.esPresentacionAnteEntidad() ? 'Apelación registrada ante entidad' : 'Apelación presentada';
-  }
-
-  successTitle(): string {
-    return this.esPresentacionAnteEntidad() ? 'Recurso pendiente de elevación' : 'Recurso recibido por el Tribunal';
-  }
-
-  successDescription(): string {
-    if (this.documentUploadWarning()) {
-      return `El recurso fue registrado, pero ${this.documentUploadWarning()}`;
+    if (this.actual() && this.apelacionCreada() && this.estadoEnvio() === 'confirmada') {
+      void this.router.navigate(['/ciudadano']);
     }
-    return this.esPresentacionAnteEntidad()
-      ? 'Su recurso quedó registrado ante la entidad pública. La entidad dispone de 2 días hábiles para elevarlo al TTAIP.'
-      : 'Su recurso fue recibido por el Tribunal de Transparencia y pasará directamente a primera calificación. Recibirá notificaciones en cada etapa del procedimiento.';
   }
-
-  successPlazoDias(): number {
-    return this.esPresentacionAnteEntidad() ? 2 : 7;
-  }
-
-  successPlazoDescripcion(): string {
-    return this.esPresentacionAnteEntidad()
-      ? 'La entidad pública debe elevar el recurso al TTAIP dentro de este plazo.'
-      : 'El TTAIP realizará la 1ra calificación de admisibilidad dentro de este plazo.';
-  }
-
-  solicitudOrigenDisplay(): string {
-    return this.esApelacionExterna()
-      ? this.numeroSolicitudExterna.trim() || 'Solicitud externa'
-      : this.solicitud()?.expediente || '—';
-  }
-
-  entidadOrigenDisplay(): string {
-    if (!this.esApelacionExterna()) {
-      return this.solicitud()?.entidadNombre || '—';
-    }
-    const entidadCatalogo = this.entidades().find((entidad) => entidad.id === this.entidadExternaId);
-    return entidadCatalogo?.nombre || this.entidadExternaNombre.trim() || '—';
-  }
-
-  asuntoOrigenDisplay(): string {
-    return this.esApelacionExterna()
-      ? this.resumenSolicitudOriginal.trim() || '—'
-      : this.solicitud()?.asunto || '—';
-  }
-
-  origenVinculoDisplay(): string {
-    return this.esApelacionExterna()
-      ? `Solicitud externa · ${this.solicitudOrigenDisplay()}`
-      : `Expediente vinculado · ${this.solicitudOrigenDisplay()}`;
-  }
-
-  successExpedienteHint(): string {
-    return `Vinculado a ${this.solicitudOrigenDisplay()}`;
-  }
-
-  private validarApelacion(): boolean {
-    if (!this.esApelacionExterna() && !this.solicitud()) {
-      this.error.set('Debe seleccionar una solicitud para continuar');
-      return false;
-    }
-
-    if (this.esApelacionExterna() && !this.datosExternosValidos()) {
-      this.error.set('Complete los datos obligatorios de la solicitud externa y su tipo de denegatoria');
-      return false;
-    }
-
-    if (this.esPresentacionAnteEntidad()
-        && (!this.fechaPresentacionAnteEntidad || !this.referenciaCargoPresentacionEntidad.trim())) {
-      this.error.set('Registre la fecha de presentación y la referencia del cargo entregado por la entidad');
-      return false;
-    }
-
-    if (!this.allFilesUploaded()) {
-      this.error.set('Debe adjuntar los tres documentos obligatorios');
-      return false;
-    }
-
-    if (this.fundamentos.trim().length < 50) {
-      this.error.set('Los fundamentos deben tener al menos 50 caracteres');
-      return false;
-    }
-
-    this.error.set('');
-    return true;
-  }
-
-  private cargarEntidades(): void {
-    this.entidadService.findActivas().subscribe({
-      next: (entidades) => this.entidades.set(entidades),
-      error: () => this.entidades.set([])
-    });
-  }
-
-  private datosExternosValidos(): boolean {
-    const entidadRegistrada = !!this.entidadExternaId || this.entidadExternaNombre.trim().length > 0;
-    const respuestaValida = this.tipoDenegatoriaExterna() === 'TACITA'
-      || this.fechaRespuestaEntidad.length > 0;
-    return entidadRegistrada
-      && this.numeroSolicitudExterna.trim().length > 0
-      && this.fechaPresentacionSolicitudExterna.length > 0
-      && this.resumenSolicitudOriginal.trim().length > 0
-      && respuestaValida;
-  }
-
-  private resetDatosExternos(): void {
-    this.entidadExternaId = null;
-    this.entidadExternaNombre = '';
-    this.entidadExternaRuc = '';
-    this.entidadExternaEmail = '';
-    this.numeroSolicitudExterna = '';
-    this.fechaPresentacionSolicitudExterna = '';
-    this.fechaRespuestaEntidad = '';
-    this.tipoDenegatoriaExterna.set('EXPRESA');
-    this.resumenSolicitudOriginal = '';
-    this.resumenRespuestaEntidad = '';
-    this.referenciaCargoRecepcion = '';
-    this.observacionExterna = '';
-    this.fechaPresentacionAnteEntidad = this.fechaHoyIso();
-    this.referenciaCargoPresentacionEntidad = '';
-    this.observacionPresentacionEntidad = '';
-  }
-
-  private fechaHoyIso(): string {
-    return new Date().toISOString().slice(0, 10);
-  }
-
-  private uploadAppealDocument(
-    apelacionId: number,
-    file: File,
-    tipoDocumento: TipoDocumento
-  ) {
-    return this.documentoService.upload(file, tipoDocumento, { apelacionId }).pipe(
-      map(() => true),
-      catchError((error) => {
-        this.documentUploadWarning.set(
-          problemDetailsMessage(error, 'no todos los documentos pudieron cargarse.')
-        );
-        return of(false);
-      })
-    );
-  }
-
-  private clonarAppealDocument(
-    apelacionId: number,
-    documentoId: number,
-    tipoDocumento: TipoDocumento
-  ) {
-    return this.documentoService.clonar(documentoId, tipoDocumento, { apelacionId }).pipe(
-      map(() => true),
-      catchError((error) => {
-        this.documentUploadWarning.set(
-          problemDetailsMessage(error, 'no todos los documentos pudieron cargarse.')
-        );
-        return of(false);
-      })
-    );
+  private enfocar(id: string): void { const gen = this.generacion; queueMicrotask(() => { if (this.actual(gen)) document.getElementById(id)?.focus(); }); }
+  private subirAlInicio(): void {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' });
+    const gen = this.generacion;
+    afterNextRender(() => {
+      if (!this.actual(gen) || typeof window === 'undefined') return;
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      document.getElementById('apelacion-titulo')?.focus();
+    }, { injector: this.injector });
   }
 }
-

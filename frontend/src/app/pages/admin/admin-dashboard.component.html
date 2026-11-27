@@ -1,520 +1,1539 @@
-<div class="min-h-screen bg-background">
+<div class="admin-dashboard min-h-screen bg-background" [attr.aria-busy]="loading()">
+  <!-- Editorial hero -->
   <div class="relative bg-paper border-b border-border overflow-hidden">
     <div class="absolute top-0 right-0 w-[420px] h-[420px] rounded-full opacity-[0.04] -translate-y-1/3 translate-x-1/4 pointer-events-none" style="background: radial-gradient(circle, var(--brand-600), transparent 70%)"></div>
-    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10" data-hero>
-      <div class="flex items-start gap-5">
+    <div class="relative max-w-7xl mx-auto px-6 md:px-10 pt-28 pb-10">
+      <div class="admin-hero flex items-start gap-5">
         <div class="w-14 h-14 rounded-lg flex items-center justify-center flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), var(--shadow-sm)">
           <svg lucideShield class="w-7 h-7 text-white"></svg>
         </div>
-        <div>
+        <div class="flex-1 min-w-0">
           <span class="eyebrow">Administrador del sistema · SAIP</span>
           <h1 class="font-display mt-1.5" style="font-size: clamp(30px, 3.4vw, 42px); line-height: 1.08; letter-spacing: -0.02em">
             Panel de <span class="italic" style="color: var(--brand-700)">administración</span>
           </h1>
           <p class="text-muted-foreground mt-1.5 max-w-xl">Gobierno integral del sistema · entidades, usuarios y reportes consolidados.</p>
-          <button type="button" (click)="startTour()" class="btn-ghost-brand !px-3 !py-1.5 !text-[12px] whitespace-nowrap mt-3 relative inline-flex items-center gap-1.5" title="Ver tutorial guiado">
-            <svg lucideCompass class="w-3.5 h-3.5"></svg>
-            <span>Ver tutorial</span>
-            @if (isFirstVisit) {
-              <span class="relative flex h-2 w-2 ml-0.5" title="Tutorial disponible">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-              </span>
-            }
-          </button>
         </div>
+        <button
+          type="button"
+          (click)="startTour()"
+          class="btn-ghost-brand !px-4 !py-2.5 !text-[13px] whitespace-nowrap self-start ml-auto relative inline-flex items-center gap-1.5 cursor-pointer"
+          title="Ver tutorial guiado">
+          <svg lucideCompass class="w-4 h-4"></svg>
+          <span>Ver tutorial</span>
+          @if (isFirstVisit) {
+            <span class="relative flex h-2 w-2 ml-0.5" title="Tutorial disponible">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+            </span>
+          }
+        </button>
       </div>
     </div>
   </div>
 
   <div class="max-w-7xl mx-auto px-6 md:px-10 py-10">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-5 text-sm text-muted-foreground">
+      <p>Indicadores de la última consulta al servidor.</p>
+      <button type="button" class="btn-ghost-brand" [disabled]="loading() || saving() || exporting()" (click)="cargarDatos()">Actualizar datos</button>
+    </div>
+    <!-- Mensajes y alertas de feedback -->
     @if (mensaje()) {
-      <div class="alert alert-success mb-5"><p>{{ mensaje() }}</p></div>
+      <div role="status" class="alert alert-success mb-5 animate-fade-in"><p>{{ mensaje() }}</p></div>
     }
     @if (error()) {
-      <div class="alert alert-error mb-5"><p>{{ error() }}</p></div>
+      <div role="alert" class="alert alert-error mb-5 animate-fade-in"><p>{{ error() }}</p></div>
     }
 
-    <div
-      data-tour="a-kpis"
-      class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5"
-      data-motion-stagger
-      data-motion-y="12"
-      data-motion-duration="0.36"
-      data-motion-delay-step="0.05"
-    >
-      <div class="stat-card" data-motion-item>
+    @if (saving()) { <p role="status" class="text-sm text-muted-foreground mb-5">Guardando cambios en el servidor…</p> }
+    @if (exporting()) { <p role="status" class="text-sm text-muted-foreground mb-5">Consultando el reporte en el servidor…</p> }
+    @if (loading()) {
+      <app-yaiku-cargando mensaje="Cargando el panel…" />
+    }
+    @if (!loading() && (loadErrors() | keyvalue).length) {
+      <div role="alert" class="alert alert-error mb-5">
+        <p>No se pudieron cargar todos los datos del panel.</p>
+        <ul>@for (item of loadErrors() | keyvalue; track item.key) { <li>{{ item.value }}</li> }</ul>
+        <button type="button" class="btn-ghost-brand mt-3" [disabled]="saving()" (click)="cargarDatos()">Reintentar consulta</button>
+      </div>
+    }
+    @if (ready('general')) {
+    <!-- Tarjetas Principales de KPI (DISC-02) -->
+    <div data-tour="a-kpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+      <div class="stat-card">
         <span class="stat-card-accent" style="background: var(--brand-700)"></span>
         <div class="flex items-start justify-between mb-2">
           <div class="stat-card-eyebrow">Total solicitudes</div>
-          <svg lucideFileText class="w-4 h-4 text-brand-700 opacity-70"></svg>
+          <svg lucideFileText class="w-4 h-4" style="color: var(--brand-700); opacity: 0.7"></svg>
         </div>
-        <div class="stat-card-value" style="color: var(--brand-700)">{{ totalSolicitudes() }}</div>
-        <div class="stat-card-meta inline-flex items-center gap-1"><span>Sistema activo</span></div>
+        <div class="stat-card-value" style="color: var(--brand-700)">{{ totalSolicitudes().toString().padStart(3, '0') }}</div>
+        <div class="stat-card-meta inline-flex items-center gap-1">
+          <svg lucideTrendingUp class="w-3 h-3" style="color: var(--brand-700); opacity: 0.7"></svg>
+          <span>Registradas en el sistema</span>
+        </div>
       </div>
 
-      <div class="stat-card" data-motion-item>
+      <div class="stat-card">
         <span class="stat-card-accent" style="background: var(--info)"></span>
         <div class="flex items-start justify-between mb-2">
-          <div class="stat-card-eyebrow">Usuarios activos</div>
-          <svg lucideUsers class="w-4 h-4 text-info opacity-70"></svg>
+          <div class="stat-card-eyebrow">Usuarios registrados</div>
+          <svg lucideUsers class="w-4 h-4" style="color: var(--info); opacity: 0.7"></svg>
         </div>
-        <div class="stat-card-value" style="color: var(--info)">{{ totalUsuarios() }}</div>
-        <div class="stat-card-meta">+8% vs periodo anterior</div>
+        <div class="stat-card-value" style="color: var(--info)">{{ totalUsuarios().toLocaleString() }}</div>
+        <div class="stat-card-meta inline-flex items-center gap-1">
+          <svg lucideTrendingUp class="w-3 h-3" style="color: var(--info); opacity: 0.7"></svg>
+          <span>Cuentas registradas</span>
+        </div>
       </div>
 
-      <div class="stat-card" data-motion-item>
+      <div class="stat-card">
         <span class="stat-card-accent" style="background: var(--gold)"></span>
         <div class="flex items-start justify-between mb-2">
           <div class="stat-card-eyebrow">Entidades</div>
-          <svg lucideBuilding2 class="w-4 h-4 text-gold opacity-70"></svg>
+          <svg lucideBuilding2 class="w-4 h-4" style="color: var(--gold); opacity: 0.7"></svg>
         </div>
-        <div class="stat-card-value" style="color: var(--gold)">{{ totalEntidades() }}</div>
-        <div class="stat-card-meta">{{ entidadesActivas() }} activas</div>
+        <div class="stat-card-value" style="color: var(--gold)">{{ totalEntidades().toString().padStart(2, '0') }}</div>
+        <div class="stat-card-meta inline-flex items-center gap-1">
+          <svg lucideTrendingUp class="w-3 h-3" style="color: var(--gold); opacity: 0.7"></svg>
+          <span>Entidades registradas</span>
+        </div>
       </div>
 
-      <div class="stat-card" data-motion-item>
+      <div class="stat-card">
         <span class="stat-card-accent" style="background: var(--success)"></span>
         <div class="flex items-start justify-between mb-2">
-          <div class="stat-card-eyebrow">Cumplimiento</div>
-          <svg lucideAward class="w-4 h-4 text-emerald-600 opacity-70"></svg>
+          <div class="stat-card-eyebrow">Tasa de respuesta</div>
+          <svg lucideAward class="w-4 h-4" style="color: var(--success); opacity: 0.7"></svg>
         </div>
-        <div class="stat-card-value" style="color: var(--success)">{{ tasaCumplimiento() }}%</div>
-        <div class="w-full bg-[var(--ceniza-claro)] rounded-full h-1.5 mt-2"><div class="bg-[var(--success)] h-1.5 rounded-full" [style.width]="tasaCumplimiento() + '%'"></div></div>
+        <div class="stat-card-value" style="color: var(--success)">{{ ready('entidades', 'solicitudes') ? tasaCumplimientoPromedio() + '%' : 'No disponible' }}</div>
+        <div class="stat-card-meta inline-flex items-center gap-1">
+          <svg lucideTrendingUp class="w-3 h-3" style="color: var(--success); opacity: 0.7"></svg>
+          <span>Promedio por entidad</span>
+        </div>
       </div>
     </div>
 
-    <div
-      data-tour="a-status"
-      class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8"
-      data-motion-stagger
-      data-motion-y="10"
-      data-motion-duration="0.34"
-      data-motion-delay-step="0.04"
-    >
-      <div data-motion-item class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
-        <div><div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">En proceso</div><div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--info)">{{ enProceso() }}</div></div>
-        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg lucideClock class="w-4 h-4 text-info"></svg></div>
+    <!-- Tira de Estado / Status strip (DISC-03) -->
+    <div data-tour="a-status" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+      <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+        <div>
+          <div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">En proceso</div>
+          <div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--info)">{{ enProceso() }}</div>
+        </div>
+        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
+          <svg lucideClock class="w-4 h-4" style="color: var(--info)"></svg>
+        </div>
       </div>
-      <div data-motion-item class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
-        <div><div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">Respondidas</div><div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--success)">{{ respondidas() }}</div></div>
-        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg lucideCheckCircle2 class="w-4 h-4 text-emerald-600"></svg></div>
+
+      <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+        <div>
+          <div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">Respondidas</div>
+          <div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--success)">{{ respondidas() }}</div>
+        </div>
+        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
+          <svg lucideCheckCircle class="w-4 h-4" style="color: var(--success)"></svg>
+        </div>
       </div>
-      <div data-motion-item class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
-        <div><div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">Vencidas</div><div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--brand-700)">{{ vencidas() }}</div></div>
-        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg lucideAlertTriangle class="w-4 h-4 text-brand-700"></svg></div>
+
+      <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+        <div>
+          <div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">Vencidas</div>
+          <div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--brand-700)">{{ vencidas() }}</div>
+        </div>
+        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
+          <svg lucideAlertTriangle class="w-4 h-4" style="color: var(--brand-700)"></svg>
+        </div>
       </div>
-      <div data-motion-item class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
-        <div><div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">Apelaciones</div><div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--gold)">{{ totalApelaciones() }}</div></div>
-        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)"><svg lucideScale class="w-4 h-4 text-gold"></svg></div>
+
+      <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
+        <div>
+          <div class="text-[10px] tracking-[0.18em] uppercase text-muted-foreground">Apelaciones</div>
+          <div class="font-display mt-1" style="font-size: 28px; line-height: 1; letter-spacing: -0.02em; color: var(--gold)">{{ totalApelaciones() }}</div>
+        </div>
+        <div class="w-10 h-10 rounded-md flex items-center justify-center" style="background: var(--card); border: 1px solid var(--border)">
+          <svg lucideActivity class="w-4 h-4" style="color: var(--gold)"></svg>
+        </div>
       </div>
     </div>
 
-    <div class="form-shell p-1 mb-6" data-tour="a-tabs" data-reveal>
-      <div class="grid grid-cols-5 gap-1">
-        <button (click)="cambiarTab('resumen')" class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" [class]="tabActual() === 'resumen' ? 'bg-[var(--brand-700)] text-white' : 'text-[var(--muted-foreground)] hover:bg-[var(--brand-subtle)]'">
-          <svg lucideBarChart class="w-4 h-4"></svg>
+    } @else if (!loading()) {
+      <p role="status" class="alert mb-5">Indicadores no disponibles. No se sustituyen por ceros.</p>
+    }
+    <!-- Pestañas Principales (DISC-04) -->
+    <div class="form-shell p-1 mb-6" data-tour="a-tabs">
+      <div class="grid grid-cols-3 sm:grid-cols-6 gap-1">
+        <button
+          type="button"
+          aria-label="Resumen" [attr.aria-pressed]="activeTab() === 'overview'" (click)="cambiarTab('overview')"
+          class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+          [style.background]="activeTab() === 'overview' ? 'var(--brand-700)' : 'transparent'"
+          [style.color]="activeTab() === 'overview' ? 'white' : 'var(--muted-foreground)'"
+          [class.hover:bg-[color:var(--brand-subtle)]]="activeTab() !== 'overview'">
+          <svg lucideBarChart3 class="w-4 h-4"></svg>
           <span class="hidden sm:inline">Resumen</span>
         </button>
-        <button (click)="cambiarTab('entidades')" class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" [class]="tabActual() === 'entidades' ? 'bg-[var(--brand-700)] text-white' : 'text-[var(--muted-foreground)] hover:bg-[var(--brand-subtle)]'">
+
+        <button
+          type="button"
+          aria-label="Entidades" [attr.aria-pressed]="activeTab() === 'entities'" (click)="cambiarTab('entities')"
+          class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+          [style.background]="activeTab() === 'entities' ? 'var(--brand-700)' : 'transparent'"
+          [style.color]="activeTab() === 'entities' ? 'white' : 'var(--muted-foreground)'"
+          [class.hover:bg-[color:var(--brand-subtle)]]="activeTab() !== 'entities'">
           <svg lucideBuilding2 class="w-4 h-4"></svg>
           <span class="hidden sm:inline">Entidades</span>
         </button>
-        <button (click)="cambiarTab('usuarios')" class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" [class]="tabActual() === 'usuarios' ? 'bg-[var(--brand-700)] text-white' : 'text-[var(--muted-foreground)] hover:bg-[var(--brand-subtle)]'">
+
+        <button
+          type="button"
+          aria-label="Usuarios" [attr.aria-pressed]="activeTab() === 'users'" (click)="cambiarTab('users')"
+          class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+          [style.background]="activeTab() === 'users' ? 'var(--brand-700)' : 'transparent'"
+          [style.color]="activeTab() === 'users' ? 'white' : 'var(--muted-foreground)'"
+          [class.hover:bg-[color:var(--brand-subtle)]]="activeTab() !== 'users'">
           <svg lucideUsers class="w-4 h-4"></svg>
           <span class="hidden sm:inline">Usuarios</span>
         </button>
-        <button (click)="cambiarTab('reportes')" class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" [class]="tabActual() === 'reportes' ? 'bg-[var(--brand-700)] text-white' : 'text-[var(--muted-foreground)] hover:bg-[var(--brand-subtle)]'">
+
+        <button
+          type="button"
+          aria-label="Reportes" [attr.aria-pressed]="activeTab() === 'reports'" (click)="cambiarTab('reports')"
+          class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+          [style.background]="activeTab() === 'reports' ? 'var(--brand-700)' : 'transparent'"
+          [style.color]="activeTab() === 'reports' ? 'white' : 'var(--muted-foreground)'"
+          [class.hover:bg-[color:var(--brand-subtle)]]="activeTab() !== 'reports'">
           <svg lucideDownload class="w-4 h-4"></svg>
           <span class="hidden sm:inline">Reportes</span>
         </button>
-        <button (click)="cambiarTab('configuracion')" class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors" [class]="tabActual() === 'configuracion' ? 'bg-[var(--brand-700)] text-white' : 'text-[var(--muted-foreground)] hover:bg-[var(--brand-subtle)]'">
+
+        <button
+          type="button"
+          aria-label="Plazos y Calendario" [attr.aria-pressed]="activeTab() === 'plazos'" (click)="cambiarTab('plazos')"
+          class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+          [style.background]="activeTab() === 'plazos' ? 'var(--brand-700)' : 'transparent'"
+          [style.color]="activeTab() === 'plazos' ? 'white' : 'var(--muted-foreground)'"
+          [class.hover:bg-[color:var(--brand-subtle)]]="activeTab() !== 'plazos'">
+          <svg lucideCalendar class="w-4 h-4"></svg>
+          <span class="hidden sm:inline">Plazos</span>
+        </button>
+
+        <button
+          type="button"
+          aria-label="Configuración" [attr.aria-pressed]="activeTab() === 'settings'" (click)="cambiarTab('settings')"
+          class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+          [style.background]="activeTab() === 'settings' ? 'var(--brand-700)' : 'transparent'"
+          [style.color]="activeTab() === 'settings' ? 'white' : 'var(--muted-foreground)'"
+          [class.hover:bg-[color:var(--brand-subtle)]]="activeTab() !== 'settings'">
           <svg lucideSettings class="w-4 h-4"></svg>
-          <span class="hidden sm:inline">Config.</span>
+          <span class="hidden sm:inline">Configurac.</span>
         </button>
       </div>
     </div>
 
+    <!-- Contenido de Pestañas -->
     <div>
-      @if (tabActual() === 'resumen') {
-        <div data-tour="a-overview" class="space-y-5">
-        <div
-          class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5 animate-fade-in"
-          data-motion-stagger
-          data-motion-y="12"
-          data-motion-duration="0.36"
-          data-motion-delay-step="0.05"
-        >
-          <div class="form-shell" data-motion-item>
-            <div class="form-section-header">
-              <span class="eyebrow" style="color: var(--success)">Ranking</span>
-              <div class="form-section-title">Mejor desempeño institucional</div>
-            </div>
-            <div class="p-6 space-y-4">
-              @for (entidad of topEntidades(); track entidad.id; let i = $index) {
-                <div class="flex items-center gap-3" data-table-row>
-                  <span class="font-display flex-shrink-0 w-8 text-center" style="font-size: 22px; letter-spacing: -0.02em; color: var(--brand-700)">{{ (i + 1).toString().padStart(2, '0') }}</span>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm truncate text-foreground/85">{{ entidad.nombre }}</p>
-                    <div class="flex items-center gap-2 mt-1.5">
-                      <div class="flex-1 h-1.5 rounded-full" style="background: var(--border)">
-                        <div class="h-1.5 rounded-full" style="background: linear-gradient(90deg, var(--brand-600), var(--gold))" [style.width]="(entidad.tasaCumplimiento || 0) + '%'"></div>
-                      </div>
-                      <span class="font-mono text-xs font-semibold" style="color: var(--brand-700)">{{ entidad.tasaCumplimiento || 0 }}%</span>
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-
-          <div class="form-shell" data-motion-item>
-            <div class="form-section-header">
-              <span class="eyebrow" style="color: var(--gold)">Atención</span>
-              <div class="form-section-title">Entidades con riesgo de vencimiento</div>
-            </div>
-            <div class="p-6 space-y-3">
-              @for (entidad of topEntidades(); track entidad.id) {
-                <div class="rounded-lg p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)" data-table-row>
-                  <div class="flex items-start justify-between gap-3">
-                    <div>
-                      <p class="text-sm text-foreground">{{ entidad.nombre }}</p>
-                      <div class="flex items-center gap-4 text-xs text-muted-foreground mt-1.5">
-                        <span class="inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>{{ ((entidad.solicitudesAsignadas || 0) * 0.22) | number:'1.0-0' }} pendientes</span>
-                        <span class="inline-flex items-center gap-1" style="color: var(--brand-700)"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/></svg>{{ ((entidad.solicitudesAsignadas || 0) * (100 - (entidad.tasaCumplimiento || 0)) / 100) | number:'1.0-0' }} vencidas</span>
-                      </div>
-                    </div>
-                    <span class="pill pill-medium">{{ entidad.tasaCumplimiento || 0 }}%</span>
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-        </div>
-
-        <div class="form-shell mb-5" data-reveal>
-          <div class="form-section-header">
-            <span class="eyebrow">Sistema</span>
-            <div class="form-section-title">Actividad reciente</div>
-          </div>
-          <div class="p-2">
-            @for (item of actividadReciente(); track item.detail; let i = $index) {
-              <div class="flex items-start gap-3 px-4 py-3.5 rounded-md hover:bg-[color:var(--brand-subtle)] transition-colors" [style.borderTop]="i === 0 ? 'none' : '1px solid var(--border)'" data-table-row>
-                <span class="mt-1.5 flex-shrink-0" style="width: 8px; height: 8px; border-radius: 999px" [style.background]="activityToneClass(item.tone)"></span>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm text-foreground">{{ item.label }}</p>
-                  <p class="text-xs text-muted-foreground font-mono mt-0.5">{{ item.detail }}</p>
+      <!-- =================================================================== -->
+      <!-- PESTAÑA 1: RESUMEN (OVERVIEW)                                      -->
+      <!-- =================================================================== -->
+      @if (activeTab() === 'overview' && !overviewReady() && !loading()) {
+        <p role="status" class="form-shell p-6">Información no disponible. Reintente la consulta.</p>
+      }
+      @if (activeTab() === 'overview' && overviewReady()) {
+        <div data-tour="a-overview" class="space-y-5 animate-fade-in">
+          <!-- Fila 1: Distribución de solicitudes & Tasas clave (DISC-04) -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div class="form-shell lg:col-span-2">
+              <div class="form-section-header flex items-center gap-2">
+                <svg lucideBarChart3 class="w-5 h-5" style="color: var(--brand-700)"></svg>
+                <div>
+                  <span class="eyebrow">Estadística</span>
+                  <div class="form-section-title">Distribución de solicitudes</div>
                 </div>
               </div>
-            } @empty {
-              <div class="px-4 py-10 text-center text-sm text-muted-foreground">
-                No hay actividad reciente registrada por el backend.
+              <div class="p-6 space-y-4">
+                @for (item of [
+                  { label: 'En proceso', val: enProceso(), color: 'var(--info)' },
+                  { label: 'Respondidas', val: respondidas(), color: 'var(--success)' },
+                  { label: 'Vencidas', val: vencidas(), color: 'var(--brand-700)' }
+                ]; track item.label) {
+                  @let pct = totalSolicitudes() ? (item.val / totalSolicitudes() * 100 | number:'1.0-0') : '0';
+                  <div>
+                    <div class="flex items-center justify-between text-sm mb-1.5">
+                      <span class="text-foreground/85">{{ item.label }}</span>
+                      <span class="font-mono text-xs text-muted-foreground">{{ item.val }} · {{ pct }}%</span>
+                    </div>
+                    <div class="h-2.5 rounded-full" style="background: var(--border)">
+                      <div class="h-2.5 rounded-full transition-all duration-700" [style.background]="item.color" [style.width]="pct + '%'"></div>
+                    </div>
+                  </div>
+                }
               </div>
-            }
-          </div>
-        </div>
+            </div>
 
-        <div class="form-shell" data-reveal>
-          <div class="form-section-header">
-            <span class="eyebrow">Distribución</span>
-            <div class="form-section-title">Usuarios por tipo</div>
+            <div class="form-shell">
+              <div class="form-section-header flex items-center gap-2">
+                <svg lucideTrendingUp class="w-5 h-5" style="color: var(--gold)"></svg>
+                <div>
+                  <span class="eyebrow" style="color: var(--gold)">Indicadores</span>
+                  <div class="form-section-title">Tasas clave</div>
+                </div>
+              </div>
+              <div class="p-6 space-y-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm text-foreground/85">Tasa de respuesta</p>
+                    <p class="text-xs text-muted-foreground">SAIP atendidas</p>
+                  </div>
+                  <span class="font-display" style="font-size: 22px; letter-spacing: -0.02em; color: var(--brand-700)">
+                    {{ totalSolicitudes() ? (respondidas() / totalSolicitudes() * 100 | number:'1.0-0') + '%' : '0%' }}
+                  </span>
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm text-foreground/85">Tasa de vencimiento</p>
+                    <p class="text-xs text-muted-foreground">Fuera de plazo</p>
+                  </div>
+                  <span class="font-display" style="font-size: 22px; letter-spacing: -0.02em; color: var(--brand-700)">
+                    {{ totalSolicitudes() ? (vencidas() / totalSolicitudes() * 100 | number:'1.0-0') + '%' : '0%' }}
+                  </span>
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm text-foreground/85">Tasa de apelación</p>
+                    <p class="text-xs text-muted-foreground">SAIP apeladas</p>
+                  </div>
+                  <span class="font-display" style="font-size: 22px; letter-spacing: -0.02em; color: var(--brand-700)">
+                    {{ tasaApelacion() }}%
+                  </span>
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm text-foreground/85">Tiempo promedio</p>
+                    <p class="text-xs text-muted-foreground">Días corridos</p>
+                  </div>
+                  <span class="font-display" style="font-size: 22px; letter-spacing: -0.02em; color: var(--brand-700)">
+                    {{ promedioDias() === null ? 'No disponible' : promedioDias() + ' d' }}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="p-5 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="text-center p-4 rounded-xl bg-[var(--estado-azul-suave)]"><div class="text-2xl font-bold text-[var(--estado-azul)]">{{ ciudadanos() }}</div><div class="text-xs text-[var(--estado-azul)]/70 mt-1">Ciudadanos</div></div>
-            <div class="text-center p-4 rounded-xl bg-[var(--accent-violet-soft)]"><div class="text-2xl font-bold text-[var(--accent-violet)]">{{ funcionarios() }}</div><div class="text-xs text-[var(--accent-violet)]/70 mt-1">Funcionarios</div></div>
-            <div class="text-center p-4 rounded-xl bg-[var(--estado-ambar-suave)]"><div class="text-2xl font-bold text-[var(--estado-ambar)]">{{ miembrosTTAIP() }}</div><div class="text-xs text-[var(--estado-ambar)]/70 mt-1">TTAIP</div></div>
-            <div class="text-center p-4 rounded-xl bg-[var(--peru-rojo-suave)]"><div class="text-2xl font-bold text-[var(--estado-rojo)]">{{ administradores() }}</div><div class="text-xs text-[var(--estado-rojo)]/70 mt-1">Administradores</div></div>
+
+          <!-- Fila 2: Ranking Mejor Desempeño & Entidades con Vencidas (DISC-05, DISC-06) -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="form-shell">
+              <div class="form-section-header flex items-center gap-2">
+                <svg lucideAward class="w-5 h-5" style="color: var(--success)"></svg>
+                <div>
+                  <span class="eyebrow" style="color: var(--success)">Ranking</span>
+                  <div class="form-section-title">Por volumen de solicitudes</div>
+                </div>
+              </div>
+              <div class="p-6 space-y-4">
+                <p class="text-xs text-muted-foreground">El primer lugar es quien tiene más solicitudes registradas. La barra compara esa cantidad, no la tasa de respuesta.</p>
+                @for (e of rankingEntidades(); track e.id; let idx = $index) {
+                  <div class="flex items-center gap-3">
+                    <span class="font-display flex-shrink-0 w-8 text-center" style="font-size: 22px; letter-spacing: -0.02em; color: var(--brand-700)">
+                      {{ (idx + 1).toString().padStart(2, '0') }}
+                    </span>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm truncate text-foreground/85">{{ e.nombre }}</p>
+                      <div class="flex items-center gap-2 mt-1.5">
+                        <div class="flex-1 h-1.5 rounded-full" style="background: var(--border)">
+                          <div class="h-1.5 rounded-full" [style.width.%]="(e.solicitudesAsignadas / volumenMaximo()) * 100" style="background: linear-gradient(90deg, var(--brand-600), var(--gold))"></div>
+                        </div>
+                        <span class="font-mono text-xs font-semibold tabular-nums" style="color: var(--brand-700)">{{ e.solicitudesAsignadas }}</span>
+                      </div>
+                    </div>
+                  </div>
+                } @empty {
+                  <p class="text-sm text-muted-foreground">Sin entidades registradas.</p>
+                }
+              </div>
+            </div>
+
+            <div class="form-shell">
+              <div class="form-section-header flex items-center gap-2">
+                <svg lucideAlertTriangle class="w-5 h-5" style="color: var(--gold)"></svg>
+                <div>
+                  <span class="eyebrow" style="color: var(--gold)">Atención</span>
+                  <div class="form-section-title">Entidades con vencidas</div>
+                </div>
+              </div>
+              <div class="p-6 space-y-3">
+                @for (e of entidadesConVencidas(); track e.id) {
+                  <div class="rounded-lg p-4" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                    <div class="flex items-start justify-between gap-3">
+                      <div>
+                        <p class="text-sm text-foreground">{{ e.nombre }}</p>
+                        <div class="flex items-center gap-4 text-xs text-muted-foreground mt-1.5">
+                          <span class="inline-flex items-center gap-1">
+                            <svg lucideClock class="w-3 h-3"></svg> {{ e.pendientes }} pendientes
+                          </span>
+                          <span class="inline-flex items-center gap-1" style="color: var(--brand-700)">
+                            <svg lucideAlertTriangle class="w-3 h-3"></svg> {{ e.vencidas }} vencidas
+                          </span>
+                        </div>
+                      </div>
+                      <span class="pill pill-medium">{{ e.tasaCumplimiento }}%</span>
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="rounded-lg p-4 flex items-center gap-2 text-sm text-muted-foreground" style="background: var(--card); border: 1px dashed var(--border)">
+                    <svg lucideCheckCircle class="w-4 h-4" style="color: var(--success)"></svg>
+                    <span>Ninguna entidad con solicitudes vencidas.</span>
+                  </div>
+                }
+              </div>
+            </div>
           </div>
-          <div class="px-5 pb-5 space-y-2.5">
-            @for (segment of usuariosChartData(); track segment.label) {
+
+          <!-- Fila 3: Visión global 1ª y 2ª instancia (DISC-07) -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div class="form-shell lg:col-span-2">
+              <div class="form-section-header flex items-center gap-2">
+                <svg lucideGavel class="w-5 h-5" style="color: var(--brand-700)"></svg>
+                <div>
+                  <span class="eyebrow">Segunda instancia · TTAIP</span>
+                  <div class="form-section-title">Apelaciones por etapa</div>
+                </div>
+                <div class="ml-auto text-right">
+                  <div class="font-display" style="font-size: 26px; letter-spacing: -0.02em; color: var(--brand-700)">{{ totalApelaciones() }}</div>
+                  <div class="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">apelaciones</div>
+                </div>
+              </div>
+              <div class="p-6 space-y-3.5">
+                @for (et of etapaOrden; track et) {
+                  @let count = ttaipStats().etapas[et] || 0;
+                  @let pct = totalApelaciones() ? (count / totalApelaciones() * 100 | number:'1.0-0') : '0';
+                  <div>
+                    <div class="flex items-center justify-between text-sm mb-1.5">
+                      <span class="text-foreground/85">{{ etapaLabels[et] || et }}</span>
+                      <span class="font-mono text-xs text-muted-foreground">{{ count }} · {{ pct }}%</span>
+                    </div>
+                    <div class="h-2 rounded-full" style="background: var(--border)">
+                      <div
+                        class="h-2 rounded-full transition-all duration-600"
+                        [style.background]="et === 'Resuelto' ? 'var(--success)' : 'linear-gradient(90deg, var(--brand-600), var(--gold))'"
+                        [style.width]="pct + '%'">
+                      </div>
+                    </div>
+                  </div>
+                }
+                @if (totalApelaciones() === 0) {
+                  <p class="text-sm text-muted-foreground">Sin apelaciones registradas.</p>
+                }
+              </div>
+            </div>
+
+            <div class="form-shell">
+              <div class="form-section-header flex items-center gap-2">
+                <svg lucideScale class="w-5 h-5" style="color: var(--gold)"></svg>
+                <div>
+                  <span class="eyebrow" style="color: var(--gold)">Sentido de resolución</span>
+                  <div class="form-section-title">Resultados</div>
+                </div>
+              </div>
+              <div class="p-6 space-y-5">
+                <div>
+                  <p class="eyebrow mb-2.5">1ª instancia · entidad</p>
+                  <div class="flex items-center justify-between py-1.5">
+                    <span class="text-sm text-foreground/85">Respuesta total registrada</span>
+                    <span class="font-mono text-sm font-semibold" style="color: var(--brand-700)">{{ resultadosEntidad().Total }}</span>
+                  </div>
+                  <div class="flex items-center justify-between py-1.5">
+                    <span class="text-sm text-foreground/85">Respuesta parcial registrada</span>
+                    <span class="font-mono text-sm font-semibold" style="color: var(--brand-700)">{{ resultadosEntidad().Parcial }}</span>
+                  </div>
+                  <div class="flex items-center justify-between py-1.5">
+                    <span class="text-sm text-foreground/85">Denegado</span>
+                    <span class="font-mono text-sm font-semibold" style="color: var(--brand-700)">{{ resultadosEntidad().Denegada }}</span>
+                  </div>
+                </div>
+
+                <div class="rule-ornament"></div>
+
+                <div>
+                  <p class="eyebrow mb-2.5">2ª instancia · TTAIP</p>
+                  <div class="flex items-center justify-between py-1.5">
+                    <span class="text-sm text-foreground/85">Fundadas / fundadas en parte</span>
+                    <span class="font-mono text-sm font-semibold" style="color: var(--success)">{{ ttaipStats().fundadas }}</span>
+                  </div>
+                  <div class="flex items-center justify-between py-1.5">
+                    <span class="text-sm text-foreground/85">Infundadas</span>
+                    <span class="font-mono text-sm font-semibold" style="color: var(--brand-700)">{{ ttaipStats().infundadas }}</span>
+                  </div>
+                  <div class="flex items-center justify-between py-1.5">
+                    <span class="text-sm text-foreground/85">En trámite</span>
+                    <span class="font-mono text-sm font-semibold" style="color: var(--info)">{{ ttaipStats().enTramite }}</span>
+                  </div>
+                  <div class="flex items-center justify-between py-1.5">
+                    <span class="text-sm text-foreground/85">Tasa de apelación (sobre SAIP)</span>
+                    <span class="font-mono text-sm font-semibold" style="color: var(--gold-dark)">{{ tasaApelacion() }}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fila 4: Actividad Reciente (DISC-09) -->
+          <div class="form-shell">
+            <div class="form-section-header flex items-center gap-2">
+              <svg lucideActivity class="w-5 h-5" style="color: var(--brand-700)"></svg>
               <div>
-                <div class="flex items-center justify-between text-sm mb-1.5"><span class="text-[var(--niebla)]">{{ segment.label }}</span><span class="font-semibold text-[var(--carbon)]">{{ segment.value }} ({{ segment.percentage }}%)</span></div>
-                <div class="w-full h-2 bg-[var(--nieve)] rounded-full overflow-hidden"><div class="h-full rounded-full transition-all" [style.width.%]="segment.percentage" [style.background-color]="segment.color"></div></div>
+                <span class="eyebrow">Sistema</span>
+                <div class="form-section-title">Actividad reciente</div>
               </div>
+            </div>
+            <div class="p-2">
+              @for (item of pagedActivity(); track item.detail + '_' + item.ts; let i = $index) {
+                <div
+                  class="flex items-start gap-3 px-4 py-3.5 rounded-md hover:bg-[color:var(--brand-subtle)] transition-colors"
+                  [style.borderTop]="i === 0 ? 'none' : '1px solid var(--border)'">
+                  <span
+                    class="mt-1.5 flex-shrink-0"
+                    style="width: 8px; height: 8px; border-radius: 999px"
+                    [style.background]="item.dot"
+                    [style.box-shadow]="'0 0 0 3px color-mix(in srgb, ' + item.dot + ' 18%, transparent)'">
+                  </span>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm text-foreground">{{ item.label }}</p>
+                    <p class="text-xs text-muted-foreground font-mono mt-0.5">{{ item.detail }}</p>
+                  </div>
+                  <svg lucideChevronRight class="w-4 h-4 text-muted-foreground/40 mt-1 flex-shrink-0"></svg>
+                </div>
+              } @empty {
+                <p class="text-sm text-muted-foreground px-4 py-6">Sin actividad reciente.</p>
+              }
+            </div>
+            @if (activityLog().length > activityPageSize) {
+              <app-pagination
+                [page]="activityPage()"
+                [totalPages]="activityPages()"
+                [total]="activityLog().length"
+                [rangeFrom]="activityRangeFrom()"
+                [rangeTo]="activityRangeTo()"
+                (goTo)="activityPage.set($event)">
+              </app-pagination>
             }
           </div>
         </div>
-      </div>
-    }
+      }
 
-      @if (tabActual() === 'entidades') {
+      <!-- =================================================================== -->
+      <!-- PESTAÑA 2: ENTIDADES (ENTITIES)                                    -->
+      <!-- =================================================================== -->
+      @if (activeTab() === 'entities' && !ready('entidades', 'solicitudes') && !loading()) {
+        <p role="status" class="form-shell p-6">Información no disponible. Reintente la consulta.</p>
+      }
+      @if (activeTab() === 'entities' && ready('entidades', 'solicitudes')) {
         <div data-tour="a-entities" class="form-shell overflow-hidden animate-fade-in">
           <div class="form-section-header flex flex-col sm:flex-row sm:items-center gap-3">
+            <svg lucideBuilding2 class="w-5 h-5" style="color: var(--brand-700)"></svg>
             <div>
               <span class="eyebrow">Gestión</span>
               <div class="form-section-title">Entidades públicas</div>
             </div>
-            <button (click)="abrirModalEntidad()" class="ml-auto btn-brand !px-4 !py-2 !text-[13px]">Nueva entidad</button>
+            <button
+              type="button"
+              (click)="abrirModalEntidad('create')"
+              class="ml-auto btn-brand !px-4 !py-2 !text-[13px] flex items-center gap-1.5 cursor-pointer">
+              <svg lucidePlus class="w-4 h-4"></svg>
+              <span>Nueva entidad</span>
+            </button>
           </div>
 
           <div class="p-5 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 border-b border-border">
             <div class="relative">
-              <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-width="2" d="m21 21-4.35-4.35"/></svg>
-              <input type="text" [(ngModel)]="busquedaEntidad" class="field-input has-icon-left !pl-10" placeholder="Buscar por nombre o acrónimo..." />
+              <svg lucideSearch class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
+              <input
+                type="text"
+                [ngModel]="searchTerm()"
+                (ngModelChange)="searchTerm.set($event); entPage.set(1)"
+                class="field-input pl-10"
+                aria-label="Buscar entidades por nombre o acrónimo" placeholder="Buscar por nombre o acrónimo..." />
             </div>
-            <button class="btn-ghost-brand !py-[10px]" (click)="exportarReporte('entidades','excel')">Exportar</button>
+            <button
+              type="button"
+              (click)="exportEntidadesCSV()"
+              class="btn-ghost-brand !py-[10px] justify-center flex items-center gap-1.5 cursor-pointer">
+              <svg lucideDownload class="w-4 h-4"></svg>
+              <span>Exportar</span>
+            </button>
           </div>
 
-          @if (loading()) {
-            <div class="py-16 text-center"><div class="spinner spinner-lg mx-auto"></div></div>
-          } @else {
-            <div class="overflow-x-auto">
-              <table class="data-table">
-                <thead>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Entidad</th>
+                  <th>Acrónimo</th>
+                  <th>Asignadas</th>
+                  <th>Pendientes</th>
+                  <th>Vencidas</th>
+                  <th>Tasa de respuesta</th>
+                  <th>Estado</th>
+                  <th class="text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (e of pagedEntities(); track e.id) {
                   <tr>
-                    <th>Entidad</th>
-                    <th>Acrónimo</th>
-                    <th>Asignadas</th>
-                    <th>Cumplimiento</th>
-                    <th>Estado</th>
-                    <th class="text-right">Acciones</th>
+                    <td class="text-foreground/85 font-medium">{{ e.nombre }}</td>
+                    <td><span class="code-chip">{{ e.acronimo }}</span></td>
+                    <td class="font-mono">{{ e.solicitudesAsignadas }}</td>
+                    <td>
+                      <span class="font-mono" [style.color]="e.pendientes > 10 ? 'var(--gold)' : 'inherit'">
+                        {{ e.pendientes }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="font-mono font-semibold" [style.color]="e.vencidas > 0 ? 'var(--brand-700)' : 'var(--success)'">
+                        {{ e.vencidas }}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="flex items-center gap-2">
+                        <div class="w-20 h-1.5 rounded-full" style="background: var(--border)">
+                          <div class="h-1.5 rounded-full" [style.width]="e.tasaCumplimiento + '%'" style="background: linear-gradient(90deg, var(--brand-600), var(--gold))"></div>
+                        </div>
+                        <span class="font-mono text-xs font-semibold" style="color: var(--brand-700)">{{ e.tasaCumplimiento }}%</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="pill" [class.pill-low]="e.estado === 'Activa'" [style.background]="e.estado !== 'Activa' ? 'var(--muted)' : ''" [style.color]="e.estado !== 'Activa' ? 'var(--muted-foreground)' : ''">
+                        {{ e.estado }}
+                      </span>
+                    </td>
+                    <td class="text-right">
+                      <div class="inline-flex gap-1">
+                        <button
+                          type="button"
+                          (click)="abrirModalEntidad('view', e)"
+                          title="Ver detalle"
+                          class="p-1.5 rounded-md hover:bg-[color:var(--brand-subtle)] cursor-pointer">
+                          <svg lucideEye class="w-3.5 h-3.5" style="color: var(--info)"></svg>
+                        </button>
+                        <button
+                          type="button"
+                          (click)="abrirModalEntidad('edit', e)"
+                          title="Editar"
+                          class="p-1.5 rounded-md hover:bg-[color:var(--brand-subtle)] cursor-pointer">
+                          <svg lucideEdit class="w-3.5 h-3.5" style="color: var(--gold)"></svg>
+                        </button>
+                        <button
+                          type="button"
+                          (click)="eliminarEntidad(e)"
+                          title="Dar de baja"
+                          class="p-1.5 rounded-md hover:bg-[color:var(--brand-subtle)] cursor-pointer">
+                          <svg lucideTrash2 class="w-3.5 h-3.5" style="color: var(--brand-700)"></svg>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  @for (entidad of entidadesFiltradas(); track entidad.id) {
-                    <tr data-table-row>
-                      <td class="text-foreground/85">{{ entidad.nombre }}</td>
-                      <td><span class="code-chip">{{ entidad.acronimo }}</span></td>
-                      <td class="font-mono">{{ entidad.solicitudesAsignadas || 0 }}</td>
-                      <td>
-                        <div class="flex items-center gap-2">
-                          <div class="w-20 h-1.5 rounded-full" style="background: var(--border)"><div class="h-1.5 rounded-full" style="background: linear-gradient(90deg, var(--brand-600), var(--gold))" [style.width]="(entidad.tasaCumplimiento || 0) + '%'"></div></div>
-                          <span class="font-mono text-xs" style="color: var(--brand-700)">{{ entidad.tasaCumplimiento || 0 }}%</span>
-                        </div>
-                      </td>
-                      <td><span [class]="entidad.activa ? 'pill pill-low' : 'pill pill-high'">{{ entidad.activa ? 'Activa' : 'Inactiva' }}</span></td>
-                      <td class="text-right">
-                        <div class="inline-flex gap-1">
-                          <button (click)="editarEntidad(entidad)" class="btn-icon hover:bg-[color:var(--brand-subtle)]"><svg class="w-3.5 h-3.5" style="color: var(--gold)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path stroke-width="2" d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                          <button (click)="cambiarEstadoEntidad(entidad)" class="btn-icon hover:bg-[color:var(--brand-subtle)]"><svg class="w-3.5 h-3.5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></button>
-                        </div>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          }
+                } @empty {
+                  <tr><td colspan="8" class="text-center text-sm text-muted-foreground py-8">No se encontraron entidades.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <app-pagination
+            [page]="entPage()"
+            [totalPages]="totalPagesEntidades()"
+            [total]="filteredEntities().length"
+            [rangeFrom]="rangeFromEntidades()"
+            [rangeTo]="rangeToEntidades()"
+            (goTo)="entPage.set($event)">
+          </app-pagination>
         </div>
       }
 
-      @if (tabActual() === 'usuarios') {
+      <!-- =================================================================== -->
+      <!-- PESTAÑA 3: USUARIOS (USERS)                                        -->
+      <!-- =================================================================== -->
+      @if (activeTab() === 'users' && !ready('usuarios') && !loading()) {
+        <p role="status" class="form-shell p-6">Información no disponible. Reintente la consulta.</p>
+      }
+      @if (activeTab() === 'users' && ready('usuarios')) {
         <div data-tour="a-users" class="form-shell overflow-hidden animate-fade-in">
           <div class="form-section-header flex flex-col sm:flex-row sm:items-center gap-3">
+            <svg lucideUsers class="w-5 h-5" style="color: var(--brand-700)"></svg>
             <div>
               <span class="eyebrow">Gestión</span>
               <div class="form-section-title">Usuarios del sistema</div>
             </div>
-            <button (click)="abrirModalUsuario()" class="ml-auto btn-brand !px-4 !py-2 !text-[13px]">Nuevo usuario</button>
+            <button
+              type="button"
+              (click)="abrirModalUsuario('create')"
+              class="ml-auto btn-brand !px-4 !py-2 !text-[13px] flex items-center gap-1.5 cursor-pointer">
+              <svg lucideUserPlus class="w-4 h-4"></svg>
+              <span>Nuevo usuario</span>
+            </button>
           </div>
 
-          <div class="p-5 grid grid-cols-1 sm:grid-cols-[1fr_210px_auto] gap-3 border-b border-border">
+          <div class="p-5 grid grid-cols-1 sm:grid-cols-[1fr_200px_auto] gap-3 border-b border-border">
             <div class="relative">
-              <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-width="2" d="m21 21-4.35-4.35"/></svg>
-              <input type="text" [(ngModel)]="busquedaUsuario" class="field-input has-icon-left !pl-10" placeholder="Buscar usuario..." />
+              <svg lucideSearch class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
+              <input
+                type="text"
+                [ngModel]="searchTerm()"
+                (ngModelChange)="searchTerm.set($event); userPage.set(1)"
+                class="field-input pl-10"
+                aria-label="Buscar usuarios" placeholder="Buscar usuario por nombre o correo..." />
             </div>
-            <select [(ngModel)]="filtroTipoUsuario" class="field-input !py-[10px]">
-              <option value="">Todos</option>
-              <option value="CIUDADANO">Ciudadano</option>
-              <option value="FUNCIONARIO">Funcionario</option>
-              <option value="TTAIP">TTAIP</option>
-              <option value="ADMINISTRADOR">Administrador</option>
-            </select>
-            <button class="btn-ghost-brand !py-[10px]" (click)="exportarReporte('usuarios','excel')">Exportar</button>
+
+            <div class="relative">
+              <svg lucideFilter class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"></svg>
+              <select
+                aria-label="Filtrar usuarios por rol" [ngModel]="filterUserType()"
+                (ngModelChange)="filterUserType.set($event); userPage.set(1)"
+                class="field-input pl-9 !py-[10px]">
+                <option value="todos">Todos los roles</option>
+                <option value="Ciudadano">Administrados</option>
+                <option value="Funcionario">Funcionarios</option>
+                <option value="TTAIP">Personal TTAIP</option>
+                <option value="Administrador">Administradores</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              (click)="exportUsuariosCSV()"
+              class="btn-ghost-brand !py-[10px] justify-center flex items-center gap-1.5 cursor-pointer">
+              <svg lucideDownload class="w-4 h-4"></svg>
+              <span>Exportar</span>
+            </button>
           </div>
 
-          @if (loadingUsuarios()) {
-            <div class="py-16 text-center"><div class="spinner spinner-lg mx-auto"></div></div>
-          } @else {
-            <div class="overflow-x-auto">
-              <table class="data-table">
-                <thead>
+          <div class="overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Email</th>
+                  <th>Tipo</th>
+                  <th>Actividad</th>
+                  <th>Registro</th>
+                  <th>Estado</th>
+                  <th class="text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (u of pagedUsers(); track u.id) {
                   <tr>
-                    <th>Usuario</th>
-                    <th>Email</th>
-                    <th>Tipo</th>
-                    <th>Actividad</th>
-                    <th>Registro</th>
-                    <th>Estado</th>
-                    <th class="text-right">Acciones</th>
+                    <td>
+                      <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">
+                          {{ userInitials(u.nombre) }}
+                        </div>
+                        <span class="text-sm font-medium">{{ u.nombre }}</span>
+                      </div>
+                    </td>
+                    <td><span class="font-mono text-xs text-muted-foreground">{{ u.email }}</span></td>
+                    <td>
+                      <span
+                        class="pill"
+                        [class.pill-low]="u.tipo === 'Ciudadano'"
+                        [class.pill-medium]="u.tipo === 'Funcionario'"
+                        [class.pill-high]="u.tipo === 'TTAIP' || u.tipo === 'Administrador'">
+                        {{ u.tipo === 'Ciudadano' ? 'Administrado' : u.tipo }}
+                      </span>
+                    </td>
+                    <td class="text-sm text-muted-foreground">
+                      @if (u.tipo === 'Ciudadano') {
+                        <span>{{ u.solicitudes === null ? 'No disponible' : u.solicitudes + ' solicitudes' }}</span>
+                      } @else if (u.tipo === 'Funcionario') {
+                        <span>{{ u.solicitudesGestionadas ?? 'No disponible' }}</span>
+                      } @else if (u.tipo === 'TTAIP') {
+                        <span>{{ u.apelacionesResueltas ?? 'No disponible' }}</span>
+                      } @else {
+                        <span>—</span>
+                      }
+                    </td>
+                    <td>
+                      <div class="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+                        <svg lucideCalendar class="w-3 h-3"></svg> {{ u.fechaRegistro }}
+                      </div>
+                    </td>
+                    <td>
+                      <span class="pill" [class.pill-low]="u.estado === 'Activo'" [style.background]="u.estado !== 'Activo' ? 'var(--muted)' : ''" [style.color]="u.estado !== 'Activo' ? 'var(--muted-foreground)' : ''">
+                        {{ u.estado }}
+                      </span>
+                    </td>
+                    <td class="text-right">
+                      <div class="inline-flex gap-1">
+                        <button
+                          type="button"
+                          (click)="abrirModalUsuario('view', u)"
+                          title="Ver detalle"
+                          class="p-1.5 rounded-md hover:bg-[color:var(--brand-subtle)] cursor-pointer">
+                          <svg lucideEye class="w-3.5 h-3.5" style="color: var(--info)"></svg>
+                        </button>
+                        <button
+                          type="button"
+                          (click)="abrirModalUsuario('edit', u)"
+                          title="Editar"
+                          class="p-1.5 rounded-md hover:bg-[color:var(--brand-subtle)] cursor-pointer">
+                          <svg lucideEdit class="w-3.5 h-3.5" style="color: var(--gold)"></svg>
+                        </button>
+                        <button
+                          type="button"
+                          (click)="eliminarUsuario(u)"
+                          title="Eliminar"
+                          class="p-1.5 rounded-md hover:bg-[color:var(--brand-subtle)] cursor-pointer">
+                          <svg lucideTrash2 class="w-3.5 h-3.5" style="color: var(--brand-700)"></svg>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  @for (usuario of usuariosFiltrados(); track usuario.id) {
-                    <tr data-table-row>
-                      <td>
-                        <div class="flex items-center gap-2.5">
-                          <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold flex-shrink-0" style="background: linear-gradient(135deg, var(--brand-500), var(--brand-700))">{{ userInitials(usuario.email) }}</div>
-                          <span class="text-sm">{{ usuario.nombre || ('Usuario #' + usuario.id) }}</span>
-                        </div>
-                      </td>
-                      <td><span class="font-mono text-xs text-muted-foreground">{{ usuario.email }}</span></td>
-                      <td><span [class]="getTipoUsuarioClass(usuario.tipoUsuario)">{{ usuario.tipoUsuario }}</span></td>
-                      <td class="text-sm text-muted-foreground">{{ actividadUsuario(usuario) }}</td>
-                      <td><span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-mono">{{ usuario.fechaRegistro | date:'dd/MM/yyyy' }}</span></td>
-                      <td><span [class]="usuario.activo ? 'pill pill-low' : 'pill pill-high'">{{ usuario.activo ? 'Activo' : 'Inactivo' }}</span></td>
-                      <td class="text-right">
-                        <div class="inline-flex gap-1">
-                          <button (click)="cambiarEstadoUsuario(usuario)" class="btn-icon hover:bg-[color:var(--brand-subtle)]"><svg class="w-3.5 h-3.5" style="color: var(--gold)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></button>
-                          <button (click)="eliminarUsuario(usuario)" class="btn-icon hover:bg-[color:var(--brand-subtle)]"><svg class="w-3.5 h-3.5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path stroke-width="2" d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                        </div>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          }
+                } @empty {
+                  <tr><td colspan="7" class="text-center text-sm text-muted-foreground py-8">No se encontraron usuarios.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <app-pagination
+            [page]="userPage()"
+            [totalPages]="totalPagesUsuarios()"
+            [total]="filteredUsers().length"
+            [rangeFrom]="rangeFromUsuarios()"
+            [rangeTo]="rangeToUsuarios()"
+            (goTo)="userPage.set($event)">
+          </app-pagination>
         </div>
       }
 
-      @if (tabActual() === 'reportes') {
-        <div data-tour="a-reports" class="space-y-5">
-        <div
-          class="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-5 animate-fade-in"
-          data-motion-stagger
-          data-motion-y="12"
-          data-motion-duration="0.36"
-          data-motion-delay-step="0.05"
-        >
-          <div class="form-shell p-5 reference-option-card" data-motion-item><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--estado-verde-suave)"><svg class="w-5 h-5" style="color: var(--success)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/></svg></div><h3 class="font-semibold">Solicitudes</h3></div><p class="text-sm text-muted-foreground mb-4">Estado y plazos de solicitudes SAIP.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('solicitudes','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('solicitudes','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('solicitudes','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
-          <div class="form-shell p-5 reference-option-card" data-motion-item><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--estado-azul-suave)"><svg class="w-5 h-5" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 21h18M3 10h18M3 7l9-4 9 4"/></svg></div><h3 class="font-semibold">Entidades</h3></div><p class="text-sm text-muted-foreground mb-4">Cumplimiento y desempeño institucional.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('entidades','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('entidades','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('entidades','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
-          <div class="form-shell p-5 reference-option-card" data-motion-item><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--accent-violet-soft)"><svg class="w-5 h-5" style="color: var(--accent-violet)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><h3 class="font-semibold">Usuarios</h3></div><p class="text-sm text-muted-foreground mb-4">Registro consolidado de usuarios.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('usuarios','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('usuarios','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('usuarios','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
-          <div class="form-shell p-5 reference-option-card" data-motion-item><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--estado-ambar-suave)"><svg class="w-5 h-5" style="color: var(--gold)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12"/></svg></div><h3 class="font-semibold">Apelaciones</h3></div><p class="text-sm text-muted-foreground mb-4">Seguimiento de expedientes TTAIP.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('apelaciones','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('apelaciones','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('apelaciones','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
-          <div class="form-shell p-5 reference-option-card" data-motion-item><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--peru-rojo-suave)"><svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><h3 class="font-semibold">Tiempos</h3></div><p class="text-sm text-muted-foreground mb-4">Análisis de cumplimiento de plazos.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('tiempos','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('tiempos','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('tiempos','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
-          <div class="form-shell p-5 reference-option-card" data-motion-item><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: var(--brand-subtle)"><svg class="w-5 h-5" style="color: var(--brand-700)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M3 3v16a2 2 0 0 0 2 2h16"/><path stroke-width="2" d="m19 9-5 5-4-4-3 3"/></svg></div><h3 class="font-semibold">Consolidado</h3></div><p class="text-sm text-muted-foreground mb-4">Resumen ejecutivo del sistema.</p><div class="grid grid-cols-3 gap-2"><button (click)="exportarReporte('resumen','pdf')" class="btn-brand !px-0 !py-2 !text-xs">PDF</button><button (click)="exportarReporte('resumen','excel')" class="btn-ghost-brand !px-0 !py-2 !text-xs">XLSX</button><button (click)="exportarReporte('resumen','csv')" class="btn-ghost-brand !px-0 !py-2 !text-xs">CSV</button></div></div>
-        </div>
+      <!-- =================================================================== -->
+      <!-- PESTAÑA 4: REPORTES (REPORTS)                                      -->
+      <!-- =================================================================== -->
+      @if (activeTab() === 'reports') {
+        <div data-tour="a-reports" class="space-y-5 animate-fade-in">
+          <div class="form-shell">
+            <div class="form-section-header flex items-center gap-3">
+              <svg lucideDownload class="w-5 h-5" style="color: var(--brand-700)"></svg>
+              <div>
+                <span class="eyebrow">Exportación</span>
+                <div class="form-section-title">Reportes del sistema</div>
+              </div>
+            </div>
 
-        <div class="form-shell p-5 flex items-start gap-4" style="border-left: 3px solid var(--info)" data-reveal>
-          <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(29,78,216,0.08)"><svg class="w-5 h-5" style="color: var(--info)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
-          <div><span class="eyebrow" style="color: var(--info)">Nota</span><p class="text-sm text-foreground/85 leading-relaxed mt-1">Los reportes usan datos del momento de exportación. PDF para presentación; Excel/CSV para análisis.</p></div>
-        </div>
-      </div>
-    }
+            <!-- Banner Documento Destacado: Informe Ejecutivo (DISC-16) -->
+            <div class="p-6 pb-0">
+              <div class="rounded-xl overflow-hidden" style="border: 1px solid var(--brand-200)">
+                <div class="p-6 flex flex-col md:flex-row md:items-center gap-5" style="background: linear-gradient(120deg, var(--brand-700), var(--brand-500))">
+                  <div class="flex-1">
+                    <span class="text-[10px] tracking-[0.2em] uppercase text-white/70">Documento destacado</span>
+                    <h3 class="font-display text-white mt-1" style="font-size: 24px; letter-spacing: -0.02em">Informe ejecutivo</h3>
+                    <p class="text-white/85 text-sm mt-1.5 max-w-lg leading-relaxed">Resumen de los indicadores registrados en el servidor. Exportación de consulta, sin emisión ni firma oficial.</p>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="pdfInforme()"
+                    class="inline-flex items-center gap-2 px-5 py-3 rounded-lg font-medium text-sm whitespace-nowrap self-start md:self-center cursor-pointer transition-transform hover:scale-[1.02]"
+                    style="background: white; color: var(--brand-700); box-shadow: var(--shadow-md)">
+                    <svg lucideDownload class="w-4 h-4"></svg>
+                    <span>Descargar PDF</span>
+                  </button>
+                </div>
+              </div>
+            </div>
 
-      @if (tabActual() === 'configuracion') {
-        <div data-tour="a-settings" class="form-shell animate-fade-in">
-          <div class="form-section-header">
-            <span class="eyebrow">Sistema</span>
-            <div class="form-section-title">Configuración operativa</div>
+            <!-- 6 Reportes Estándar (DISC-17) -->
+            <div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <!-- Reporte 1: Solicitudes -->
+              <div class="rounded-lg p-5 transition-colors hover:border-[color:var(--brand-300)]" style="background: var(--card); border: 1px solid var(--border)">
+                <div class="flex items-start gap-3 mb-4">
+                  <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                    <svg lucideFileText class="w-5 h-5" style="color: var(--brand-700)"></svg>
+                  </div>
+                  <div>
+                    <span class="eyebrow" style="color: var(--brand-700)">Reporte</span>
+                    <h4 class="font-display mt-0.5" style="font-size: 17px; letter-spacing: -0.012em">Solicitudes</h4>
+                    <p class="text-xs text-muted-foreground mt-1 leading-relaxed">Todas las SAIP con estados y plazos</p>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <button type="button" (click)="exportarReporte('solicitudes','pdf')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">PDF</button>
+                  <button type="button" (click)="exportarReporte('solicitudes','xlsx')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">XLSX</button>
+                  <button type="button" (click)="exportarReporte('solicitudes','csv')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">CSV</button>
+                </div>
+              </div>
+
+              <!-- Reporte 2: Entidades -->
+              <div class="rounded-lg p-5 transition-colors hover:border-[color:var(--brand-300)]" style="background: var(--card); border: 1px solid var(--border)">
+                <div class="flex items-start gap-3 mb-4">
+                  <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                    <svg lucideBuilding2 class="w-5 h-5" style="color: var(--info)"></svg>
+                  </div>
+                  <div>
+                    <span class="eyebrow" style="color: var(--info)">Reporte</span>
+                    <h4 class="font-display mt-0.5" style="font-size: 17px; letter-spacing: -0.012em">Entidades</h4>
+                    <p class="text-xs text-muted-foreground mt-1 leading-relaxed">Desempeño y cumplimiento por entidad</p>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <button type="button" (click)="exportarReporte('entidades','pdf')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">PDF</button>
+                  <button type="button" (click)="exportarReporte('entidades','xlsx')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">XLSX</button>
+                  <button type="button" (click)="exportarReporte('entidades','csv')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">CSV</button>
+                </div>
+              </div>
+
+              <!-- Reporte 3: Usuarios -->
+              <div class="rounded-lg p-5 transition-colors hover:border-[color:var(--brand-300)]" style="background: var(--card); border: 1px solid var(--border)">
+                <div class="flex items-start gap-3 mb-4">
+                  <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                    <svg lucideUsers class="w-5 h-5" style="color: var(--success)"></svg>
+                  </div>
+                  <div>
+                    <span class="eyebrow" style="color: var(--success)">Reporte</span>
+                    <h4 class="font-display mt-0.5" style="font-size: 17px; letter-spacing: -0.012em">Usuarios</h4>
+                    <p class="text-xs text-muted-foreground mt-1 leading-relaxed">Registro de usuarios del sistema</p>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <button type="button" (click)="exportarReporte('usuarios','pdf')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">PDF</button>
+                  <button type="button" (click)="exportarReporte('usuarios','xlsx')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">XLSX</button>
+                  <button type="button" (click)="exportarReporte('usuarios','csv')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">CSV</button>
+                </div>
+              </div>
+
+              <!-- Reporte 4: Apelaciones -->
+              <div class="rounded-lg p-5 transition-colors hover:border-[color:var(--brand-300)]" style="background: var(--card); border: 1px solid var(--border)">
+                <div class="flex items-start gap-3 mb-4">
+                  <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                    <svg lucideActivity class="w-5 h-5" style="color: var(--gold)"></svg>
+                  </div>
+                  <div>
+                    <span class="eyebrow" style="color: var(--gold)">Reporte</span>
+                    <h4 class="font-display mt-0.5" style="font-size: 17px; letter-spacing: -0.012em">Apelaciones</h4>
+                    <p class="text-xs text-muted-foreground mt-1 leading-relaxed">Apelaciones presentadas y su estado</p>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <button type="button" (click)="exportarReporte('apelaciones','pdf')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">PDF</button>
+                  <button type="button" (click)="exportarReporte('apelaciones','xlsx')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">XLSX</button>
+                  <button type="button" (click)="exportarReporte('apelaciones','csv')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">CSV</button>
+                </div>
+              </div>
+
+              <!-- Reporte 5: Tiempos de respuesta -->
+              <div class="rounded-lg p-5 transition-colors hover:border-[color:var(--brand-300)]" style="background: var(--card); border: 1px solid var(--border)">
+                <div class="flex items-start gap-3 mb-4">
+                  <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                    <svg lucideClock class="w-5 h-5" style="color: var(--brand-600)"></svg>
+                  </div>
+                  <div>
+                    <span class="eyebrow" style="color: var(--brand-600)">Reporte</span>
+                    <h4 class="font-display mt-0.5" style="font-size: 17px; letter-spacing: -0.012em">Tiempos de respuesta</h4>
+                    <p class="text-xs text-muted-foreground mt-1 leading-relaxed">Días corridos entre la presentación y la respuesta registrada, por entidad.</p>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <button type="button" (click)="exportarReporte('tiempos','pdf')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">PDF</button>
+                  <button type="button" (click)="exportarReporte('tiempos','xlsx')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">XLSX</button>
+                  <button type="button" (click)="exportarReporte('tiempos','csv')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">CSV</button>
+                </div>
+              </div>
+
+              <!-- Reporte 6: Consolidado -->
+              <div class="rounded-lg p-5 transition-colors hover:border-[color:var(--brand-300)]" style="background: var(--card); border: 1px solid var(--border)">
+                <div class="flex items-start gap-3 mb-4">
+                  <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+                    <svg lucideBarChart3 class="w-5 h-5" style="color: var(--info)"></svg>
+                  </div>
+                  <div>
+                    <span class="eyebrow" style="color: var(--info)">Reporte</span>
+                    <h4 class="font-display mt-0.5" style="font-size: 17px; letter-spacing: -0.012em">Consolidado</h4>
+                    <p class="text-xs text-muted-foreground mt-1 leading-relaxed">Métricas generales del sistema</p>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <button type="button" (click)="exportarReporte('consolidado','pdf')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">PDF</button>
+                  <button type="button" (click)="exportarReporte('consolidado','xlsx')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">XLSX</button>
+                  <button type="button" (click)="exportarReporte('consolidado','csv')" class="text-xs font-mono font-semibold uppercase tracking-widest py-2 rounded-md transition-colors hover:bg-[color:var(--brand-subtle)] cursor-pointer" style="background: var(--paper); border: 1px solid var(--border); color: var(--foreground)">CSV</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Constructor de Reporte Personalizado (DISC-18) -->
+            <div class="mx-6 mb-6 rounded-xl overflow-hidden" style="border: 1px solid var(--brand-200)">
+              <div class="p-5 flex items-center gap-3" style="background: var(--brand-subtle); border-bottom: 1px solid var(--brand-200)">
+                <svg lucideSliders class="w-5 h-5" style="color: var(--brand-700)"></svg>
+                <div>
+                  <span class="eyebrow" style="color: var(--brand-700)">A medida</span>
+                  <h4 class="font-display" style="font-size: 18px; letter-spacing: -0.012em">Reporte personalizado</h4>
+                </div>
+                <span class="ml-auto text-xs font-mono px-3 py-1.5 rounded-full" style="background: var(--card); border: 1px solid var(--brand-200); color: var(--brand-700)">
+                  {{ customReady() ? crPreviewCount() + ' registros' : 'Datos no disponibles' }}
+                </span>
+              </div>
+
+              <div class="p-5 space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div class="field">
+                    <label class="field-label" for="admin-field-1">Conjunto de datos</label>
+                    <select id="admin-field-1"
+                      [ngModel]="crDataset()"
+                      (ngModelChange)="crDataset.set($event); crCols.set({}); crEstado.set('todos'); crEntidad.set('todas')"
+                      class="field-input !py-[10px]">
+                      <option value="solicitudes">Solicitudes (1ª instancia · SAIP)</option>
+                      <option value="apelaciones">Apelaciones (2ª instancia · TTAIP)</option>
+                      <option value="entidades">Entidades públicas</option>
+                      <option value="usuarios">Usuarios del sistema</option>
+                    </select>
+                  </div>
+
+                  @if (crSchemas()[crDataset()].estados.length > 0) {
+                    <div class="field">
+                      <label class="field-label" for="admin-field-2">Estado / etapa</label>
+                      <select id="admin-field-2" [ngModel]="crEstado()" (ngModelChange)="crEstado.set($event)" class="field-input !py-[10px]">
+                        <option value="todos">Todos</option>
+                        @for (es of crSchemas()[crDataset()].estados; track es) {
+                          <option [value]="es">{{ etapaLabels[es] || es }}</option>
+                        }
+                      </select>
+                    </div>
+                  }
+
+                  @if (crDataset() !== 'entidades') {
+                    <div class="field">
+                      <label class="field-label" for="admin-field-3">Entidad</label>
+                      <select id="admin-field-3" [ngModel]="crEntidad()" (ngModelChange)="crEntidad.set($event)" class="field-input !py-[10px]">
+                        <option value="todas">Todas las entidades</option>
+                        @for (e of entidades(); track e.id) {
+                          <option [value]="e.nombre">{{ e.acronimo }}</option>
+                        }
+                      </select>
+                    </div>
+                  }
+
+                  <div class="field">
+                    <label class="field-label" for="admin-field-4">Formato</label>
+                    <select id="admin-field-4" [ngModel]="crFormato()" (ngModelChange)="crFormato.set($event)" class="field-input !py-[10px]">
+                      <option value="pdf">PDF (exportación de consulta)</option>
+                      <option value="xlsx">Excel (.xlsx)</option>
+                      <option value="csv">CSV (texto delimitado)</option>
+                    </select>
+                  </div>
+
+                  <div class="field">
+                    <label class="field-label" for="admin-field-5">Desde</label>
+                    <input id="admin-field-5" type="date" [ngModel]="crDesde()" (ngModelChange)="crDesde.set($event)" class="field-input font-mono" />
+                  </div>
+
+                  <div class="field">
+                    <label class="field-label" for="admin-field-6">Hasta</label>
+                    <input id="admin-field-6" type="date" [ngModel]="crHasta()" (ngModelChange)="crHasta.set($event)" class="field-input font-mono" />
+                  </div>
+                </div>
+
+                <div>
+                  <span class="eyebrow">Columnas</span>
+                  <div class="flex flex-wrap gap-2 mt-2">
+                    @for (f of crSchemas()[crDataset()].fields; track f.key) {
+                      <button
+                        type="button"
+                        [attr.aria-pressed]="isCrColActive(f.key)" (click)="toggleCrCol(f.key)"
+                        class="text-xs font-medium px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+                        [style.background]="isCrColActive(f.key) ? 'var(--brand-700)' : 'var(--paper)'"
+                        [style.color]="isCrColActive(f.key) ? 'white' : 'var(--muted-foreground)'"
+                        [style.border]="isCrColActive(f.key) ? 'none' : '1px solid var(--border)'">
+                        {{ f.label }}
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3 pt-1">
+                  <button type="button" [disabled]="!customReady()" (click)="generateCustom()" class="btn-brand !px-5 !py-2.5 flex items-center gap-2 cursor-pointer">
+                    <svg lucideDownload class="w-4 h-4"></svg>
+                    <span>Generar reporte</span>
+                  </button>
+                  <span class="text-xs text-muted-foreground">Descarga únicamente los registros y columnas que necesita.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Nota institucional -->
+            <div class="mx-6 mb-6 rounded-lg p-5 flex items-start gap-4" style="background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--info)">
+              <div class="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0" style="background: rgba(29, 78, 216, 0.08)">
+                <svg lucideInfo class="w-5 h-5" style="color: var(--info)"></svg>
+              </div>
+              <div>
+                <span class="eyebrow" style="color: var(--info)">Nota</span>
+                <p class="text-sm text-foreground/85 leading-relaxed mt-1">
+                  Los reportes estándar consultan el servidor; el reporte personalizado exporta la consulta cargada. No acreditan emisión ni firma oficial. El <span class="font-semibold">PDF</span> incluye membrete institucional, totales y numeración de páginas; use <span class="font-semibold">Excel/CSV</span> para análisis de datos.
+                </p>
+              </div>
+            </div>
           </div>
-          <div class="p-6 md:p-8 space-y-9">
+        </div>
+      }
+
+      <!-- =================================================================== -->
+      <!-- PESTAÑA 5: CONFIGURACIÓN (SETTINGS)                                -->
+      <!-- =================================================================== -->
+      @if (activeTab() === 'settings' && configService.loadState() === 'loading') {
+        <app-yaiku-cargando mensaje="Cargando configuración…" />
+      } @else if (activeTab() === 'settings' && configService.loadState() !== 'ready') {
+        <div role="status" class="form-shell p-6">
+          <p>Configuración no disponible. Los valores locales no acreditan la configuración vigente.</p>
+          <button type="button" class="btn-ghost-brand mt-3" (click)="configService.cargarDesdeBackend()">Reintentar configuración</button>
+        </div>
+      }
+      @if (activeTab() === 'settings' && configService.loadState() === 'ready') {
+        <div data-tour="a-settings" class="form-shell animate-fade-in">
+          <div class="form-section-header flex items-center gap-3">
+            <svg lucideSettings class="w-5 h-5" style="color: var(--brand-700)"></svg>
             <div>
-              <span class="eyebrow flex items-center gap-2">Plazos legales</span>
-              <h4 class="font-display mt-1.5 mb-4" style="font-size: 18px; letter-spacing: -0.012em">Días hábiles por etapa</h4>
+              <span class="eyebrow">Sistema</span>
+              <div class="form-section-title">Configuración</div>
+            </div>
+          </div>
+
+          <div class="p-6 md:p-8 space-y-9">
+            <!-- Aviso de marco normativo -->
+            <div class="rounded-lg p-4 flex items-start gap-3" style="background: var(--brand-subtle); border: 1px solid var(--brand-200)">
+              <svg lucideShield class="w-5 h-5 flex-shrink-0" style="color: var(--brand-700)"></svg>
+              <p class="text-sm text-foreground/85 leading-relaxed">
+                Los <span class="font-semibold">plazos, feriados y tarifas</span> se gestionan en la pestaña <button type="button" (click)="cambiarTab('plazos')" class="font-semibold underline" style="color: var(--brand-700)">Plazos y calendario</button>, que es la fuente de verdad para el cálculo de vencimientos. Aquí se configuran las alertas y notificaciones. <span class="font-semibold">El administrador gestiona reglas y cuentas, no puede eliminar solicitudes ni apelaciones.</span>
+              </p>
+            </div>
+
+            <div>
+              <span class="eyebrow flex items-center gap-2">
+                <svg lucideClock class="w-3.5 h-3.5" style="color: var(--brand-700)"></svg> Alertas
+              </span>
+              <h4 class="font-display mt-1.5 mb-4" style="font-size: 18px; letter-spacing: -0.012em">Anticipación de los avisos</h4>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="field"><label class="field-label">Plazo SAIP</label><input type="number" [value]="plazoSaipDias" class="field-input font-mono" readonly /><span class="field-hint">Días hábiles para responder al administrado.</span></div>
-                <div class="field"><label class="field-label">Plazo apelación</label><input type="number" [value]="plazoTtaipResolucionDias" class="field-input font-mono" readonly /><span class="field-hint">Días hábiles para resolver en TTAIP.</span></div>
+                <div class="field">
+                  <label class="field-label" for="admin-umbral-proximo">Umbral "plazo próximo"</label>
+                  <div class="relative">
+                    <input id="admin-umbral-proximo"
+                      type="number"
+                      min="1"
+                      [ngModel]="configService.config().notif.umbralProximo"
+                      (ngModelChange)="configService.updateNotif('umbralProximo', $event)"
+                      class="field-input font-mono pr-24" />
+                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">días antes</span>
+                  </div>
+                  <span class="field-hint">Cuántos días antes del vencimiento avisar.</span>
+                </div>
               </div>
             </div>
 
             <div class="rule-ornament"></div>
 
             <div>
-              <span class="eyebrow flex items-center gap-2">Notificaciones</span>
+              <span class="eyebrow flex items-center gap-2">
+                <svg lucideBell class="w-3.5 h-3.5" style="color: var(--brand-700)"></svg> Notificaciones
+              </span>
               <h4 class="font-display mt-1.5 mb-4" style="font-size: 18px; letter-spacing: -0.012em">Reglas de envío</h4>
               <div class="space-y-3">
-                @for (item of [
-                  { title: 'Alertas de solicitudes vencidas', desc: 'Notificar cuando una solicitud exceda el plazo.', active: true },
-                  { title: 'Recordatorios de plazos próximos', desc: 'Notificar 2 días antes del vencimiento.', active: true },
-                  { title: 'Alertas de nuevos registros', desc: 'Notificar al registrar un nuevo usuario.', active: false }
-                ]; track item.title) {
-                  <div class="rounded-lg p-4 flex items-center justify-between" style="background: var(--card); border: 1px solid var(--border)">
-                    <div><p class="text-sm text-foreground">{{ item.title }}</p><p class="text-xs text-muted-foreground mt-0.5">{{ item.desc }}</p></div>
-                    <span [class]="item.active ? 'pill pill-low' : 'pill'" [style]="item.active ? '' : 'background: var(--muted); color: var(--muted-foreground);'">{{ item.active ? 'Activo' : 'Inactivo' }}</span>
+                <!-- Switch 1: Vencidas -->
+                <div class="rounded-lg p-4 flex items-center justify-between gap-4" style="background: var(--card); border: 1px solid var(--border)">
+                  <div>
+                    <p class="text-sm text-foreground">Alertas de solicitudes vencidas</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">La campana del funcionario muestra la solicitud vencida que sigue sin respuesta.</p>
                   </div>
-                }
+                  <button
+                    type="button"
+                    aria-label="Alertas de solicitudes vencidas" (click)="configService.toggleNotif('vencidas')"
+                    role="switch"
+                    [attr.aria-checked]="configService.config().notif.vencidas"
+                    class="relative w-11 h-6 rounded-full flex-shrink-0 transition-colors cursor-pointer"
+                    [style.background]="configService.config().notif.vencidas ? 'var(--brand-600)' : 'var(--border)'">
+                    <span
+                      class="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all"
+                      [style.left.px]="configService.config().notif.vencidas ? 22 : 2"
+                      style="box-shadow: var(--shadow-sm)">
+                    </span>
+                  </button>
+                </div>
+
+                <!-- Switch 2: Próximos -->
+                <div class="rounded-lg p-4 flex items-center justify-between gap-4" style="background: var(--card); border: 1px solid var(--border)">
+                  <div>
+                    <p class="text-sm text-foreground">Recordatorios de plazos próximos</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">La campana del funcionario avisa cuando faltan {{ configService.config().notif.umbralProximo }} días y la solicitud sigue en atención.</p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Recordatorios de plazos próximos" (click)="configService.toggleNotif('proximos')"
+                    role="switch"
+                    [attr.aria-checked]="configService.config().notif.proximos"
+                    class="relative w-11 h-6 rounded-full flex-shrink-0 transition-colors cursor-pointer"
+                    [style.background]="configService.config().notif.proximos ? 'var(--brand-600)' : 'var(--border)'">
+                    <span
+                      class="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all"
+                      [style.left.px]="configService.config().notif.proximos ? 22 : 2"
+                      style="box-shadow: var(--shadow-sm)">
+                    </span>
+                  </button>
+                </div>
+
+                <!-- Switch 3: Registros -->
+                <div class="rounded-lg p-4 flex items-center justify-between gap-4" style="background: var(--card); border: 1px solid var(--border)">
+                  <div>
+                    <p class="text-sm text-foreground">Alertas de nuevos registros</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">La preferencia se guarda. El alta de un usuario no envía un aviso por correo.</p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Alertas de nuevos registros" (click)="configService.toggleNotif('registros')"
+                    role="switch"
+                    [attr.aria-checked]="configService.config().notif.registros"
+                    class="relative w-11 h-6 rounded-full flex-shrink-0 transition-colors cursor-pointer"
+                    [style.background]="configService.config().notif.registros ? 'var(--brand-600)' : 'var(--border)'">
+                    <span
+                      class="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all"
+                      [style.left.px]="configService.config().notif.registros ? 22 : 2"
+                      style="box-shadow: var(--shadow-sm)">
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
 
+            <!-- Botones de Guardar / Cancelar con dirty tracking -->
             <div class="flex justify-end gap-3 pt-4 border-t border-border">
-              <button class="btn-ghost-brand">Cancelar</button>
-              <button class="btn-brand">Guardar cambios</button>
+              <button
+                type="button"
+                (click)="cancelarConfiguracion()"
+                [disabled]="!configService.isDirty() || configService.saving()"
+                class="btn-ghost-brand disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                Cancelar
+              </button>
+              <button
+                type="button"
+                (click)="guardarConfiguracion()"
+                [disabled]="!configService.isDirty() || configService.saving()"
+                class="btn-brand disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer">
+                <span>{{ configService.saving() ? 'Guardando…' : 'Guardar cambios' }}</span>
+                <svg lucideArrowRight class="w-4 h-4"></svg>
+              </button>
             </div>
           </div>
         </div>
       }
-    </div>
 
-    @if (modalEntidadAbierto()) {
-      <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div class="modal-panel w-full max-w-md">
-          <div class="p-6 border-b border-[var(--border)] flex items-center justify-between">
-            <h3 class="font-display text-xl text-[var(--foreground)]">{{ entidadEditando() ? 'Editar Entidad' : 'Nueva Entidad' }}</h3>
-            <button (click)="cerrarModalEntidad()" class="btn-icon hover:bg-[var(--nieve)] transition-colors">
-              <svg class="w-5 h-5 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
+      <!-- =================================================================== -->
+      <!-- PESTAÑA 6: PLAZOS Y CALENDARIO OFICIAL                             -->
+      <!-- =================================================================== -->
+      @if (activeTab() === 'plazos') {
+        <div data-tour="a-plazos">
+          <app-admin-plazos-calendario></app-admin-plazos-calendario>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODALES DE GESTIÓN (ENTIDADES, USUARIOS, CONFIRMACIÓN) (DISC-11..15)  -->
+  <!-- ===================================================================== -->
+
+  <!-- Modal: Ver Entidad (EntityView) -->
+  @if (entModal() && entModal()!.mode === 'view') {
+    <ng-container *appBodyPortal>
+    <div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="cerrarModalEntidad()">
+      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-1" tabindex="-1" [appModalFocus]="true" (modalEscape)="cerrarModalEntidad()" (click)="$event.stopPropagation()">
+        <div class="px-5 py-4 flex items-center justify-between flex-shrink-0" style="border-bottom: 1px solid var(--brand-200); background: var(--brand-subtle)">
+          <div class="flex items-center gap-2">
+            <svg lucideBuilding2 class="w-4 h-4" style="color: var(--brand-700)"></svg>
+            <h3 id="admin-dialog-1" class="font-display text-lg text-foreground truncate max-w-sm">{{ entModal()!.data!.nombre }}</h3>
           </div>
-          <form (ngSubmit)="guardarEntidad()" class="p-6 space-y-4">
-            <div>
-              <label class="field-label">Nombre <span class="req">*</span></label>
-              <input type="text" [(ngModel)]="nuevaEntidad.nombre" name="nombre" required class="field-input" />
-            </div>
-            <div>
-              <label class="field-label">Acrónimo <span class="req">*</span></label>
-              <input type="text" [(ngModel)]="nuevaEntidad.acronimo" name="acronimo" required class="field-input" />
-            </div>
-            <div>
-              <label class="field-label">Email</label>
-              <input type="email" [(ngModel)]="nuevaEntidad.email" name="email" class="field-input" />
-            </div>
-            <div>
-              <label class="field-label">Teléfono</label>
-              <input type="text" [(ngModel)]="nuevaEntidad.telefono" name="telefono" class="field-input" />
-            </div>
-            <div>
-              <label class="field-label">Dirección</label>
-              <input type="text" [(ngModel)]="nuevaEntidad.direccion" name="direccion" class="field-input" />
-            </div>
-            <div>
-              <label class="field-label">Descripción</label>
-              <textarea [(ngModel)]="nuevaEntidad.descripcion" name="descripcion" rows="3" class="field-input resize-none"></textarea>
-            </div>
-            <div class="flex gap-3 pt-2">
-              <button type="submit" class="btn-brand flex-1">{{ entidadEditando() ? 'Guardar Cambios' : 'Crear Entidad' }}</button>
-              <button type="button" (click)="cerrarModalEntidad()" class="btn-ghost-brand">Cancelar</button>
-            </div>
-          </form>
+          <button type="button" [disabled]="saving()" aria-label="Cerrar diálogo" (click)="cerrarModalEntidad()" class="p-1.5 rounded-md hover:bg-[color:var(--muted)] cursor-pointer">
+            <svg lucideX class="w-4 h-4"></svg>
+          </button>
+        </div>
+        <div class="p-5 space-y-2 overflow-y-auto min-h-0 flex-1">
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Acrónimo</span>
+            <span class="font-medium text-foreground">{{ entModal()!.data!.acronimo }}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Solicitudes asignadas</span>
+            <span class="font-medium text-foreground font-mono">{{ entModal()!.data!.solicitudesAsignadas }}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Pendientes</span>
+            <span class="font-medium text-foreground font-mono">{{ entModal()!.data!.pendientes }}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Respondidas</span>
+            <span class="font-medium text-foreground font-mono">{{ entModal()!.data!.respondidas }}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Vencidas</span>
+            <span class="font-medium text-foreground font-mono">{{ entModal()!.data!.vencidas }}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Tasa de respuesta</span>
+            <span class="font-medium text-foreground font-mono">{{ entModal()!.data!.tasaCumplimiento }}%</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Estado</span>
+            <span class="pill" [class.pill-low]="entModal()!.data!.estado === 'Activa'">{{ entModal()!.data!.estado }}</span>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 px-5 py-4 shrink-0" style="border-top: 1px solid var(--border)">
+          <button type="button" (click)="cerrarModalEntidad()" class="btn-ghost-brand cursor-pointer">Cerrar</button>
+          <button type="button" (click)="abrirModalEntidad('edit', entModal()!.data)" class="btn-brand flex items-center gap-1.5 cursor-pointer">
+            <svg lucideEdit class="w-4 h-4"></svg>
+            <span>Editar</span>
+          </button>
         </div>
       </div>
-    }
+    </div>
+    </ng-container>
+  }
 
-    @if (modalUsuarioAbierto()) {
-      <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div class="modal-panel w-full max-w-md">
-          <div class="p-6 border-b border-[var(--border)] flex items-center justify-between">
-            <h3 class="font-display text-xl text-[var(--foreground)]">Nuevo Usuario</h3>
-            <button (click)="cerrarModalUsuario()" class="btn-icon hover:bg-[var(--nieve)] transition-colors">
-              <svg class="w-5 h-5 text-[var(--niebla)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
+  <!-- Modal: Crear / Editar Entidad (EntityForm) -->
+  @if (entModal() && (entModal()!.mode === 'create' || entModal()!.mode === 'edit')) {
+    <ng-container *appBodyPortal>
+    <div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="cerrarModalEntidad()">
+      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-2" tabindex="-1" [appModalFocus]="true" (modalEscape)="cerrarModalEntidad()" (click)="$event.stopPropagation()">
+        <div class="px-5 py-4 flex items-center justify-between flex-shrink-0" style="border-bottom: 1px solid var(--brand-200); background: var(--brand-subtle)">
+          <div class="flex items-center gap-2">
+            <svg lucideBuilding2 class="w-4 h-4" style="color: var(--brand-700)"></svg>
+            <h3 id="admin-dialog-2" class="font-display text-lg text-foreground">{{ entModal()!.mode === 'create' ? 'Nueva entidad' : 'Editar entidad' }}</h3>
           </div>
-          <form (ngSubmit)="crearUsuario()" class="p-6 space-y-4">
-            <div>
-              <label class="field-label">Email <span class="req">*</span></label>
-              <input type="email" [(ngModel)]="nuevoUsuario.email" name="email" required class="field-input" />
+          <button type="button" [disabled]="saving()" aria-label="Cerrar diálogo" (click)="cerrarModalEntidad()" class="p-1.5 rounded-md hover:bg-[color:var(--muted)] cursor-pointer">
+            <svg lucideX class="w-4 h-4"></svg>
+          </button>
+        </div>
+        <form (ngSubmit)="guardarEntidad()" class="flex min-h-0 flex-1 flex-col">
+          <div class="p-5 space-y-4 overflow-y-auto min-h-0 flex-1">
+          @if (error()) { <p role="alert" class="alert alert-error">{{ error() }}</p> }
+          <div class="field">
+            <label class="field-label" for="admin-field-9">Nombre de la entidad <span class="req">*</span></label>
+            <input id="admin-field-9" [disabled]="saving()"
+              type="text"
+              [ngModel]="entFormNombre()"
+              (ngModelChange)="entFormNombre.set($event)"
+              name="entNombre"
+              class="field-input"
+              placeholder="Ministerio de..."
+              required />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="field">
+              <label class="field-label" for="admin-field-10">Acrónimo <span class="req">*</span></label>
+              <input id="admin-field-10" [disabled]="saving()"
+                type="text"
+                [ngModel]="entFormAcronimo()"
+                (ngModelChange)="entFormAcronimo.set($event)"
+                name="entAcronimo"
+                class="field-input font-mono uppercase"
+                placeholder="MINEDU"
+                required />
             </div>
-            <div>
-              <label class="field-label">Contraseña <span class="req">*</span></label>
-              <input type="password" [(ngModel)]="nuevoUsuario.password" name="password" required class="field-input" />
-            </div>
-            <div>
-              <label class="field-label">Tipo de Usuario <span class="req">*</span></label>
-              <select [(ngModel)]="nuevoUsuario.tipoUsuario" name="tipoUsuario" required class="field-input">
-                <option value="">Seleccionar tipo</option>
-                <option value="CIUDADANO">Ciudadano</option>
-                <option value="FUNCIONARIO">Funcionario</option>
-                <option value="TTAIP">TTAIP</option>
-                <option value="ADMINISTRADOR">Administrador</option>
+            <div class="field">
+              <label class="field-label" for="admin-field-11">Estado</label>
+              <select id="admin-field-11"
+                [disabled]="saving()" [ngModel]="entFormEstado()"
+                (ngModelChange)="entFormEstado.set($event)"
+                name="entEstado"
+                class="field-input !py-[10px]">
+                <option value="Activa">Activa</option>
+                <option value="Inactiva">Inactiva</option>
               </select>
             </div>
-            <div class="flex gap-3 pt-2">
-              <button type="submit" class="btn-brand flex-1">Crear Usuario</button>
-              <button type="button" (click)="cerrarModalUsuario()" class="btn-ghost-brand">Cancelar</button>
-            </div>
-          </form>
+          </div>
+          </div>
+          <div class="flex justify-end gap-3 px-5 py-4 shrink-0" style="border-top: 1px solid var(--border)">
+            <button type="button" (click)="cerrarModalEntidad()" class="btn-ghost-brand cursor-pointer">Cancelar</button>
+            <button type="submit" [disabled]="saving()" class="btn-brand flex items-center gap-1.5 cursor-pointer">
+              <svg lucideSave class="w-4 h-4"></svg>
+              <span>{{ saving() ? 'Guardando…' : 'Guardar' }}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    </ng-container>
+  }
+
+  <!-- Modal: Ver Usuario (UserView) -->
+  @if (userModal() && userModal()!.mode === 'view') {
+    <ng-container *appBodyPortal>
+    <div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="cerrarModalUsuario()">
+      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-3" tabindex="-1" [appModalFocus]="true" (modalEscape)="cerrarModalUsuario()" (click)="$event.stopPropagation()">
+        <div class="px-5 py-4 flex items-center justify-between flex-shrink-0" style="border-bottom: 1px solid var(--brand-200); background: var(--brand-subtle)">
+          <div class="flex items-center gap-2">
+            <svg lucideUsers class="w-4 h-4" style="color: var(--brand-700)"></svg>
+            <h3 id="admin-dialog-3" class="font-display text-lg text-foreground truncate max-w-sm">{{ userModal()!.data!.nombre }}</h3>
+          </div>
+          <button type="button" [disabled]="saving()" aria-label="Cerrar diálogo" (click)="cerrarModalUsuario()" class="p-1.5 rounded-md hover:bg-[color:var(--muted)] cursor-pointer">
+            <svg lucideX class="w-4 h-4"></svg>
+          </button>
+        </div>
+        <div class="p-5 space-y-2 overflow-y-auto min-h-0 flex-1">
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Correo</span>
+            <span class="font-mono text-sm text-foreground">{{ userModal()!.data!.email }}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Tipo</span>
+            <span class="font-medium text-foreground">{{ userModal()!.data!.tipo === 'Ciudadano' ? 'Administrado' : userModal()!.data!.tipo }}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Entidad / Área</span>
+            <span class="font-medium text-foreground">{{ userModal()!.data!.entidad || '—' }}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Solicitudes</span>
+            <span class="font-mono text-foreground">{{ userModal()!.data!.solicitudes ?? 'No disponible' }}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Gestionadas</span>
+            <span class="font-mono text-foreground">{{ userModal()!.data!.solicitudesGestionadas ?? 'No disponible' }}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Apelaciones resueltas</span>
+            <span class="font-mono text-foreground">{{ userModal()!.data!.apelacionesResueltas ?? 'No disponible' }}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Registro</span>
+            <span class="font-mono text-xs text-foreground">{{ userModal()!.data!.fechaRegistro }}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 text-sm border-b border-border">
+            <span class="text-muted-foreground">Estado</span>
+            <span class="pill" [class.pill-low]="userModal()!.data!.estado === 'Activo'">{{ userModal()!.data!.estado }}</span>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 px-5 py-4 shrink-0" style="border-top: 1px solid var(--border)">
+          <button type="button" (click)="cerrarModalUsuario()" class="btn-ghost-brand cursor-pointer">Cerrar</button>
+          <button type="button" (click)="abrirModalUsuario('edit', userModal()!.data)" class="btn-brand flex items-center gap-1.5 cursor-pointer">
+            <svg lucideEdit class="w-4 h-4"></svg>
+            <span>Editar</span>
+          </button>
         </div>
       </div>
-    }
-  </div>
-</div>
+    </div>
+    </ng-container>
+  }
 
+  <!-- Modal: Crear / Editar Usuario (UserForm) -->
+  @if (userModal() && (userModal()!.mode === 'create' || userModal()!.mode === 'edit')) {
+    <ng-container *appBodyPortal>
+    <div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="cerrarModalUsuario()">
+      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-4" tabindex="-1" [appModalFocus]="true" (modalEscape)="cerrarModalUsuario()" (click)="$event.stopPropagation()">
+        <div class="px-5 py-4 flex items-center justify-between flex-shrink-0" style="border-bottom: 1px solid var(--brand-200); background: var(--brand-subtle)">
+          <div class="flex items-center gap-2">
+            <svg lucideUserPlus class="w-4 h-4" style="color: var(--brand-700)"></svg>
+            <h3 id="admin-dialog-4" class="font-display text-lg text-foreground">{{ userModal()!.mode === 'create' ? 'Nuevo usuario' : 'Editar usuario' }}</h3>
+          </div>
+          <button type="button" [disabled]="saving()" aria-label="Cerrar diálogo" (click)="cerrarModalUsuario()" class="p-1.5 rounded-md hover:bg-[color:var(--muted)] cursor-pointer">
+            <svg lucideX class="w-4 h-4"></svg>
+          </button>
+        </div>
+        @if (userModal()!.mode === 'create') {
+          <app-admin-user-create-form [entidades]="entidadesRaw()" (created)="usuarioCreado($event)" (cancelled)="cerrarModalUsuario()" />
+        } @else {
+        <form (ngSubmit)="guardarUsuario()" class="flex min-h-0 flex-1 flex-col">
+          <div class="p-5 space-y-4 overflow-y-auto min-h-0 flex-1">
+          @if (error()) { <p role="alert" class="alert alert-error">{{ error() }}</p> }
+          <div class="field">
+            <label class="field-label" for="admin-field-12">Nombre completo <span class="req">*</span></label>
+            <input id="admin-field-12" [disabled]="saving()"
+              type="text"
+              [ngModel]="userFormNombre()"
+              (ngModelChange)="userFormNombre.set($event)"
+              name="uNombre"
+              class="field-input"
+              placeholder="Nombres y apellidos"
+              required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="admin-field-13">Correo electrónico <span class="req">*</span></label>
+            <input id="admin-field-13" [disabled]="saving()"
+              type="email"
+              [ngModel]="userFormEmail()"
+              (ngModelChange)="userFormEmail.set($event)"
+              name="uEmail"
+              class="field-input font-mono"
+              placeholder="usuario@dominio.gob.pe"
+              required />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="field">
+              <label class="field-label" for="admin-field-14">Tipo</label>
+              <select id="admin-field-14" [disabled]="saving()"
+                [ngModel]="userFormTipo()"
+                (ngModelChange)="userFormTipo.set($event)"
+                name="uTipo"
+                class="field-input !py-[10px]">
+                <option value="Ciudadano">Administrado</option>
+                <option value="Funcionario">Funcionario</option>
+                <option value="TTAIP">Personal TTAIP</option>
+                <option value="Administrador">Administrador</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="field-label" for="admin-field-15">Estado</label>
+              <select id="admin-field-15" [disabled]="saving()"
+                [ngModel]="userFormEstado()"
+                (ngModelChange)="userFormEstado.set($event)"
+                name="uEstado"
+                class="field-input !py-[10px]">
+                <option value="Activo">Activo</option>
+                <option value="Inactivo">Inactivo</option>
+              </select>
+            </div>
+          </div>
+          @if (userFormTipo() === 'Funcionario') {
+            <div class="field">
+              <label class="field-label" for="admin-field-16">Entidad / Área</label>
+              <select id="admin-field-16" [disabled]="saving()" [ngModel]="userFormEntidad()" (ngModelChange)="userFormEntidad.set($event)" name="uEntidad" class="field-input"><option value="">Conservar asignación actual</option>@for (entidad of entidadesRaw(); track entidad.id) { <option [value]="entidad.id">{{ entidad.nombre }}</option> }</select>
+            </div>
+          }
+          </div>
+          <div class="flex justify-end gap-3 px-5 py-4 shrink-0" style="border-top: 1px solid var(--border)">
+            <button type="button" (click)="cerrarModalUsuario()" class="btn-ghost-brand cursor-pointer">Cancelar</button>
+            <button type="submit" [disabled]="saving()" class="btn-brand flex items-center gap-1.5 cursor-pointer">
+              <svg lucideSave class="w-4 h-4"></svg>
+              <span>{{ saving() ? 'Guardando…' : 'Guardar' }}</span>
+            </button>
+          </div>
+        </form>
+        }
+      </div>
+    </div>
+    </ng-container>
+  }
+
+  <!-- Modal: Diálogo de Confirmación (ConfirmDialog) -->
+  @if (confirm()) {
+    <ng-container *appBodyPortal>
+    <div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs" (click)="confirm.set(null)">
+      <div class="w-full max-w-lg rounded-xl overflow-hidden animate-scale-up min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] flex flex-col" style="background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-lg)" role="dialog" aria-modal="true" aria-labelledby="admin-dialog-5" tabindex="-1" [appModalFocus]="true" (modalEscape)="confirm.set(null)" (click)="$event.stopPropagation()">
+        <div class="px-5 py-4 flex items-center justify-between flex-shrink-0" style="border-bottom: 1px solid var(--brand-200); background: var(--brand-subtle)">
+          <div class="flex items-center gap-2">
+            <svg lucideAlertTriangle class="w-4 h-4" style="color: var(--brand-700)"></svg>
+            <h3 id="admin-dialog-5" class="font-display text-lg text-foreground">{{ confirm()!.titulo }}</h3>
+          </div>
+          <button type="button" aria-label="Cerrar confirmación" (click)="confirm.set(null)" class="p-1.5 rounded-md hover:bg-[color:var(--muted)] cursor-pointer">
+            <svg lucideX class="w-4 h-4"></svg>
+          </button>
+        </div>
+        <div class="p-5 overflow-y-auto min-h-0 flex-1">
+          <p class="text-sm text-foreground/85 leading-relaxed">{{ confirm()!.detalle }}</p>
+        </div>
+        <div class="flex justify-end gap-3 px-5 py-4 shrink-0" style="border-top: 1px solid var(--border)">
+          <button type="button" (click)="confirm.set(null)" class="btn-ghost-brand cursor-pointer">Cancelar</button>
+          <button type="button" (click)="confirm()!.onOk()" class="btn-brand flex items-center gap-1.5 cursor-pointer">
+            <svg lucideTrash2 class="w-4 h-4"></svg>
+            <span>Confirmar</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    </ng-container>
+  }
+</div>

@@ -11,17 +11,17 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-@Schema(description = "Vista pública y enmascarada del estado de una solicitud SAIP")
+@Schema(description = "Vista pública y enmascarada del estado de una solicitud SAIP o una apelación TTAIP")
 public record ConsultaPublicaSolicitudDTO(
+        @Schema(description = "Número SAIP. Nulo si la apelación se presentó sin una solicitud en la plataforma", types = {"string", "null"})
         String expediente,
         String ciudadano,
-        String entidad,
-        String fechaPresentacion,
-        String fechaLimite,
-        Integer diasTranscurridos,
-        Integer diasRestantes,
+        @Schema(types = {"string", "null"}) String entidad,
+        @Schema(types = {"string", "null"}) String fechaPresentacion,
+        @Schema(types = {"string", "null"}) String fechaLimite,
+        @Schema(types = {"integer", "null"}, format = "int32") Integer diasTranscurridos,
+        @Schema(types = {"integer", "null"}, format = "int32") Integer diasRestantes,
         String estado,
-        String asunto,
         String respuestaFecha,
         String respuestaTipo,
         String apelacionExpediente,
@@ -46,12 +46,31 @@ public record ConsultaPublicaSolicitudDTO(
                         : 0,
                 solicitud.getDiasRestantes(),
                 estadoPublico(solicitud),
-                solicitud.getAsunto(),
                 respuesta != null && respuesta.getFechaRespuesta() != null ? respuesta.getFechaRespuesta().toString() : null,
                 respuesta != null && respuesta.getTipoRespuesta() != null ? respuesta.getTipoRespuesta().name() : null,
                 apelacion != null ? apelacion.getExpediente() : null,
                 apelacion != null && apelacion.getEstado() != null ? apelacion.getEstado().name() : null,
                 apelacion != null && apelacion.getFechaApelacion() != null ? apelacion.getFechaApelacion().toString() : null,
+                resolucion != null && resolucion.getFechaResolucion() != null ? resolucion.getFechaResolucion().toString() : null,
+                resolucion != null && resolucion.getDecision() != null ? resolucion.getDecision().name() : null
+        );
+    }
+
+    public static ConsultaPublicaSolicitudDTO from(Apelacion apelacion) {
+        if (apelacion.getSolicitud() != null) {
+            return from(apelacion.getSolicitud());
+        }
+        Resolucion resolucion = apelacion.getResolucion();
+        // El nombre de una entidad declarada en una apelación externa es texto libre.
+        var entidad = apelacion.getEntidadApelada();
+        return new ConsultaPublicaSolicitudDTO(
+                null,
+                maskName(apelacion.getCiudadano() != null ? apelacion.getCiudadano().getNombreCompleto() : null),
+                entidad != null ? entidad.getNombre() : null,
+                null, null, null, null, "APELADA", null, null,
+                apelacion.getExpediente(),
+                apelacion.getEstado() != null ? apelacion.getEstado().name() : null,
+                apelacion.getFechaApelacion() != null ? apelacion.getFechaApelacion().toString() : null,
                 resolucion != null && resolucion.getFechaResolucion() != null ? resolucion.getFechaResolucion().toString() : null,
                 resolucion != null && resolucion.getDecision() != null ? resolucion.getDecision().name() : null
         );

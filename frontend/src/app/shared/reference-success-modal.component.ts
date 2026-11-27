@@ -1,6 +1,9 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BodyPortalDirective } from './body-portal.directive';
+import { ModalFocusDirective } from './modal-focus.directive';
+import { DialogBrandComponent } from './dialog-brand.component';
+import { LucideArrowRight, LucideBuilding2, LucideFileText, LucideGavel, LucideScale, LucideSparkles } from '@lucide/angular';
 
 export type ReferenceSuccessTone = 'success' | 'warning' | 'brand' | 'gold';
 
@@ -18,7 +21,9 @@ export interface ReferenceSuccessNextStep {
 @Component({
   selector: 'app-reference-success-modal',
   standalone: true,
-  imports: [CommonModule, BodyPortalDirective],
+  imports: [CommonModule, BodyPortalDirective, ModalFocusDirective, DialogBrandComponent,
+    LucideArrowRight, LucideBuilding2, LucideFileText, LucideGavel, LucideScale, LucideSparkles],
+  styleUrl: './reference-success-saip.css',
   template: `
     @if (open) {
       <ng-container *appBodyPortal>
@@ -32,7 +37,11 @@ export interface ReferenceSuccessNextStep {
 
         <section
           class="reference-success-panel"
+          [attr.data-presentation]="presentation"
           role="dialog"
+            tabindex="-1"
+            [appModalFocus]="manageFocus"
+            (modalEscape)="close.emit()"
           aria-modal="true"
           [attr.aria-label]="title"
           [attr.data-tone]="tone">
@@ -85,30 +94,23 @@ export interface ReferenceSuccessNextStep {
                     </svg>
                   }
                   @case ('respuesta-entidad') {
+                    @if (presentation === 'saip-response') {
+                      <svg lucideBuilding2 [strokeWidth]="2.2"></svg>
+                    } @else {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                       <path stroke-width="2" d="M3 21h18" />
                       <path stroke-width="2" d="M5 21V7l7-4 7 4v14" />
                     </svg>
+                    }
                   }
                   @case ('calificacion-1ra') {
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path stroke-width="2" d="m14 9-7 7" />
-                      <path stroke-width="2" d="m17 6 3 3" />
-                      <path stroke-width="2" d="m3 21 6-6" />
-                    </svg>
+                    <svg lucideGavel [strokeWidth]="2.2"></svg>
                   }
                   @case ('calificacion-2da') {
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path stroke-width="2" d="m12 3 9 4.5-9 4.5L3 7.5 12 3Z" />
-                      <path stroke-width="2" d="m3 12.5 9 4.5 9-4.5" />
-                    </svg>
+                    <svg lucideGavel [strokeWidth]="2.2"></svg>
                   }
                   @case ('resolucion-final') {
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path stroke-width="2" d="M12 3v18" />
-                      <path stroke-width="2" d="M7 21h10" />
-                      <path stroke-width="2" d="M5 7h14" />
-                    </svg>
+                    <svg lucideScale [strokeWidth]="2.2"></svg>
                   }
                   @case ('subsanacion-enviada') {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -140,9 +142,13 @@ export interface ReferenceSuccessNextStep {
               </div>
 
               <div class="reference-success-eyebrow">
+                @if (presentation === 'saip-response') {
+                  <svg lucideSparkles></svg>
+                } @else {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path stroke-width="2" d="m12 3 1.9 5.8L20 12l-6.1 3.2L12 21l-1.9-5.8L4 12l6.1-3.2L12 3Z" />
                 </svg>
+                }
                 {{ eyebrow }}
               </div>
               <h2>{{ title }}</h2>
@@ -156,23 +162,37 @@ export interface ReferenceSuccessNextStep {
             @if (expediente) {
               <div class="reference-expediente-card">
                 <div class="reference-expediente-icon">
+                  @if (presentation === 'saip-response') {
+                    <svg lucideFileText></svg>
+                  } @else {
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path stroke-width="2" d="M7 3h8l5 5v13H7z" />
                     <path stroke-width="2" d="M15 3v6h6" />
                   </svg>
+                  }
                 </div>
                 <div class="min-w-0 flex-1">
-                  <div class="reference-small-label">Nro. de expediente</div>
+                  <div class="reference-small-label">{{ presentation === 'saip-response' ? 'N° de expediente' : 'Nro. de expediente' }}</div>
                   <div class="reference-expediente-value">{{ expediente }}</div>
                   @if (expedienteHint) {
                     <div class="reference-expediente-hint">{{ expedienteHint }}</div>
                   }
                 </div>
-                <button type="button" (click)="copyExpediente()">Copiar</button>
+                <button type="button" [attr.aria-label]="presentation === 'saip-response' ? 'Copiar número de expediente' : null" (click)="copyExpediente()">Copiar</button>
               </div>
             }
 
             @if (metadata.length > 0) {
+              @if (presentation === 'saip-response') {
+                <dl class="reference-success-meta">
+                  @for (item of metadata; track item.label) {
+                    <div>
+                      <dt class="reference-small-label">{{ item.label }}</dt>
+                      <dd class="reference-meta-value" [class.font-mono]="item.mono">{{ item.value }}</dd>
+                    </div>
+                  }
+                </dl>
+              } @else {
               <div class="reference-success-meta">
                 @for (item of metadata; track item.label) {
                   <div>
@@ -181,6 +201,7 @@ export interface ReferenceSuccessNextStep {
                   </div>
                 }
               </div>
+              }
             }
 
             @if (plazoDias !== null && plazoDescripcion) {
@@ -233,6 +254,16 @@ export interface ReferenceSuccessNextStep {
 
           <footer class="reference-success-footer">
             <div class="reference-success-actions">
+              @if (variant === 'saip-creada' || variant === 'borrador-guardado') {
+                <button
+                  type="button"
+                  class="text-[13px] tracking-wide font-medium hover:underline px-3 py-2 transition-colors order-last sm:order-first whitespace-nowrap"
+                  style="color: var(--muted-foreground)"
+                  title="Volver al formulario para presentar otra solicitud"
+                  (click)="close.emit()">
+                  Presentar otra solicitud
+                </button>
+              }
               @if (secondaryLabel) {
                 <button type="button" class="btn-ghost-brand !py-2.5 flex-1 justify-center" (click)="secondary.emit()">
                   {{ secondaryLabel }}
@@ -240,27 +271,53 @@ export interface ReferenceSuccessNextStep {
               }
               <button type="button" class="btn-brand !py-2.5 flex-1 justify-center" (click)="primary.emit()">
                 {{ primaryLabel }}
+                @if (presentation === 'saip-response') {
+                  <svg lucideArrowRight class="w-4 h-4"></svg>
+                } @else {
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path stroke-width="2" d="m9 18 6-6-6-6" />
                 </svg>
+                }
               </button>
             </div>
-            <div class="reference-modal-signature">
-              <span></span>
-              TTAIP · República del Perú
-              <span></span>
-            </div>
+            <app-dialog-brand />
           </footer>
         </section>
         </div>
       </ng-container>
     }
   `,
-  styles: [':host { display: contents; }'],
+  styles: [`
+    :host { display: contents; }
+    /* Default follows SuccessModal's reference measures; SAIP overrides stay intact. */
+    .reference-success-panel[data-presentation="default"] .reference-success-hero-inner { padding: 32px 28px 28px; }
+    .reference-success-panel[data-presentation="default"] .reference-success-icon { width: 64px; height: 64px; margin-bottom: 20px; }
+    .reference-success-panel[data-presentation="default"] .reference-success-icon span { width: 84px; height: 84px; margin-top: -16px; }
+    .reference-success-panel[data-presentation="default"] .reference-success-hero h2 { font-weight: 500; font-optical-sizing: auto; }
+    .reference-success-panel[data-presentation="default"] .reference-success-hero p { line-height: 1.55; }
+    .reference-success-panel[data-presentation="default"] .reference-success-body { padding: 24px 28px; gap: 20px; }
+    .reference-success-panel[data-presentation="default"] .reference-success-actions { padding: 16px 28px; }
+    @media (max-width: 640px) {
+      .reference-success-panel[data-presentation="default"] .reference-success-hero-inner,
+      .reference-success-panel[data-presentation="default"] .reference-success-body { padding-left: 20px; padding-right: 20px; }
+      .reference-success-panel[data-presentation="default"] .reference-success-actions { padding-left: 20px; padding-right: 20px; align-items: stretch; }
+      .reference-success-panel[data-presentation="default"] .reference-success-actions button { width: 100%; flex: 0 0 auto; }
+    }
+    @media (max-height: 700px) {
+      .reference-success-panel[data-presentation="default"] .reference-success-hero-inner { padding: 20px 24px 18px; }
+      .reference-success-panel[data-presentation="default"] .reference-success-icon { width: 48px; height: 48px; margin-bottom: 12px; }
+      .reference-success-panel[data-presentation="default"] .reference-success-icon span { width: 64px; height: 64px; }
+      .reference-success-panel[data-presentation="default"] .reference-success-hero p { line-height: 1.45; }
+      .reference-success-panel[data-presentation="default"] .reference-success-body { padding: 16px 24px 18px; gap: 12px; }
+      .reference-success-panel[data-presentation="default"] .reference-success-actions { padding: 12px 24px 8px; }
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ReferenceSuccessModalComponent {
   @Input() open = false;
+  @Input() manageFocus = false;
+  @Input() presentation: 'default' | 'saip-response' = 'default';
   @Input() variant = 'generic';
   @Input() tone: ReferenceSuccessTone = 'success';
   @Input() eyebrow = 'Operación completada';

@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Apelacion } from '../models/apelacion.model';
-import type { CalificacionRequest, ResolucionRequest } from '../api/types';
+import type { CalificacionRequest, ResolucionRequest, ConsultaRecepcionSubsanacionTtaipDTO } from '../api/types';
 import type {
   CancelarSuspensionTtaipPayload,
   CerrarCumplimientoResolucionPayload,
@@ -35,6 +35,10 @@ export interface TtaipEstadisticas {
 export class TtaipService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = `${environment.apiUrl}/ttaip`;
+
+  consultarRecepcionSubsanacion(expedienteId: number, requerimientoId: number): Observable<ConsultaRecepcionSubsanacionTtaipDTO> {
+    return this.http.get<ConsultaRecepcionSubsanacionTtaipDTO>(`${this.apiUrl}/expedientes/${expedienteId}/requerimientos/${requerimientoId}/subsanacion/recepcion`);
+  }
 
   getEstadisticas(): Observable<TtaipEstadisticas> {
     return this.http.get<TtaipEstadisticas>(`${this.apiUrl}/estadisticas`);
