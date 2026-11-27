@@ -12,7 +12,7 @@
 
 La plataforma modela el ciclo completo de transparencia pública: el ciudadano solicita información, la entidad responde dentro de los plazos legales y, si corresponde, el TTAIP califica y resuelve la apelación. El repositorio está organizado como un monorepo con backend, frontend web, app mobile, documentación, base de datos, colecciones de API y automatización de contrato OpenAPI.
 
-> Este proyecto es una iniciativa académica y tecnológica. No representa ni está afiliado oficialmente a ninguna entidad gubernamental.
+> Yaiku es la plataforma de solicitudes de acceso a la información pública y de apelaciones ante el TTAIP. No representa ni está afiliada oficialmente a ninguna entidad gubernamental.
 
 ## Tabla de contenidos
 
@@ -28,6 +28,7 @@ La plataforma modela el ciclo completo de transparencia pública: el ciudadano s
 - [Hitos de ingeniería recientes](#hitos-de-ingeniería-recientes)
 - [Seguridad y roles](#seguridad-y-roles)
 - [Gestión de Almacenamiento Seguro (Supabase S3 API)](#gestión-de-almacenamiento-seguro-supabase-s3-api)
+- [Instancia publicada](#instancia-publicada)
 - [Ejecución local](#ejecución-local)
 - [Validación y CI](#validación-y-ci)
 - [Documentación y herramientas](#documentación-y-herramientas)
@@ -73,12 +74,13 @@ flowchart TB
 
     subgraph Platform["Nucleo de plataforma"]
         API["backend/\nSpring Boot 4 + Java 25\nREST + Security + OpenAPI"]
-        DB[("PostgreSQL\nsaip_db")]
+        DB[("PostgreSQL\nlocal: saip_db\npublicado: yaiku")]
         OpenAPI["/v3/api-docs\nContrato OpenAPI"]
     end
 
     subgraph External["Servicios externos"]
         Firebase["Firebase Cloud Messaging\nPush notifications"]
+        Storage["Supabase Storage\nbucket privado"]
     end
 
     Citizen --> Web
@@ -90,6 +92,7 @@ flowchart TB
     Web -->|HTTP JSON + JWT| API
     Android -->|Retrofit + JWT| API
     API --> DB
+    API --> Storage
     API --> OpenAPI
     Android -. push .-> Firebase
     Docs -. documenta .-> Platform
@@ -112,10 +115,10 @@ flowchart TB
 | Área | Tecnología |
 | --- | --- |
 | Runtime | Java 25 |
-| Framework | Spring Boot 4.0.0 |
+| Framework | Spring Boot 4.0.6 |
 | API | Spring Web MVC, REST JSON |
-| Persistencia | Spring Data JPA, Hibernate, PostgreSQL 16+ (Supabase) |
-| Almacenamiento de objetos | Supabase Storage — API compatible con AWS S3 para gestión de buckets |
+| Persistencia | Spring Data JPA, Hibernate. Local: PostgreSQL 16+ y base `saip_db`. Publicado: Azure Database for PostgreSQL 18, base `yaiku`, SSL obligatorio |
+| Almacenamiento de objetos | Supabase Storage privado, API compatible con S3. El backend no crea el bucket ni expone sus credenciales |
 | Documentos | Metadatos en PostgreSQL + `StorageProvider` con providers `LOCAL` y `S3_COMPATIBLE` |
 | Programación de tareas | `@Scheduled` cron para auditoría diaria de plazos legales |
 | Seguridad | Spring Security, JWT (`jjwt`), CORS configurable |
@@ -134,7 +137,7 @@ flowchart TB
 | Formularios | Angular Reactive Forms (tipados y defensivos) |
 | API contract | `openapi-typescript` con indexación dinámica en `schema.ts` |
 | Testing | Vitest + Angular unit test builder (179 tests unitarios) |
-| Package manager | pnpm 12.3.x (mandatorio en gobernanza de arquitectura) |
+| Package manager | pnpm 12.3.x |
 
 ### Mobile Android
 
@@ -157,7 +160,7 @@ flowchart TB
 | --- | --- |
 | Docs | Astro 6, Starlight, Mermaid |
 | API collections | Postman collection operativa |
-| Database migrations | Flyway versioned migrations (V1 DDL and V2 local seed in `backend/src/main/resources/db/`) |
+| Database migrations | Flyway. Esquema en `db/migration` (V1–V27). Semillas en `db/seed` (V2, V19, V20 y V28), fuera de la imagen publicada |
 | CI/CD | GitHub Actions por módulo |
 | OpenAPI sync | `scripts/sync-openapi.ps1` y `scripts/sync-openapi.sh` |
 
@@ -173,7 +176,6 @@ plataforma-saip-apelaciones/
 ├── postman/              # Colección operativa de API
 ├── scripts/              # Sincronización OpenAPI y utilidades
 ├── .github/workflows/    # CI independiente por módulo
-├── AGENTS.md             # Instrucciones locales para Codex
 ├── LICENSE               # Apache License 2.0
 └── README.md             # Visión técnica y funcional del proyecto
 ```
@@ -392,9 +394,9 @@ Decisiones de resolución final:
 
 ## Infraestructura de datos y persistencia
 
-### PostgreSQL centralizado (Supabase)
+### PostgreSQL
 
-Toda la lógica transaccional del sistema persiste en una instancia PostgreSQL 16+ alojada en Supabase. El esquema relacional implementa herencia por tabla compartida mediante `InheritanceType.JOINED` en la jerarquía de usuarios:
+La lógica transaccional persiste en PostgreSQL. En local la base se llama `saip_db`. La instancia publicada usa Azure Database for PostgreSQL 18, base `yaiku`, con SSL obligatorio. Supabase no aloja esa base: solo guarda archivos. El esquema relacional implementa herencia por tabla compartida mediante `InheritanceType.JOINED` en la jerarquía de usuarios:
 
 ```mermaid
 classDiagram
@@ -503,9 +505,9 @@ Se registró la ruta `/funcionario/apelaciones/:expediente` en el router de Angu
 
 El archivo `types.ts` del frontend ahora indexa dinámicamente los tipos de enums desde los DTOs generados por OpenAPI mediante el patrón `NonNullable<DTO['campo']>`, eliminando las declaraciones manuales de string unions y los comentarios `// TODO` que solicitaban endurecimiento del backend. Los tipos `EstadoApelacion`, `CalificacionApelacion`, `TipoOrigenApelacion`, `TipoDenegatoriaApelacion`, `TipoResolucion` y `DecisionResolucion` se derivan directamente del esquema auto-generado.
 
-### Frontend — Actualización a Angular 22.1, TypeScript 6.0 y gobernanza mandatoria con pnpm 12
+### Frontend — Actualización a Angular 22.1, TypeScript 6.0 y pnpm 12
 
-El frontend web se actualizó a las versiones estables más recientes del ecosistema Angular: Angular CLI, `@angular/build` y `@angular/ssr` en versión `22.1.7`, con el framework core en `22.1.5` y TypeScript `~6.0.3`. Se migró integralmente el gestor de paquetes a **`pnpm 12.3.x`**, estableciéndose en la gobernanza arquitectural (`AGENTS.md`, `frontend/AGENTS.md` y workflows) como el único gestor permitido para herramientas web. Para compatibilidad nativa con las directivas de seguridad de pnpm v12, se configuró `pnpm-workspace.yaml` mediante `allowBuilds` aprobando explícitamente los paquetes con scripts de construcción nativos (`@parcel/watcher`, `core-js`, `esbuild`, `lmdb`, `msgpackr-extract`). El pipeline de CI en GitHub Actions (`frontend-ci.yml`) fue adaptado con `pnpm/action-setup@v4`, verificación de tipos con `tsc --noEmit` y suite completa de pruebas ejecutada al 100% (179 pruebas unitarias exitosas en Vitest) con compilación limpia de producción en modo SSR.
+El frontend web se actualizó a las versiones estables más recientes del ecosistema Angular: Angular CLI, `@angular/build` y `@angular/ssr` en versión `22.1.7`, con el framework core en `22.1.5` y TypeScript `~6.0.3`. Se migró integralmente el gestor de paquetes a **`pnpm 12.3.x`**, que es el gestor del frontend y de `docs/`. Para compatibilidad nativa con las directivas de seguridad de pnpm v12, se configuró `pnpm-workspace.yaml` mediante `allowBuilds` aprobando explícitamente los paquetes con scripts de construcción nativos (`@parcel/watcher`, `core-js`, `esbuild`, `lmdb`, `msgpackr-extract`). El pipeline de CI en GitHub Actions (`frontend-ci.yml`) fue adaptado con `pnpm/action-setup@v4`, verificación de tipos con `tsc --noEmit` y suite completa de pruebas ejecutada al 100% (179 pruebas unitarias exitosas en Vitest) con compilación limpia de producción en modo SSR.
 
 ### Frontend — Experiencia integral del Módulo del Administrado y trazabilidad SAIP/TTAIP
 
@@ -561,7 +563,7 @@ sequenceDiagram
     autonumber
     actor Cliente as "Cliente (Web / Mobile)"
     participant API as "Backend (Spring Boot)"
-    participant DB as "PostgreSQL (saip_db)"
+    participant DB as "PostgreSQL"
     participant S3 as "Supabase Storage (S3 API)"
 
     Note over Cliente, S3: Flujo de Subida (Upload) Mediada
@@ -591,16 +593,17 @@ sequenceDiagram
 
 ### 2. Matriz de Variables de Entorno para Almacenamiento
 
-El backend de Spring Boot se configura mediante las siguientes propiedades del sistema y variables de entorno para activar la persistencia S3/Supabase en el perfil de `staging`:
+El perfil publicado lee estas variables. Ninguna clave se escribe en el repositorio ni en la imagen.
 
-| Propiedad Spring / Variable de Entorno | Descripción | Ejemplo de Valor | Requerido |
-| --- | --- | --- | --- |
-| `pe.gob.saip.storage.provider`<br>`APP_STORAGE_PROVIDER` | Define el proveedor de almacenamiento local o remoto. | `S3_COMPATIBLE` (o `LOCAL`) | Sí |
-| `pe.gob.saip.storage.s3.endpoint`<br>`SUPABASE_S3_ENDPOINT` | URL del Endpoint compatible con S3 provisto por Supabase. | `https://uxgawcsqkxgscx.supabase.co/storage/v1/s3` | Sí (si provider=S3) |
-| `pe.gob.saip.storage.s3.bucket-name`<br>`SUPABASE_S3_BUCKET_NAME` | Nombre del Bucket creado en Supabase. | `saip-documents` | Sí (si provider=S3) |
-| `pe.gob.saip.storage.s3.access-key`<br>`SUPABASE_S3_ACCESS_KEY` | Clave de acceso generada en Supabase (S3 Access Key). | `88c2b7...` | Sí (si provider=S3) |
-| `pe.gob.saip.storage.s3.secret-key`<br>`SUPABASE_S3_SECRET_KEY` | Clave secreta generada en Supabase (S3 Secret Key). | `df92c1a...` | Sí (si provider=S3) |
-| `pe.gob.saip.storage.s3.region`<br>`AWS_REGION` | Región AWS virtual del servicio. | `us-east-1` | Sí (si provider=S3) |
+| Variable | Descripción | Valor publicado |
+| --- | --- | --- |
+| `APP_STORAGE_PROVIDER` | `local` en desarrollo. `s3-compatible` para Supabase Storage. | `s3-compatible` |
+| `APP_STORAGE_S3_ENDPOINT` | Origen S3 `https://<proyecto>.supabase.co/storage/v1/s3`, sin usuario, ruta adicional, consulta ni fragmento. | Se define en el entorno |
+| `APP_STORAGE_S3_REGION` | Región que exige el proveedor. | `sa-east-1` |
+| `APP_STORAGE_S3_BUCKET` | Bucket ya creado. El backend no crea buckets. | `saip-documents` |
+| `APP_STORAGE_S3_ACCESS_KEY` | Clave S3 del bucket. No es la clave anónima ni la de servicio de Supabase. | Solo en el entorno |
+| `APP_STORAGE_S3_SECRET_KEY` | Secreto S3 del bucket. | Solo en el entorno |
+| `APP_STORAGE_S3_FORCE_PATH_STYLE` | Acceso con estilo de ruta, requerido por Supabase Storage. | `true` |
 
 > [!WARNING]
 > **REGLA DE ORO DE APPSEC:** Está estrictamente prohibido escribir llaves, credenciales, tokens o secretos en duro (*hardcoded*) dentro de los archivos `application.properties`, YAML o en cualquier archivo bajo control de versiones. Toda credencial de infraestructura debe ser inyectada dinámicamente mediante variables de entorno o gestores de secretos.
@@ -660,6 +663,21 @@ curl -O -J -L http://localhost:8080/api/documentos/1/download \
 
 *(El backend descargará el archivo desde Supabase S3 en memoria y lo transmitirá al cliente en un flujo continuo o stream, sin almacenar copias físicas locales ni exponer URLs internas).*
 
+## Instancia publicada
+
+La instancia publicada está en Azure, región Brazil South, en el plan Linux `plan-yaiku` (B1). Hay dos contenedores:
+
+| Aplicación | Dirección | Puerto del contenedor |
+| --- | --- | --- |
+| Web | https://yaiku-web.azurewebsites.net | 4000 |
+| API | https://yaiku-api.azurewebsites.net | 8080 |
+
+Los accesos de la web son `/login`, `/acceso-funcionario`, `/acceso-ttaip` y `/acceso-admin`. El navegador llama a `/api` en el mismo origen de la web. El proceso SSR reenvía esas rutas al origen de la API mediante `API_INTERNAL_ORIGIN`, sin usuario, contraseña ni ruta adicional. El origen público de la web es `PUBLIC_ORIGIN` y el patrón CORS de la API es ese mismo origen.
+
+La base de esa instancia es Azure Database for PostgreSQL 18, base `yaiku`, con conexión SSL. Los archivos están en el bucket privado `saip-documents` de Supabase Storage, región `sa-east-1`, con acceso por estilo de ruta. La API usa el perfil `prod`, SMTP real y un límite de memoria `-Xmx512m` definido en el entorno, no en la imagen.
+
+La imagen de la API incluye `db/migration` y excluye `db/seed`. Las semillas V2, V19, V20 y V28 ya están aplicadas en la base. Flyway Community no honra el patrón `versioned:missing` y, si solo se ignora lo ausente, también deja de ignorar lo futuro. Por eso el perfil `prod` usa `*:missing,*:future`: V28 queda fuera de la imagen y es posterior a V27.
+
 ## Ejecución local
 
 ### Requisitos
@@ -677,7 +695,7 @@ curl -O -J -L http://localhost:8080/api/documentos/1/download \
 
 ### Base de datos local (Inicialización)
 
-Antes de iniciar el backend, se debe crear la base de datos PostgreSQL localmente en blanco. Ya no es necesario ejecutar manualmente ningún script SQL complejo; **Flyway** se encarga de crear el esquema de tablas (V1) y poblar los datos semilla de prueba (V2) automáticamente en el primer arranque del servidor.
+Antes de iniciar el backend, se debe crear la base de datos PostgreSQL localmente en blanco. **Flyway** aplica el esquema versionado y, fuera del perfil `prod`, también las semillas de `db/seed`.
 
 **Paso 1: Crear la base de datos vacía**
 Ejecuta uno de los siguientes comandos según las herramientas instaladas en tu terminal:
@@ -705,9 +723,8 @@ cp backend/.env.example backend/.env
 *(Nota: Nunca guardes ni subas el archivo `backend/.env` al control de versiones de Git).*
 
 Este archivo incluye la configuración para:
-* **Perfil activo de Spring Boot**: `SPRING_PROFILES_ACTIVE` (define el perfil a ejecutar, ej. `staging`)
-* **Credenciales S3 de Supabase**: `SUPABASE_S3_ENDPOINT`, `SUPABASE_S3_BUCKET_NAME`, `SUPABASE_S3_ACCESS_KEY` y `SUPABASE_S3_SECRET_KEY`
-* **Región AWS virtual**: `AWS_REGION`
+* **Perfil activo de Spring Boot**: `SPRING_PROFILES_ACTIVE` (por ejemplo `staging` o `prod`)
+* **Archivos**: `APP_STORAGE_PROVIDER`, `APP_STORAGE_S3_ENDPOINT`, `APP_STORAGE_S3_REGION`, `APP_STORAGE_S3_BUCKET`, `APP_STORAGE_S3_ACCESS_KEY`, `APP_STORAGE_S3_SECRET_KEY` y `APP_STORAGE_S3_FORCE_PATH_STYLE`
 
 > [!IMPORTANT]
 > Este paso es **estrictamente opcional** y solo se requiere para ejecutar el perfil `staging` (con integraciones de nube activas). Para el desarrollo local estándar (`default`/`local`), el backend arranca de forma autónoma con almacenamiento local y base de datos local sin necesidad de crear el archivo `.env`.
@@ -926,15 +943,15 @@ flowchart LR
 | --- | --- |
 | `docs/` | Sitio técnico y funcional con Astro + Starlight. |
 | `postman/SAIP-API-Collection-Complete.json` | Colección completa para validar autenticación, SAIP, apelaciones, TTAIP, estadísticas y reportes. |
-| `backend/src/main/resources/db/` | Directorio de migraciones Flyway (V1 esquema DDL y V2 seed local). El script original `database/postgres/script_saip_db_postgres.sql` se conserva en el repo únicamente para referencia histórica. |
+| `backend/src/main/resources/db/migration` | Migraciones Flyway de esquema, de V1 a V27. |
+| `backend/src/main/resources/db/seed` | Semillas locales V2, V19, V20 y V28. No entran en la imagen publicada. |
 | `StorageProvider` | Abstracción backend para mantener binarios fuera de PostgreSQL y del repositorio. |
-| `AGENTS.md` | Reglas locales para asistentes de IA en el repositorio. |
 
 ## Roadmap técnico sugerido
 
 | Área | Próxima mejora |
 | --- | --- |
-| Backend | Validar el provider S3-compatible contra staging aprovisionado externamente. |
+| Backend | El almacenamiento publicado ya usa el provider S3-compatible contra un bucket privado. El valor local sigue siendo disco. |
 | Frontend | Continuar auditoría responsive, refinamiento visual y mejoras de accesibilidad. |
 | Mobile | Profundizar modo offline-first, sincronización incremental y manejo de conflictos. |
 | Docs | Publicar arquitectura, ADRs, contratos API y guías de despliegue. |
